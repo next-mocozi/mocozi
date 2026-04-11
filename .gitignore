@@ -1,0 +1,40 @@
+# 의존성
+node_modules/
+.pnpm-store/
+
+# 빌드 결과물
+dist/
+build/
+.next/
+out/
+
+# 환경 변수
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Prisma
+prisma/migrations/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 로그
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# 테스트 커버리지
+coverage/
+
+# 기타
+*.tsbuildinfo

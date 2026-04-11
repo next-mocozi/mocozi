@@ -1,0 +1,62 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { CreatePortfolioDto } from './dto/create-portfolio.dto';
+import { UpdatePortfolioDto } from './dto/update-portfolio.dto';
+
+/** 포트폴리오 서비스 - 포트폴리오 CRUD */
+@Injectable()
+export class PortfolioService {
+  constructor(private prisma: PrismaService) {}
+
+  /** 내 포트폴리오 조회 (없으면 생성) */
+  async getMyPortfolio(userId: string) {
+    let portfolio = await this.prisma.portfolio.findUnique({
+      where: { userId },
+      include: { items: { orderBy: { createdAt: 'desc' } } },
+    });
+
+    if (!portfolio) {
+      portfolio = await this.prisma.portfolio.create({
+        data: { userId },
+        include: { items: true },
+      });
+    }
+
+    return portfolio;
+  }
+
+  /** 포트폴리오 아이템 추가 */
+  async createItem(userId: string, dto: CreatePortfolioDto) {
+    const portfolio = await this.getMyPortfolio(userId);
+
+    return this.prisma.portfolioItem.create({
+      data: {
+        portfolioId: portfolio.id,
+        ...dto,
+      },
+    });
+  }
+
+  /** 포트폴리오 아이템 수정 */
+  async updateItem(itemId: string, dto: UpdatePortfolioDto) {
+    const item = await this.prisma.portfolioItem.findUnique({
+      where: { id: itemId },
+    });
+
+    if (!item) {
+      throw new NotFoundException('포트폴리오 아이템을 찾을 수 없습니다.');
+    }
+
+    return this.prisma.portfolioItem.update({
+      where: { id: itemId },
+      data: dto,
+    });
+  }
+
+  /** 포트폴리오 아이템 삭제 */
+  async deleteItem(itemId: string) {
+    return this.prisma.portfolioItem.delete({
+      where: { id: itemId },
+    });
+  }
+}

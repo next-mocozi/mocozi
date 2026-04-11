@@ -1,0 +1,66 @@
+# 모코지(Mocozi) 개발 환경 Docker Compose 설정
+version: '3.8'
+
+services:
+  # 프론트엔드 (Next.js)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8080
+      - NEXT_PUBLIC_SOCKET_URL=http://localhost:8080
+    depends_on:
+      - backend
+    command: pnpm dev
+
+  # 백엔드 (Nest.js)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - '8080:8080'
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    environment:
+      - DATABASE_URL=postgresql://mocozi:mocozi_password@db:5432/mocozi_db
+      - JWT_SECRET=dev-jwt-secret-change-in-production
+      - SMTP_HOST=smtp.example.com
+      - SMTP_PORT=587
+      - SMTP_USER=noreply@example.com
+      - SMTP_PASS=smtp-password
+      - FRONTEND_URL=http://localhost:3000
+      - PORT=8080
+    depends_on:
+      db:
+        condition: service_healthy
+    command: pnpm start:dev
+
+  # 데이터베이스 (PostgreSQL)
+  db:
+    image: postgres:16-alpine
+    ports:
+      - '5432:5432'
+    environment:
+      - POSTGRES_USER=mocozi
+      - POSTGRES_PASSWORD=mocozi_password
+      - POSTGRES_DB=mocozi_db
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U mocozi -d mocozi_db']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
+    driver: local

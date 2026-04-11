@@ -1,0 +1,9 @@
+{
+  "name": "@mocozi/shared",
+  "version": "0.1.0",
+  "description": "모코지 공유 타입 및 상수",
+  "main": "index.ts",
+  "types": "index.ts",
+  "scripts": {},
+  "license": "UNLICENSED"
+}

@@ -1,0 +1,226 @@
+// Prisma 스키마 - 모코지 데이터 모델 정의
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 사용자 모델
+model User {
+  id                String    @id @default(uuid())
+  email             String    @unique
+  password          String
+  name              String
+  university        String
+  department        String
+  role              String    @default("USER")
+  profileImage      String?
+  bio               String?
+  skills            String[]
+  emailVerified     Boolean   @default(false)
+  verificationToken String?
+  careerSummary     String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // 관계
+  ledTeams      Team[]        @relation("TeamLeader")
+  teamMembers   TeamMember[]
+  applications  Application[]
+  portfolio     Portfolio?
+  sentMessages  ChatMessage[]
+  chatRooms     ChatRoomUser[]
+
+  @@map("users")
+}
+
+// 팀 모델
+model Team {
+  id        String   @id @default(uuid())
+  name      String
+  leaderId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 관계
+  leader    User         @relation("TeamLeader", fields: [leaderId], references: [id])
+  members   TeamMember[]
+  proposal  TeamProposal?
+  recruits  RecruitPost[]
+
+  @@map("teams")
+}
+
+// 팀원 모델
+model TeamMember {
+  id       String   @id @default(uuid())
+  teamId   String
+  userId   String
+  role     String
+  joinedAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([teamId, userId])
+  @@map("team_members")
+}
+
+// 팀 기획서 모델 - 필수/선택 공개 정보 분리
+model TeamProposal {
+  id               String   @id @default(uuid())
+  teamId           String   @unique
+  teamName         String
+  overview         String   // 필수 공개: 프로젝트 개요/목표
+  detailedPlan     String?  // 선택 공개: 상세 기획
+  schedule         String   // 진행 일정
+  recruitingRoles  String[] // 구인 직군
+  // 필수 공개 정보
+  projectType      String
+  expectedDuration String
+  requiredSkills   String[]
+  // 선택 공개 정보
+  techStack        String[]
+  referenceLinks   String[]
+  detailedSchedule String?
+  expectedOutcome  String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  team Team @relation(fields: [teamId], references: [id])
+
+  @@map("team_proposals")
+}
+
+// 구인 게시글 모델
+model RecruitPost {
+  id          String   @id @default(uuid())
+  teamId      String
+  title       String
+  description String
+  roles       String[]
+  skills      String[]
+  deadline    DateTime
+  status      RecruitStatus @default(OPEN)
+  visibility  RecruitVisibility @default(PUBLIC)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  team         Team          @relation(fields: [teamId], references: [id])
+  applications Application[]
+
+  @@map("recruit_posts")
+}
+
+enum RecruitStatus {
+  OPEN
+  CLOSED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum RecruitVisibility {
+  PUBLIC
+  UNIVERSITY_ONLY
+}
+
+// 지원서 모델
+model Application {
+  id        String            @id @default(uuid())
+  recruitId String
+  userId    String
+  status    ApplicationStatus @default(PENDING)
+  message   String
+  createdAt DateTime          @default(now())
+
+  recruit RecruitPost @relation(fields: [recruitId], references: [id])
+  user    User        @relation(fields: [userId], references: [id])
+
+  @@unique([recruitId, userId])
+  @@map("applications")
+}
+
+enum ApplicationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+// 포트폴리오 모델
+model Portfolio {
+  id     String          @id @default(uuid())
+  userId String          @unique
+  user   User            @relation(fields: [userId], references: [id])
+  items  PortfolioItem[]
+
+  @@map("portfolios")
+}
+
+// 포트폴리오 아이템 모델 - 카드 형태
+model PortfolioItem {
+  id          String            @id @default(uuid())
+  portfolioId String
+  type        PortfolioItemType
+  title       String
+  description String
+  techStack   String[]
+  duration    String
+  role        String
+  domain      String
+  tags        String[]
+  createdAt   DateTime          @default(now())
+
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id])
+
+  @@map("portfolio_items")
+}
+
+enum PortfolioItemType {
+  PROJECT
+  RESEARCH
+  ACTIVITY
+  ETC
+}
+
+// 채팅방 모델
+model ChatRoom {
+  id          String         @id @default(uuid())
+  lastMessage String?
+  updatedAt   DateTime       @updatedAt
+  users       ChatRoomUser[]
+  messages    ChatMessage[]
+
+  @@map("chat_rooms")
+}
+
+// 채팅방-사용자 연결 모델
+model ChatRoomUser {
+  id     String @id @default(uuid())
+  roomId String
+  userId String
+
+  room ChatRoom @relation(fields: [roomId], references: [id])
+  user User     @relation(fields: [userId], references: [id])
+
+  @@unique([roomId, userId])
+  @@map("chat_room_users")
+}
+
+// 채팅 메시지 모델
+model ChatMessage {
+  id        String   @id @default(uuid())
+  roomId    String
+  senderId  String
+  content   String
+  readBy    String[]
+  createdAt DateTime @default(now())
+
+  room   ChatRoom @relation(fields: [roomId], references: [id])
+  sender User     @relation(fields: [senderId], references: [id])
+
+  @@map("chat_messages")
+}
