@@ -15,8 +15,6 @@ out/
 .env.test.local
 .env.production.local
 
-# Prisma
-prisma/migrations/
 
 # IDE
 .idea/
@@ -38,3 +36,5 @@ coverage/
 
 # 기타
 *.tsbuildinfo
+*.docx
+docx_text.txt
