@@ -36,8 +36,8 @@ mocozi/
 
 ### 사전 요구사항
 
-- Node.js 20+
-- pnpm 9+
+- Node.js 24.15.0 (`.nvmrc` 제공 — `nvm use` 권장)
+- pnpm 10.33.2 (`packageManager` 필드로 자동 적용)
 - Docker & Docker Compose
 
 ### 방법 1: Docker Compose (권장)
