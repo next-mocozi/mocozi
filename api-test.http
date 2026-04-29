@@ -1,0 +1,204 @@
+### ============================================
+### Mocozi API 테스트
+### VS Code REST Client 확장 필요 (humao.rest-client)
+### 각 요청 위 "Send Request" 클릭
+### ============================================
+
+@host = http://localhost:8080
+@email = yeoziphab@korea.ac.kr
+@password = test1234
+
+
+### ────────────────────────────────────────────
+### 1. 회원가입
+### ────────────────────────────────────────────
+# @name register
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}",
+  "name": "여승민",
+  "university": "고려대학교",
+  "department": "인공지능학과"
+}
+
+
+### ────────────────────────────────────────────
+### 2. verificationToken 확인
+### ────────────────────────────────────────────
+### ⚠️ 인증 메일 발송 로직이 미구현이라 토큰을 DB에서 직접 봐야 함
+### 아래 명령을 새 터미널에서 실행:
+###
+### docker-compose exec db psql -U mocozi -d mocozi_db -c "SELECT email, \"verificationToken\" FROM users;"
+###
+### 출력에서 verificationToken 복사해서 아래 @token 변수에 붙여넣기
+
+@token = 여기에_토큰_붙여넣기
+
+
+### ────────────────────────────────────────────
+### 3. 이메일 인증
+### ────────────────────────────────────────────
+GET {{host}}/api/auth/verify-email?token={{token}}
+
+
+### ────────────────────────────────────────────
+### 4. 로그인
+### ────────────────────────────────────────────
+# @name login
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+
+### ↑ 위 응답에서 accessToken을 자동으로 변수에 저장
+@accessToken = {{login.response.body.data.accessToken}}
+
+
+### ────────────────────────────────────────────
+### 5. 내 정보 조회 (인증 필요)
+### ────────────────────────────────────────────
+GET {{host}}/api/users/me
+Authorization: Bearer {{accessToken}}
+
+
+### ────────────────────────────────────────────
+### 6. 프로필 수정
+### ────────────────────────────────────────────
+PUT {{host}}/api/users/me
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "bio": "안녕하세요, 여승민입니다.",
+  "skills": ["React", "TypeScript", "Next.js"],
+  "careerSummary": "프론트엔드 개발자"
+}
+
+
+### ────────────────────────────────────────────
+### 7. 팀 생성
+### ────────────────────────────────────────────
+# @name createTeam
+POST {{host}}/api/teams
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "모코지 개발팀"
+}
+
+
+@teamId = {{createTeam.response.body.data.id}}
+
+
+### ────────────────────────────────────────────
+### 8. 팀 기획서 작성
+### ────────────────────────────────────────────
+POST {{host}}/api/teams/{{teamId}}/proposal
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "teamName": "모코지",
+  "overview": "IT 대학생 팀 빌딩 플랫폼",
+  "schedule": "2026년 4월 ~ 6월",
+  "recruitingRoles": ["FRONTEND", "BACKEND"],
+  "projectType": "WEB",
+  "expectedDuration": "3개월",
+  "requiredSkills": ["React", "Node.js"],
+  "techStack": ["Next.js", "Nest.js", "PostgreSQL"],
+  "referenceLinks": ["https://github.com/mocozi"],
+  "detailedSchedule": "주 2회 회의",
+  "expectedOutcome": "MVP 완성"
+}
+
+
+### ────────────────────────────────────────────
+### 9. 팀 목록 조회 (인증 불필요)
+### ────────────────────────────────────────────
+GET {{host}}/api/teams
+
+
+### ────────────────────────────────────────────
+### 10. 팀 상세 조회
+### ────────────────────────────────────────────
+GET {{host}}/api/teams/{{teamId}}
+
+
+### ────────────────────────────────────────────
+### 11. 구인글 작성
+### ────────────────────────────────────────────
+# @name createRecruit
+POST {{host}}/api/recruits
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "teamId": "{{teamId}}",
+  "title": "프론트엔드 개발자 모집",
+  "description": "Next.js로 함께 개발할 분 찾습니다",
+  "roles": ["FRONTEND"],
+  "skills": ["React", "TypeScript"],
+  "deadline": "2026-12-31T23:59:59.000Z",
+  "visibility": "PUBLIC"
+}
+
+
+@recruitId = {{createRecruit.response.body.data.id}}
+
+
+### ────────────────────────────────────────────
+### 12. 구인글 목록 (필터)
+### ────────────────────────────────────────────
+GET {{host}}/api/recruits?skill=React
+
+
+### ────────────────────────────────────────────
+### 13. 구인글 상세
+### ────────────────────────────────────────────
+GET {{host}}/api/recruits/{{recruitId}}
+
+
+### ────────────────────────────────────────────
+### 14. 검색 - 구인글
+### ────────────────────────────────────────────
+GET {{host}}/api/search/recruits?keyword=프론트엔드
+
+
+### ────────────────────────────────────────────
+### 15. 검색 - 사용자
+### ────────────────────────────────────────────
+GET {{host}}/api/search/users?skill=React
+
+
+### ────────────────────────────────────────────
+### 16. 포트폴리오 조회
+### ────────────────────────────────────────────
+GET {{host}}/api/portfolios/me
+Authorization: Bearer {{accessToken}}
+
+
+### ────────────────────────────────────────────
+### 17. 포트폴리오 카드 추가
+### ────────────────────────────────────────────
+POST {{host}}/api/portfolios/items
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "type": "PROJECT",
+  "title": "Mocozi 플랫폼 개발",
+  "description": "IT 대학생 팀 빌딩 서비스",
+  "techStack": ["Next.js", "Nest.js"],
+  "duration": "2026.04 - 2026.06",
+  "role": "팀 리더 / 풀스택 개발",
+  "domain": "WEB",
+  "tags": ["팀빌딩", "스타트업"]
+}
