@@ -39,11 +39,19 @@ model User {
   @@map("users")
 }
 
+enum TeamType {
+  STUDY
+  COMPETITION
+  HACKATHON
+  PROJECT
+}
+  
 // 팀 모델
 model Team {
   id        String   @id @default(uuid())
   name      String
   leaderId  String
+  teamType  TeamType
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -75,20 +83,15 @@ model TeamMember {
 model TeamProposal {
   id               String   @id @default(uuid())
   teamId           String   @unique
-  teamName         String
-  overview         String   // 필수 공개: 프로젝트 개요/목표
-  detailedPlan     String?  // 선택 공개: 상세 기획
-  schedule         String   // 진행 일정
-  recruitingRoles  String[] // 구인 직군
-  // 필수 공개 정보
-  projectType      String
-  expectedDuration String
+  projectName      String
+  overview         String
+  schedule         String
+  recruitingRoles  String[]
   requiredSkills   String[]
-  // 선택 공개 정보
-  techStack        String[]
-  referenceLinks   String[]
-  detailedSchedule String?
+  referenceLinks   String[] //선택
+  detailedPlan     String?
   expectedOutcome  String?
+  publicFields     String[]
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 

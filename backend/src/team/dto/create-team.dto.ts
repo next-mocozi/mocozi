@@ -1,2 +1,11 @@
-// TODO: 팀 생성 요청 데이터 정의
-export class CreateTeamDto {}
+import { IsString, IsNotEmpty, IsEnum } from 'class-validator';
+import { TeamType } from '@prisma/client';
+
+export class CreateTeamDto {
+    @IsString()
+    @IsNotEmpty()
+    teamname: string;
+
+    @IsEnum(TeamType)
+    type: TeamType;
+}
