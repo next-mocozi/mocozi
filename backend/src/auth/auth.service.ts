@@ -41,7 +41,11 @@ export class AuthService {
       },
     });
 
-    return { message: '회원가입이 완료되었습니다. 이메일을 확인해주세요.', userId: user.id, };
+    return {
+      message: '회원가입이 완료되었습니다. 이메일을 확인해주세요.',
+      userId: user.id,
+      verificationToken: user.verificationToken, // TODO: 이메일 발송 구현 후 제거
+    };
   }
   async login(loginDto: LoginDto) {
     const { email, password } = loginDto;
