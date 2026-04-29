@@ -1,2 +1,27 @@
-// TODO: 회원가입 요청 데이터 정의
-export class RegisterDto {}
+import { IsEmail, IsString, MinLength, IsNotEmpty } from 'class-validator';
+
+export class RegisterDto {
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
+
+  @IsString()
+  @MinLength(8)
+  password: string;
+
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @IsString()
+  @IsNotEmpty()
+  university: string;
+
+  @IsString()
+  @IsNotEmpty()
+  department: string;
+
+  @IsString()
+  @IsNotEmpty()
+  grade: string;
+}

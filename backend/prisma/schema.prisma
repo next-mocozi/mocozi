@@ -17,6 +17,7 @@ model User {
   name              String
   university        String
   department        String
+  grade             String?
   role              String    @default("USER")
   profileImage      String?
   bio               String?
