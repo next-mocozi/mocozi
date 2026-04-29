@@ -90,6 +90,8 @@ cp backend/.env.example backend/.env
 
 # 3. DB만 Docker로 실행
 docker compose up db -d
+# 3-1. prisma studio를 통한 DB 직접 조회
+docker compose exec backend npx prisma studio
 
 # 4. Prisma 스키마 동기화
 cd backend && pnpm prisma db push
