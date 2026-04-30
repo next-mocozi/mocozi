@@ -16,14 +16,14 @@ export default function RecruitListPage() {
   const MOCK_PROFILES = [
   {
     id: 1,
-    name: '호이',
+    name: '백승준',
     school: '고려대학교',
     department: '인공지능학과',
     schoolColor: '#8B0000',
     mainRole: 'AI/ML',
     subRoles: ['데이터'],
     skills: ['Python', 'TensorFlow', 'NLP', 'Computer Vision'],
-    intro: 'CV, NLP, 오픈소스 구현에 관심 있으며 개발자로 성장 중입니다.',
+    intro: '참고로 CV, NLP, 오픈소스 구현에 관심 있으며 개발자로 성장 중입니다.',
     image: null,
   },
   {
