@@ -103,6 +103,19 @@ export class TeamService {
     if (!team) {
       throw new NotFoundException('팀을 찾을 수 없습니다.');
     }
+
+    if (team.proposal) {
+      const { publicFields, detailedPlan, expectedOutcome, referenceLinks, ...rest } = team.proposal;
+      const filteredProposal = {
+        ...rest,
+        publicFields,
+        detailedPlan: publicFields.includes('detailedPlan') ? detailedPlan : undefined,
+        expectedOutcome: publicFields.includes('expectedOutcome') ? expectedOutcome : undefined,
+        referenceLinks: publicFields.includes('referenceLinks') ? referenceLinks : undefined,
+      };
+      return { ...team, proposal: filteredProposal };
+    }
+
     return team;
   }
 
