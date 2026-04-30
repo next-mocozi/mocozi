@@ -6,15 +6,15 @@ import { SearchService } from './search.service';
 export class SearchController {
   constructor(private readonly searchService: SearchService) {}
 
-  /** GET /search/recruits - 구인 게시글 검색 */
-  @Get('recruits')
-  searchRecruits(
+  /** GET /search/teams - 팀 검색 */
+  @Get('teams')
+  searchTeams(
     @Query('keyword') keyword?: string,
     @Query('skill') skill?: string,
     @Query('role') role?: string,
     @Query('university') university?: string,
   ) {
-    return this.searchService.searchRecruits({ keyword, skill, role, university });
+    return this.searchService.searchTeams({ keyword, skill, role, university });
   }
 
   /** GET /search/users - 사용자 검색 */

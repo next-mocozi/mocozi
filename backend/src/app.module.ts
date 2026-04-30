@@ -4,7 +4,7 @@ import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { PortfolioModule } from './portfolio/portfolio.module';
 import { TeamModule } from './team/team.module';
-import { RecruitModule } from './recruit/recruit.module';
+import { ApplyModule } from './apply/apply.module';
 import { ChatModule } from './chat/chat.module';
 import { SearchModule } from './search/search.module';
 
@@ -16,7 +16,7 @@ import { SearchModule } from './search/search.module';
     UserModule,
     PortfolioModule,
     TeamModule,
-    RecruitModule,
+    ApplyModule,
     ChatModule,
     SearchModule,
   ],

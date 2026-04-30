@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm type-check *)",
+      "Bash(npx tsc *)",
+      "Bash(pnpm install *)",
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(node_modules/.bin/prisma generate *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git pull *)",
+      "Bash(git push *)",
+      "Bash(docker-compose ps *)",
+      "Bash(pnpm prisma:migrate)",
+      "Bash(node_modules/.bin/prisma migrate *)",
+      "Bash(DATABASE_URL=\"postgresql://mocozi:mocozi1234@localhost:5432/mocozi_db\" node_modules/.bin/prisma migrate dev --name add-grade-to-user)",
+      "Bash(DATABASE_URL=\"postgresql://mocozi:mocozi_password@localhost:5432/mocozi_db\" node_modules/.bin/prisma migrate dev --name add-grade-to-user)",
+      "Bash(DATABASE_URL=\"postgresql://mocozi:mocozi_password@localhost:5432/mocozi_db\" node_modules/.bin/prisma migrate reset --force)",
+      "Bash(PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION=\"ㅇㅇ\" DATABASE_URL=\"postgresql://mocozi:mocozi_password@localhost:5432/mocozi_db\" node_modules/.bin/prisma migrate reset --force)",
+      "Bash(docker-compose logs *)",
+      "Bash(docker-compose restart *)",
+      "Bash(docker-compose up *)",
+      "Bash(docker-compose exec *)",
+      "Bash(curl *)",
+      "Bash(npx prisma *)"
+    ]
+  }
+}

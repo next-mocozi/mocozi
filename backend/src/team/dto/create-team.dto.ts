@@ -4,8 +4,8 @@ import { TeamType } from '@prisma/client';
 export class CreateTeamDto {
     @IsString()
     @IsNotEmpty()
-    teamname: string;
+    name: string;
 
     @IsEnum(TeamType)
-    type: TeamType;
+    teamType: TeamType;
 }

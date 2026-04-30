@@ -49,17 +49,17 @@ enum TeamType {
 // 팀 모델
 model Team {
   id        String   @id @default(uuid())
-  name      String
+  name      String   @unique
   leaderId  String
   teamType  TeamType
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // 관계
-  leader    User         @relation("TeamLeader", fields: [leaderId], references: [id])
-  members   TeamMember[]
-  proposal  TeamProposal?
-  recruits  RecruitPost[]
+  leader      User         @relation("TeamLeader", fields: [leaderId], references: [id])
+  members     TeamMember[]
+  proposal    TeamProposal?
+  applications Application[]
 
   @@map("teams")
 }
@@ -100,51 +100,19 @@ model TeamProposal {
   @@map("team_proposals")
 }
 
-// 구인 게시글 모델
-model RecruitPost {
-  id          String   @id @default(uuid())
-  teamId      String
-  title       String
-  description String
-  roles       String[]
-  skills      String[]
-  deadline    DateTime
-  status      RecruitStatus @default(OPEN)
-  visibility  RecruitVisibility @default(PUBLIC)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  team         Team          @relation(fields: [teamId], references: [id])
-  applications Application[]
-
-  @@map("recruit_posts")
-}
-
-enum RecruitStatus {
-  OPEN
-  CLOSED
-  IN_PROGRESS
-  COMPLETED
-}
-
-enum RecruitVisibility {
-  PUBLIC
-  UNIVERSITY_ONLY
-}
-
 // 지원서 모델
 model Application {
   id        String            @id @default(uuid())
-  recruitId String
+  teamId    String
   userId    String
   status    ApplicationStatus @default(PENDING)
   message   String
   createdAt DateTime          @default(now())
 
-  recruit RecruitPost @relation(fields: [recruitId], references: [id])
-  user    User        @relation(fields: [userId], references: [id])
+  team Team @relation(fields: [teamId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
-  @@unique([recruitId, userId])
+  @@unique([teamId, userId])
   @@map("applications")
 }
 
