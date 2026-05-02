@@ -54,7 +54,7 @@ export const TYPE_META: Record<
 };
 
 type Experience = {
-  id: number;
+  id: number; 
   company: string;
   team: string;
   role: string;
@@ -497,7 +497,7 @@ export default function MyPortfolioPage() {
 
         {/* 경력 — 보기 전용 불렛 리스트, 편집은 모달 */}
         <div className="card">
-          <div className="mb-4 flex items-center justify-between">
+          <div className=" mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold">경력</h2>
             <button
               type="button"
@@ -677,8 +677,10 @@ export default function MyPortfolioPage() {
             onClick={(e) => e.stopPropagation()}
             className="flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
           >
-            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-              <h2 className="text-lg font-bold">실무 경험 & 이력</h2>
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
+              <h2 className="text-lg font-bold  px-1 py-3 text-gray-900">
+                실무 경험 & 이력
+              </h2>
               <button
                 onClick={() => setExpModalOpen(false)}
                 aria-label="닫기"
@@ -689,15 +691,16 @@ export default function MyPortfolioPage() {
             </div>
 
             {/* 스크롤 영역 */}
-            <div className="flex-1 overflow-y-auto px-6 py-5">
-              {/* 폼 */}
-              <div className="mb-6">
-                <h3 className="mb-3 text-sm font-semibold text-gray-700">
-                  {expEditId === null ? '+ 새 항목 추가' : '항목 수정 중'}
+            <div className="flex-1 overflow-y-auto px-6 pb-8 pt-10">
+              {/* 폼 섹션 */}
+              <section className="mb-14">
+                <h3 className="mb-1 flex items-center gap-2 text-base font-bold text-gray-900">
+                  <span className="h-4 w-1 rounded-full bg-blue-600" />
+                  {expEditId === null ? '새 항목 추가' : '항목 수정 중'}
                 </h3>
-                <div className="space-y-3">
+                <div className="space-y-2 rounded-xl bg-gray-50/70 p-5">
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-700">
+                    <label className="mb-2 block text-sm font-medium text-gray-700">
                       회사명
                     </label>
                     <input
@@ -719,11 +722,11 @@ export default function MyPortfolioPage() {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="mb-1 block text-xs font-medium text-gray-700">
+                      <label className="mb-2 block text-sm font-medium text-gray-700">
                         팀 / 부서{' '}
-                        <span className="text-xs font-normal text-gray-400">
+                        <span className="text-xs font-normal text-gray-500">
                           (선택)
                         </span>
                       </label>
@@ -738,7 +741,7 @@ export default function MyPortfolioPage() {
                       />
                     </div>
                     <div>
-                      <label className="mb-1 block text-xs font-medium text-gray-700">
+                      <label className="mb-2 block text-sm font-medium text-gray-700">
                         역할
                       </label>
                       <input
@@ -754,10 +757,10 @@ export default function MyPortfolioPage() {
                   </div>
 
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-700">
+                    <label className="mb-2 block text-sm font-medium text-gray-700">
                       기간
                     </label>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-4">
                       <input
                         type="text"
                         value={expForm.period}
@@ -767,7 +770,7 @@ export default function MyPortfolioPage() {
                         placeholder="예: 2026.03 - 현재"
                         className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
                       />
-                      <label className="inline-flex items-center gap-2 text-sm text-gray-600">
+                      <label className="inline-flex items-center gap-2 text-sm text-gray-700">
                         <input
                           type="checkbox"
                           checked={expForm.current}
@@ -785,12 +788,12 @@ export default function MyPortfolioPage() {
                   </div>
                 </div>
 
-                <div className="mt-4 flex justify-end gap-2">
+                <div className="mt-6 flex justify-end gap-3">
                   {expEditId !== null && (
                     <button
                       type="button"
                       onClick={resetExpForm}
-                      className="rounded-full border border-gray-200 px-4 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+                      className="rounded-full border border-gray-200 px-5 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
                     >
                       편집 취소
                     </button>
@@ -798,30 +801,34 @@ export default function MyPortfolioPage() {
                   <button
                     type="button"
                     onClick={saveExp}
-                    className="rounded-full bg-blue-600 px-4 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700"
+                    className="rounded-full bg-blue-600 px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
                   >
                     {expEditId === null ? '추가' : '수정 저장'}
                   </button>
                 </div>
-              </div>
+              </section>
 
-              {/* 리스트 */}
-              <div className="border-t border-gray-100 pt-5">
-                <h3 className="mb-3 text-sm font-semibold text-gray-700">
-                  등록된 항목 ({experiences.length})
+              {/* 리스트 섹션 */}
+              <section className="border-t border-gray-200 pt-8">
+                <h3 className="px-1 py-3 flex items-center gap-2 text-base font-bold text-gray-900">
+                  <span className="h-4 w-1 rounded-full bg-gray-400" />
+                  등록된 항목
+                  <span className="text-xs font-normal text-gray-500">
+                    ({experiences.length})
+                  </span>
                 </h3>
                 {experiences.length === 0 ? (
                   <p className="text-sm text-gray-500">
                     아직 등록된 항목이 없습니다.
                   </p>
                 ) : (
-                  <ol className="space-y-2">
+                  <ol className="space-y-3">
                     {experiences.map((exp) => {
                       const editing = expEditId === exp.id;
                       return (
                         <li
                           key={exp.id}
-                          className={`flex items-start gap-3 rounded-lg border p-3 transition-all ${
+                          className={`flex items-start gap-3 rounded-lg border p-4 transition-all ${
                             editing
                               ? 'border-blue-300 bg-blue-50/40'
                               : 'border-gray-100 hover:bg-gray-50'
@@ -829,34 +836,34 @@ export default function MyPortfolioPage() {
                         >
                           <div className="flex-1">
                             <div className="flex flex-wrap items-center gap-2">
-                              <p className="text-sm font-semibold text-gray-800">
+                              <p className="text-sm font-semibold text-gray-900">
                                 {exp.company} {exp.team}
                               </p>
                               {exp.current && (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">
+                                <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
                                   재직중
                                 </span>
                               )}
                             </div>
-                            <p className="mt-0.5 text-xs text-gray-600">
+                            <p className="mt-1.5 text-sm text-gray-600">
                               {exp.role}
                             </p>
-                            <p className="mt-0.5 text-[11px] text-gray-400">
+                            <p className="mt-1.5 text-xs text-gray-500">
                               {exp.period}
                             </p>
                           </div>
-                          <div className="flex shrink-0 gap-1">
+                          <div className="flex shrink-0 gap-2">
                             <button
                               type="button"
                               onClick={() => loadExpToForm(exp)}
-                              className="rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-white hover:text-blue-600"
+                              className="rounded-md px-3 py-1 text-xs font-medium text-gray-600 hover:bg-white hover:text-blue-600"
                             >
                               수정
                             </button>
                             <button
                               type="button"
                               onClick={() => deleteExp(exp.id)}
-                              className="rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-white hover:text-red-500"
+                              className="rounded-md px-3 py-1 text-xs font-medium text-gray-600 hover:bg-white hover:text-red-500"
                             >
                               삭제
                             </button>
@@ -866,7 +873,7 @@ export default function MyPortfolioPage() {
                     })}
                   </ol>
                 )}
-              </div>
+              </section>
             </div>
 
             <div className="border-t border-gray-100 px-6 py-3">
@@ -891,8 +898,8 @@ export default function MyPortfolioPage() {
             onClick={(e) => e.stopPropagation()}
             className="flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
           >
-            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-              <h2 className="text-lg font-bold">경력</h2>
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
+              <h2 className="text-lg font-bold  px-1 py-3 text-gray-900">경력</h2>
               <button
                 onClick={() => setCareerModalOpen(false)}
                 aria-label="닫기"
@@ -902,13 +909,14 @@ export default function MyPortfolioPage() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-6 py-5">
-              {/* 폼 */}
-              <div className="mb-6">
-                <h3 className="mb-3 text-sm font-semibold text-gray-700">
-                  {careerEditId === null ? '+ 새 항목 추가' : '항목 수정 중'}
+            <div className="flex-1 overflow-y-auto px-6 pb-8 pt-10">
+              {/* 폼 섹션 */}
+              <section className="mb-14">
+                <h3 className="mb-1 flex items-center gap-2 text-base font-bold text-gray-900">
+                  <span className="h-4 w-1 rounded-full bg-blue-600" />
+                  {careerEditId === null ? '새 항목 추가' : '항목 수정 중'}
                 </h3>
-                <p className="mb-3 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                <p className="mb-5 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2.5 text-xs text-gray-600">
                   예시:{' '}
                   <span className="font-medium">
                     2024년 xxxx 해커톤 은상 수상
@@ -917,9 +925,9 @@ export default function MyPortfolioPage() {
                   <span className="font-medium">2023년 0000 부트캠프 참여</span>
                 </p>
 
-                <div className="space-y-3">
+                <div className="space-y-5 rounded-xl bg-gray-50/70 p-5">
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-700">
+                    <label className="mb-2 block text-sm font-medium text-gray-700">
                       연도
                     </label>
                     <input
@@ -942,7 +950,7 @@ export default function MyPortfolioPage() {
                   </div>
 
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-700">
+                    <label className="mb-2 block text-sm font-medium text-gray-700">
                       내용
                     </label>
                     <input
@@ -962,7 +970,7 @@ export default function MyPortfolioPage() {
                       maxLength={CAREER_CONTENT_MAX}
                       className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
                     />
-                    <p className="mt-1 text-right text-xs text-gray-400">
+                    <p className="mt-2 text-right text-xs text-gray-500">
                       {careerForm.content.length} / {CAREER_CONTENT_MAX}
                     </p>
                   </div>
@@ -972,12 +980,12 @@ export default function MyPortfolioPage() {
                   )}
                 </div>
 
-                <div className="mt-4 flex justify-end gap-2">
+                <div className="mt-6 flex justify-end gap-3">
                   {careerEditId !== null && (
                     <button
                       type="button"
                       onClick={resetCareerForm}
-                      className="rounded-full border border-gray-200 px-4 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+                      className="rounded-full border border-gray-200 px-5 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
                     >
                       편집 취소
                     </button>
@@ -985,30 +993,34 @@ export default function MyPortfolioPage() {
                   <button
                     type="button"
                     onClick={saveCareer}
-                    className="rounded-full bg-blue-600 px-4 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700"
+                    className="rounded-full bg-blue-600 px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
                   >
                     {careerEditId === null ? '추가' : '수정 저장'}
                   </button>
                 </div>
-              </div>
+              </section>
 
-              {/* 리스트 */}
-              <div className="border-t border-gray-100 pt-5">
-                <h3 className="mb-3 text-sm font-semibold text-gray-700">
-                  등록된 항목 ({sortedCareers.length})
+              {/* 리스트 섹션 */}
+              <section className="border-t border-gray-200 pt-8">
+                <h3 className=" px-1 py-3 flex items-center gap-2 text-base font-bold text-gray-900">
+                  <span className="h-4 w-1 rounded-full bg-gray-400" />
+                  등록된 항목
+                  <span className="text-xs font-normal text-gray-500">
+                    ({sortedCareers.length})
+                  </span>
                 </h3>
                 {sortedCareers.length === 0 ? (
                   <p className="text-sm text-gray-500">
                     아직 등록된 항목이 없습니다.
                   </p>
                 ) : (
-                  <ul className="space-y-2">
+                  <ul className="space-y-3">
                     {sortedCareers.map((c) => {
                       const editing = careerEditId === c.id;
                       return (
                         <li
                           key={c.id}
-                          className={`flex items-start gap-2 rounded-lg border px-3 py-2 transition-all ${
+                          className={`flex items-start gap-3 rounded-lg border px-4 py-3 transition-all ${
                             editing
                               ? 'border-blue-300 bg-blue-50/40'
                               : 'border-gray-100 hover:bg-gray-50'
@@ -1024,18 +1036,18 @@ export default function MyPortfolioPage() {
                             </span>{' '}
                             {c.content}
                           </p>
-                          <div className="flex shrink-0 gap-1">
+                          <div className="flex shrink-0 gap-2">
                             <button
                               type="button"
                               onClick={() => loadCareerToForm(c)}
-                              className="rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-white hover:text-blue-600"
+                              className="rounded-md px-3 py-1 text-xs font-medium text-gray-600 hover:bg-white hover:text-blue-600"
                             >
                               수정
                             </button>
                             <button
                               type="button"
                               onClick={() => deleteCareer(c.id)}
-                              className="rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-white hover:text-red-500"
+                              className="rounded-md px-3 py-1 text-xs font-medium text-gray-600 hover:bg-white hover:text-red-500"
                             >
                               삭제
                             </button>
@@ -1045,7 +1057,7 @@ export default function MyPortfolioPage() {
                     })}
                   </ul>
                 )}
-              </div>
+              </section>
             </div>
 
             <div className="border-t border-gray-100 px-6 py-3">
@@ -1133,7 +1145,7 @@ function ItemMgrModal({
           </Link>
 
           <div className="border-t border-gray-100 pt-5">
-            <h3 className="mb-3 text-sm font-semibold text-gray-700">
+            <h3 className="px-1 py-3 text-sm font-semibold text-gray-700">
               등록된 항목 ({items.length})
             </h3>
             {items.length === 0 ? (
