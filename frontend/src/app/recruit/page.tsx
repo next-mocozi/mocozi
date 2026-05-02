@@ -224,6 +224,26 @@ export default function RecruitListPage() {
   return (
    <div className="flex gap-2 w-full items-center">
     <div className="w-full px-30 py-10">
+
+      {/* 상단 헤더 */}
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-bold">팀원 찾기</h1>
+      </div>
+
+      {/* 필터: 같은 학교 토글 (검색창 위 한 줄 — 팀 페이지와 높이 통일) */}
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <button
+          onClick={() => setAppliedSameSchool(!appliedSameSchool)}
+          className={`inline-flex items-center gap-1 rounded-full border px-4 py-1.5 text-sm font-medium transition-all ${
+            appliedSameSchool
+              ? 'border-blue-600 bg-blue-600 text-white shadow'
+              : 'border-blue-200 bg-white text-blue-600 hover:bg-blue-50'
+          }`}
+        >
+          🏫 같은 학교
+        </button>
+      </div>
+
 <div className="flex gap-2">
 
   {/* 검색창 - 키워드 input + 검색 버튼 */}
@@ -247,18 +267,6 @@ export default function RecruitListPage() {
       🔍
     </button>
   </div>
-
-  {/* 같은 학교 버튼 (토글 즉시 적용) */}
-  <button
-    onClick={() => setAppliedSameSchool(!appliedSameSchool)}
-    className={`rounded-full border px-6 py-3 whitespace-nowrap shadow-md transition-all ${
-      appliedSameSchool
-        ? 'bg-blue-600 text-white border-blue-600 shadow-lg'
-        : 'border-blue-200 text-blue-600 bg-white hover:bg-blue-50'
-    }`}
-  >
-    🏫 같은 학교
-  </button>
 
   {/* 상세 검색 버튼 - 열 때 모달 내부 선택 상태를 현재 적용 상태와 동기화 */}
   <button

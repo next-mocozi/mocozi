@@ -2,12 +2,152 @@
 
 import Link from 'next/link';
 import { useState, useMemo } from 'react';
-import {
-  MOCK_TEAMS,
-  TEAM_CATEGORIES,
-  type TeamCategory,
-  type TeamStatus,
-} from './_data';
+
+// ───────── 백엔드 enum 정렬 (Prisma `enum TeamType`) ─────────
+type TeamType = 'STUDY' | 'COMPETITION' | 'HACKATHON' | 'PROJECT';
+type TeamStatus = 'recruiting' | 'closed';
+
+const TEAM_TYPES: TeamType[] = ['STUDY', 'COMPETITION', 'HACKATHON', 'PROJECT'];
+
+const TEAM_TYPE_LABEL: Record<TeamType, string> = {
+  STUDY: '스터디',
+  COMPETITION: '공모전',
+  HACKATHON: '해커톤',
+  PROJECT: '개발',
+};
+
+// TODO: 백엔드 연동 시 `GET /api/teams` 응답으로 교체
+const MOCK_TEAMS: {
+  id: number;
+  name: string;
+  leader: string;
+  currentMembers: number;
+  totalMembers: number;
+  period: string;
+  recruitingRoles: string[];
+  skills: string[];
+  intro: string;
+  type: TeamType;
+  status: TeamStatus;
+}[] = [
+  {
+    id: 1,
+    name: '모코지',
+    leader: '홍길동',
+    currentMembers: 3,
+    totalMembers: 5,
+    period: '2026.05 ~ 2026.08',
+    recruitingRoles: ['프론트엔드', '백엔드'],
+    skills: ['Next.js', 'NestJS', 'PostgreSQL'],
+    intro: 'IT계열 대학생을 위한 구인/네트워킹 플랫폼을 만듭니다.',
+    type: 'PROJECT',
+    status: 'recruiting',
+  },
+  {
+    id: 2,
+    name: '캠퍼스픽',
+    leader: '김민준',
+    currentMembers: 2,
+    totalMembers: 4,
+    period: '2026.06 ~ 2026.09',
+    recruitingRoles: ['프론트엔드', 'UI/UX 디자이너'],
+    skills: ['React', 'TypeScript', 'Figma'],
+    intro: '대학 행사 정보를 모아주는 큐레이션 서비스를 개발 중입니다.',
+    type: 'PROJECT',
+    status: 'recruiting',
+  },
+  {
+    id: 3,
+    name: '딥서치',
+    leader: '이서연',
+    currentMembers: 4,
+    totalMembers: 6,
+    period: '2026.04 ~ 2026.07',
+    recruitingRoles: ['AI/ML', '데이터'],
+    skills: ['Python', 'PyTorch', 'LangChain'],
+    intro: 'LLM 기반 학술 검색 도구를 만드는 팀입니다.',
+    type: 'COMPETITION',
+    status: 'recruiting',
+  },
+  {
+    id: 4,
+    name: '핀트리',
+    leader: '박지훈',
+    currentMembers: 5,
+    totalMembers: 5,
+    period: '2026.05 ~ 2026.10',
+    recruitingRoles: ['백엔드', 'DevOps/인프라'],
+    skills: ['Spring Boot', 'AWS', 'Docker'],
+    intro: '대학생 가계부 핀테크 서비스를 함께 개발할 팀원을 찾습니다.',
+    type: 'PROJECT',
+    status: 'closed',
+  },
+  {
+    id: 5,
+    name: '코드스터디',
+    leader: '최유진',
+    currentMembers: 5,
+    totalMembers: 8,
+    period: '2026.05 ~ 2026.06',
+    recruitingRoles: ['프론트엔드', '백엔드', '풀스택'],
+    skills: ['JavaScript', 'TypeScript'],
+    intro: '알고리즘과 CS 스터디를 함께할 팀원을 모집합니다.',
+    type: 'STUDY',
+    status: 'recruiting',
+  },
+  {
+    id: 6,
+    name: '잇플',
+    leader: '정하늘',
+    currentMembers: 2,
+    totalMembers: 5,
+    period: '2026.07 ~ 2026.09',
+    recruitingRoles: ['모바일', '백엔드'],
+    skills: ['React Native', 'NestJS', 'PostgreSQL'],
+    intro: '식단 추천 모바일 앱을 만드는 해커톤 팀입니다.',
+    type: 'HACKATHON',
+    status: 'recruiting',
+  },
+  {
+    id: 7,
+    name: '게임잼',
+    leader: '강수빈',
+    currentMembers: 4,
+    totalMembers: 4,
+    period: '2026.06 ~ 2026.06',
+    recruitingRoles: ['게임', '프론트엔드'],
+    skills: ['Unity', 'JavaScript'],
+    intro: '주말 게임잼에 출전할 인디 게임 개발 팀입니다.',
+    type: 'HACKATHON',
+    status: 'closed',
+  },
+  {
+    id: 8,
+    name: '데이터로그',
+    leader: '윤도현',
+    currentMembers: 4,
+    totalMembers: 6,
+    period: '2026.05 ~ 2026.08',
+    recruitingRoles: ['데이터', 'AI/ML'],
+    skills: ['Python', 'Pandas', 'TensorFlow'],
+    intro: '교내 학생 데이터를 분석해 인사이트를 만드는 팀입니다.',
+    type: 'COMPETITION',
+    status: 'recruiting',
+  },
+  {
+    id: 9,
+    name: '시큐브',
+    leader: '한지원',
+    currentMembers: 2,
+    totalMembers: 4,
+    period: '2026.05 ~ 2026.11',
+    recruitingRoles: ['보안', '백엔드'],
+    skills: ['Python', 'Linux', 'AWS'],
+    intro: '오픈소스 보안 분석 도구 개발 팀입니다.',
+    type: 'STUDY',
+    status: 'recruiting',
+  },
+];
 
 const toggleItem = (item: string, list: string[], setList: (v: string[]) => void) => {
   if (list.includes(item)) {
@@ -31,7 +171,7 @@ export default function TeamListPage() {
   // 모집 상태 토글: 'recruiting' | 'closed'
   const [statusFilter, setStatusFilter] = useState<TeamStatus>('recruiting');
   // 팀 형태 필터 (null = 전체)
-  const [categoryFilter, setCategoryFilter] = useState<TeamCategory | null>(null);
+  const [typeFilter, setTypeFilter] = useState<TeamType | null>(null);
 
   const applySearch = () => setAppliedKeyword(keyword.trim());
 
@@ -41,7 +181,7 @@ export default function TeamListPage() {
       if (t.status !== statusFilter) return false;
 
       // 0-1) 팀 형태
-      if (categoryFilter && t.category !== categoryFilter) return false;
+      if (typeFilter && t.type !== typeFilter) return false;
 
       // 1) 키워드: 팀명·한줄소개·팀장·모집직군·스킬 부분일치
       if (appliedKeyword) {
@@ -73,7 +213,7 @@ export default function TeamListPage() {
 
       return true;
     });
-  }, [appliedKeyword, appliedRoles, appliedSkills, statusFilter, categoryFilter]);
+  }, [appliedKeyword, appliedRoles, appliedSkills, statusFilter, typeFilter]);
 
   const hasActiveFilters =
     appliedKeyword !== '' || appliedRoles.length > 0 || appliedSkills.length > 0;
@@ -92,53 +232,57 @@ export default function TeamListPage() {
           </Link>
         </div>
 
-        {/* 모집 상태 토글 (모집 중 / 모집 완료) */}
-        <div className="mb-4 inline-flex rounded-full border border-gray-200 bg-gray-50 p-1 shadow-sm">
-          <button
-            onClick={() => setStatusFilter('recruiting')}
-            className={`rounded-full px-5 py-2 text-sm font-medium transition-all ${
-              statusFilter === 'recruiting'
-                ? 'bg-blue-600 text-white shadow'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            팀원 모집 중
-          </button>
-          <button
-            onClick={() => setStatusFilter('closed')}
-            className={`rounded-full px-5 py-2 text-sm font-medium transition-all ${
-              statusFilter === 'closed'
-                ? 'bg-blue-600 text-white shadow'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            팀원 모집 완료
-          </button>
-        </div>
+        {/* 필터: 모집 상태 토글 + 팀 형태 (한 줄) */}
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          {/* 모집 상태 토글 */}
+          <div className="inline-flex rounded-full border border-gray-200 bg-gray-50 p-1 shadow-sm">
+            <button
+              onClick={() => setStatusFilter('recruiting')}
+              className={`rounded-full px-4 py-1.5 text-sm font-medium transition-all ${
+                statusFilter === 'recruiting'
+                  ? 'bg-blue-600 text-white shadow'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              팀원 모집 중
+            </button>
+            <button
+              onClick={() => setStatusFilter('closed')}
+              className={`rounded-full px-4 py-1.5 text-sm font-medium transition-all ${
+                statusFilter === 'closed'
+                  ? 'bg-blue-600 text-white shadow'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              팀원 모집 완료
+            </button>
+          </div>
 
-        {/* 팀 형태 필터 */}
-        <div className="mb-4 flex flex-wrap gap-2">
+          {/* 구분선 */}
+          <div className="h-6 w-px bg-gray-200" />
+
+          {/* 팀 형태 */}
           <button
-            onClick={() => setCategoryFilter(null)}
+            onClick={() => setTypeFilter(null)}
             className={`rounded-full border px-4 py-1.5 text-sm transition-all ${
-              categoryFilter === null
+              typeFilter === null
                 ? 'border-blue-600 bg-blue-600 text-white'
                 : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
             }`}
           >
             전체
           </button>
-          {TEAM_CATEGORIES.map((cat) => (
+          {TEAM_TYPES.map((t) => (
             <button
-              key={cat}
-              onClick={() => setCategoryFilter(cat)}
+              key={t}
+              onClick={() => setTypeFilter(t)}
               className={`rounded-full border px-4 py-1.5 text-sm transition-all ${
-                categoryFilter === cat
+                typeFilter === t
                   ? 'border-blue-600 bg-blue-600 text-white'
                   : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
               }`}
             >
-              {cat}
+              {TEAM_TYPE_LABEL[t]}
             </button>
           ))}
         </div>
@@ -249,7 +393,7 @@ export default function TeamListPage() {
 
         <div className="mt-4 text-sm text-gray-500">
           {statusFilter === 'recruiting' ? '모집 중' : '모집 완료'}
-          {categoryFilter && ` · ${categoryFilter}`}{' '}
+          {typeFilter && ` · ${TEAM_TYPE_LABEL[typeFilter]}`}{' '}
           <span className="font-semibold text-blue-600">{filteredTeams.length}</span>팀
         </div>
 
@@ -278,7 +422,7 @@ export default function TeamListPage() {
                     }`}
                   >
                     <span className="absolute left-3 top-3 rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-medium text-white backdrop-blur-sm">
-                      {team.category}
+                      {TEAM_TYPE_LABEL[team.type]}
                     </span>
                     <p className="text-center text-2xl font-bold text-white">
                       {team.name}

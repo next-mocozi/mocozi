@@ -1,0 +1,1209 @@
+'use client';
+
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import {
+  PlatformIcon,
+  PLATFORM_META,
+  detectPlatform,
+  getDisplayLabel,
+  type ProfileLink,
+} from './_platforms';
+
+// TODO: 백엔드 연동 — `GET /api/users/me`, `GET /api/users/me/links`,
+//       `GET /api/portfolios/me` 로 교체 (CLAUDE.md §11).
+//       기본 정보(이름/학교/학과/링크)는 프로필 데이터를 그대로 표시(이 탭에선 수정 X).
+//       자기소개/실무 경험/경력/포트폴리오는 이 탭에서 직접 편집 (각 섹션 "+ 추가"
+//       모달 내부에서 추가/수정/삭제 모두 처리).
+
+const LINKS_STORAGE_KEY = 'mock_profile_links'; // profile 페이지와 공유
+const ITEMS_STORAGE_KEY = 'mock_portfolio_items';
+const INTRO_STORAGE_KEY = 'mock_portfolio_intro';
+const CAREERS_STORAGE_KEY = 'mock_portfolio_career_items';
+const EXPS_STORAGE_KEY = 'mock_portfolio_experiences';
+const INTRO_MAX = 500;
+const CAREER_CONTENT_MAX = 200;
+
+export type PortfolioItemType =
+  | 'project'
+  | 'research'
+  | 'study'
+  | 'activity'
+  | 'etc';
+
+export type PortfolioItem = {
+  id: number;
+  type: PortfolioItemType;
+  title: string;
+  description: string;
+  period: string;
+  current: boolean;
+  domain?: string;
+  tags: string[];
+};
+
+export const TYPE_META: Record<
+  PortfolioItemType,
+  { label: string; bg: string; text: string }
+> = {
+  project: { label: '프로젝트', bg: 'bg-purple-100', text: 'text-purple-700' },
+  research: { label: '연구', bg: 'bg-blue-100', text: 'text-blue-700' },
+  study: { label: '스터디', bg: 'bg-amber-100', text: 'text-amber-700' },
+  activity: { label: '활동', bg: 'bg-green-100', text: 'text-green-700' },
+  etc: { label: '기타', bg: 'bg-gray-100', text: 'text-gray-700' },
+};
+
+type Experience = {
+  id: number;
+  company: string;
+  team: string;
+  role: string;
+  period: string;
+  current: boolean;
+};
+
+type CareerItem = {
+  id: number;
+  year: string;
+  content: string;
+};
+
+// ──────── Mock 데이터 (백엔드 연동 시 교체) ────────
+
+const MOCK_PROFILE = {
+  name: '홍길동',
+  school: 'OO대학교',
+  department: '컴퓨터공학과',
+};
+
+const DEFAULT_INTRO =
+  '풀스택 개발에 관심이 많은 대학생입니다. 0→1 단계의 제품을 직접 설계·구현하는 걸 좋아하고, 사용자 가까이에서 빠르게 학습하며 성장하는 환경을 선호합니다.';
+
+const DEFAULT_CAREERS: CareerItem[] = [
+  { id: 1, year: '2024', content: 'xxxx 해커톤 은상 수상' },
+  { id: 2, year: '2023', content: '0000 부트캠프 참여' },
+];
+
+const DEFAULT_LINKS: ProfileLink[] = [
+  { id: 1, url: 'https://github.com/honggildong' },
+  { id: 2, url: 'https://linkedin.com/in/honggildong' },
+  { id: 3, url: 'https://honggildong.notion.site' },
+];
+
+const DEFAULT_EXPS: Experience[] = [
+  {
+    id: 1,
+    company: 'OpenAI Korea',
+    team: '연구팀',
+    role: '리서치 인턴',
+    period: '2026.03 - 현재',
+    current: true,
+  },
+  {
+    id: 2,
+    company: '삼성 SDI',
+    team: '기획부서',
+    role: '인턴',
+    period: '2025.07 - 2025.08',
+    current: false,
+  },
+];
+
+const DEFAULT_ITEMS: PortfolioItem[] = [
+  {
+    id: 1,
+    type: 'project',
+    title: '웹 포트폴리오 사이트',
+    description: '개인 포트폴리오 웹사이트를 제작했습니다.',
+    period: '2024.01 - 2024.03',
+    current: false,
+    domain: '웹',
+    tags: ['Next.js', 'Tailwind'],
+  },
+  {
+    id: 2,
+    type: 'study',
+    title: '알고리즘 스터디',
+    description: '주 1회 모각코, 백준 골드 문제 풀이.',
+    period: '2024.05 - 현재',
+    current: true,
+    domain: 'CS',
+    tags: ['Python', 'Algorithm'],
+  },
+];
+
+const EMPTY_EXP_FORM: Omit<Experience, 'id'> = {
+  company: '',
+  team: '',
+  role: '',
+  period: '',
+  current: false,
+};
+
+const EMPTY_CAREER_FORM: Omit<CareerItem, 'id'> = {
+  year: '',
+  content: '',
+};
+
+/** 내 포트폴리오 — 이력서형 페이지 (각 섹션 "+ 추가" 모달에서 통합 관리) */
+export default function MyPortfolioPage() {
+  const profile = MOCK_PROFILE;
+  const [links, setLinks] = useState<ProfileLink[]>(DEFAULT_LINKS);
+  const [items, setItems] = useState<PortfolioItem[]>(DEFAULT_ITEMS);
+  const [experiences, setExperiences] = useState<Experience[]>(DEFAULT_EXPS);
+  const [careers, setCareers] = useState<CareerItem[]>(DEFAULT_CAREERS);
+
+  // 자기소개 — draft / saved 분리 (저장 버튼 패턴)
+  const [introSaved, setIntroSaved] = useState(DEFAULT_INTRO);
+  const [introDraft, setIntroDraft] = useState(DEFAULT_INTRO);
+  const [introJustSaved, setIntroJustSaved] = useState(false);
+
+  // 실무 경험 모달 (폼 + 리스트 통합)
+  const [expModalOpen, setExpModalOpen] = useState(false);
+  const [expEditId, setExpEditId] = useState<number | null>(null);
+  const [expForm, setExpForm] = useState<Omit<Experience, 'id'>>(EMPTY_EXP_FORM);
+  const [expError, setExpError] = useState('');
+
+  // 경력 모달 (폼 + 리스트 통합)
+  const [careerModalOpen, setCareerModalOpen] = useState(false);
+  const [careerEditId, setCareerEditId] = useState<number | null>(null);
+  const [careerForm, setCareerForm] =
+    useState<Omit<CareerItem, 'id'>>(EMPTY_CAREER_FORM);
+  const [careerError, setCareerError] = useState('');
+
+  // 포트폴리오 / 스터디 관리 모달
+  const [portfolioMgrOpen, setPortfolioMgrOpen] = useState(false);
+  const [studyMgrOpen, setStudyMgrOpen] = useState(false);
+
+  useEffect(() => {
+    const load = <T,>(key: string, fallback: T): T => {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? (JSON.parse(raw) as T) : fallback;
+      } catch {
+        return fallback;
+      }
+    };
+    setLinks(load(LINKS_STORAGE_KEY, DEFAULT_LINKS));
+    setItems(load(ITEMS_STORAGE_KEY, DEFAULT_ITEMS));
+    setExperiences(load(EXPS_STORAGE_KEY, DEFAULT_EXPS));
+    setCareers(load(CAREERS_STORAGE_KEY, DEFAULT_CAREERS));
+    try {
+      const i = localStorage.getItem(INTRO_STORAGE_KEY);
+      if (i !== null) {
+        setIntroSaved(i);
+        setIntroDraft(i);
+      }
+    } catch {
+      // 기본값 유지
+    }
+  }, []);
+
+  const persist = (key: string, value: unknown) => {
+    try {
+      localStorage.setItem(
+        key,
+        typeof value === 'string' ? value : JSON.stringify(value),
+      );
+    } catch {
+      // 저장 실패 시 무시
+    }
+  };
+
+  // ───────── 자기소개 ─────────
+  const introDirty = introDraft !== introSaved;
+
+  const handleIntroChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const v = e.target.value.slice(0, INTRO_MAX);
+    setIntroDraft(v);
+    if (introJustSaved) setIntroJustSaved(false);
+  };
+
+  const saveIntro = () => {
+    if (!introDirty) return;
+    setIntroSaved(introDraft);
+    persist(INTRO_STORAGE_KEY, introDraft);
+    setIntroJustSaved(true);
+    setTimeout(() => setIntroJustSaved(false), 2000);
+  };
+
+  const resetIntro = () => setIntroDraft(introSaved);
+
+  // ───────── 실무 경험 ─────────
+  const openExpModal = () => {
+    setExpEditId(null);
+    setExpForm(EMPTY_EXP_FORM);
+    setExpError('');
+    setExpModalOpen(true);
+  };
+
+  const loadExpToForm = (exp: Experience) => {
+    setExpEditId(exp.id);
+    setExpForm({
+      company: exp.company,
+      team: exp.team,
+      role: exp.role,
+      period: exp.period,
+      current: exp.current,
+    });
+    setExpError('');
+  };
+
+  const resetExpForm = () => {
+    setExpEditId(null);
+    setExpForm(EMPTY_EXP_FORM);
+    setExpError('');
+  };
+
+  const saveExp = () => {
+    if (!expForm.company.trim()) {
+      setExpError('회사명을 입력해주세요.');
+      return;
+    }
+    const next: Experience[] =
+      expEditId === null
+        ? [...experiences, { id: Date.now(), ...expForm }]
+        : experiences.map((e) =>
+            e.id === expEditId ? { id: e.id, ...expForm } : e,
+          );
+    setExperiences(next);
+    persist(EXPS_STORAGE_KEY, next);
+    resetExpForm(); // 모달은 열린 상태 유지 → 리스트에서 결과 확인
+  };
+
+  const deleteExp = (id: number) => {
+    if (!confirm('이 항목을 삭제하시겠어요?')) return;
+    const next = experiences.filter((e) => e.id !== id);
+    setExperiences(next);
+    persist(EXPS_STORAGE_KEY, next);
+    if (expEditId === id) resetExpForm();
+  };
+
+  // ───────── 경력 ─────────
+  const openCareerModal = () => {
+    setCareerEditId(null);
+    setCareerForm(EMPTY_CAREER_FORM);
+    setCareerError('');
+    setCareerModalOpen(true);
+  };
+
+  const loadCareerToForm = (c: CareerItem) => {
+    setCareerEditId(c.id);
+    setCareerForm({ year: c.year, content: c.content });
+    setCareerError('');
+  };
+
+  const resetCareerForm = () => {
+    setCareerEditId(null);
+    setCareerForm(EMPTY_CAREER_FORM);
+    setCareerError('');
+  };
+
+  const saveCareer = () => {
+    const year = careerForm.year.trim();
+    const content = careerForm.content.trim();
+    if (!year) {
+      setCareerError('연도를 입력해주세요.');
+      return;
+    }
+    if (!/^\d{4}$/.test(year)) {
+      setCareerError('연도는 4자리 숫자여야 합니다. (예: 2024)');
+      return;
+    }
+    if (!content) {
+      setCareerError('내용을 입력해주세요.');
+      return;
+    }
+    const next: CareerItem[] =
+      careerEditId === null
+        ? [...careers, { id: Date.now(), year, content }]
+        : careers.map((c) =>
+            c.id === careerEditId ? { id: c.id, year, content } : c,
+          );
+    setCareers(next);
+    persist(CAREERS_STORAGE_KEY, next);
+    resetCareerForm();
+  };
+
+  const deleteCareer = (id: number) => {
+    if (!confirm('이 항목을 삭제하시겠어요?')) return;
+    const next = careers.filter((c) => c.id !== id);
+    setCareers(next);
+    persist(CAREERS_STORAGE_KEY, next);
+    if (careerEditId === id) resetCareerForm();
+  };
+
+  // ───────── 포트폴리오/스터디 항목 (편집은 /portfolio/edit 페이지) ─────────
+  const deleteItem = (id: number) => {
+    if (!confirm('이 항목을 삭제하시겠어요?')) return;
+    const next = items.filter((it) => it.id !== id);
+    setItems(next);
+    persist(ITEMS_STORAGE_KEY, next);
+  };
+
+  // 연도 내림차순 정렬 (최신이 위)
+  const sortedCareers = [...careers].sort((a, b) => {
+    const ya = Number(a.year);
+    const yb = Number(b.year);
+    if (yb !== ya) return yb - ya;
+    return b.id - a.id;
+  });
+
+  const portfolioItems = items.filter((it) => it.type !== 'study');
+  const studyItems = items.filter((it) => it.type === 'study');
+
+  return (
+    <div className="mx-auto max-w-4xl px-4 py-8">
+      {/* ─────── 기본 정보 (프로필에서 가져옴 — 읽기 전용) ─────── */}
+      <div className="card mb-6">
+        <div className="flex items-start gap-6">
+          <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-primary-100 text-3xl text-primary-600">
+            👤
+          </div>
+          <div className="flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-bold">{profile.name}</h1>
+            </div>
+            <p className="text-gray-600">
+              {profile.school} {profile.department}
+            </p>
+
+            {links.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {links.map((link) => {
+                  const key = detectPlatform(link.url);
+                  const meta = PLATFORM_META[key];
+                  return (
+                    <a
+                      key={link.id}
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs shadow-sm transition-all hover:shadow-md ${meta.bg} ${meta.text}`}
+                    >
+                      <PlatformIcon k={key} className="h-3.5 w-3.5" />
+                      <span className="font-medium">
+                        {getDisplayLabel(link, key)}
+                      </span>
+                    </a>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ─────── 자기소개 (저장 버튼 패턴) ─────── */}
+      <div className="card mb-6">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">자기소개</h2>
+          <span
+            className={`text-xs ${
+              introDraft.length >= INTRO_MAX
+                ? 'text-red-500'
+                : introDraft.length >= INTRO_MAX * 0.9
+                  ? 'text-amber-500'
+                  : 'text-gray-400'
+            }`}
+          >
+            {introDraft.length} / {INTRO_MAX}
+          </span>
+        </div>
+        <textarea
+          value={introDraft}
+          onChange={handleIntroChange}
+          maxLength={INTRO_MAX}
+          rows={5}
+          placeholder="포트폴리오 상단에 노출될 자기소개를 작성해주세요. (최대 500자)"
+          className="w-full resize-none rounded-lg border border-gray-200 px-4 py-3 text-sm leading-relaxed outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+        />
+        <div className="mt-3 flex items-center justify-end gap-2">
+          {introJustSaved && !introDirty && (
+            <span className="text-xs text-green-600">저장되었습니다.</span>
+          )}
+          {introDirty && (
+            <span className="text-xs text-amber-500">
+              저장되지 않은 변경사항이 있어요.
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={resetIntro}
+            disabled={!introDirty}
+            className="rounded-full border border-gray-200 px-4 py-1.5 text-xs text-gray-600 transition-all hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            되돌리기
+          </button>
+          <button
+            type="button"
+            onClick={saveIntro}
+            disabled={!introDirty}
+            className="rounded-full bg-blue-600 px-4 py-1.5 text-xs font-medium text-white shadow-sm transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            저장
+          </button>
+        </div>
+      </div>
+
+      {/* ─────── 실무 경험(왼쪽) ↔ 경력(오른쪽) ─────── */}
+      <div className="mb-6 grid gap-4 md:grid-cols-2">
+        {/* 실무 경험 & 이력 — 보기 전용, 편집은 모달 */}
+        <div className="card">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold">실무 경험 & 이력</h2>
+            <button
+              type="button"
+              onClick={openExpModal}
+              className="rounded-full bg-blue-600 px-3 py-1 text-xs font-medium text-white shadow-sm transition-all hover:bg-blue-700"
+            >
+              + 추가
+            </button>
+          </div>
+          {experiences.length === 0 ? (
+            <p className="text-sm text-gray-500">
+              아직 등록된 실무 경험이 없습니다.
+            </p>
+          ) : (
+            <ol className="space-y-3">
+              {experiences.map((exp, i) => (
+                <li
+                  key={exp.id}
+                  className="flex items-start gap-3 rounded-xl border border-gray-100 p-3"
+                >
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-50 text-xs font-semibold text-blue-600">
+                    {i + 1}
+                  </span>
+                  <div className="flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-semibold text-gray-800">
+                        {exp.company} {exp.team}
+                      </p>
+                      {exp.current && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                          <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                          재직중
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-0.5 text-sm text-gray-600">{exp.role}</p>
+                    <p className="mt-1 text-xs text-gray-400">{exp.period}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+
+        {/* 경력 — 보기 전용 불렛 리스트, 편집은 모달 */}
+        <div className="card">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold">경력</h2>
+            <button
+              type="button"
+              onClick={openCareerModal}
+              className="rounded-full bg-blue-600 px-3 py-1 text-xs font-medium text-white shadow-sm transition-all hover:bg-blue-700"
+            >
+              + 추가
+            </button>
+          </div>
+          {sortedCareers.length === 0 ? (
+            <p className="text-sm text-gray-500">
+              아직 등록된 경력이 없습니다. 수상·자격증·활동 등을 추가해보세요.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {sortedCareers.map((c) => (
+                <li
+                  key={c.id}
+                  className="flex items-start gap-2 rounded-lg px-2 py-1.5"
+                >
+                  <span
+                    className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500"
+                    aria-hidden
+                  />
+                  <p className="flex-1 text-sm leading-relaxed text-gray-700">
+                    <span className="font-semibold text-gray-900">
+                      {c.year}년
+                    </span>{' '}
+                    {c.content}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+
+      {/* ─────── 포트폴리오 — 보기 전용 카드, 편집은 관리 모달 ─────── */}
+      <div className="mb-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">포트폴리오</h2>
+          <button
+            type="button"
+            onClick={() => setPortfolioMgrOpen(true)}
+            className="btn-primary text-sm"
+          >
+            + 추가 / 관리
+          </button>
+        </div>
+
+        {portfolioItems.length === 0 ? (
+          <button
+            type="button"
+            onClick={() => setPortfolioMgrOpen(true)}
+            className="card flex w-full items-center justify-center border-dashed py-8 text-center text-gray-400 transition-all hover:border-blue-300 hover:text-blue-500"
+          >
+            <div>
+              <div className="mb-2 text-3xl">+</div>
+              <p className="text-sm">새 포트폴리오 항목 추가</p>
+            </div>
+          </button>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2">
+            {portfolioItems.map((item) => {
+              const meta = TYPE_META[item.type];
+              return (
+                <Link
+                  key={item.id}
+                  href={`/portfolio/${item.id}`}
+                  className="card block transition-all hover:shadow-md"
+                >
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <span
+                      className={`rounded px-2 py-0.5 text-xs ${meta.bg} ${meta.text}`}
+                    >
+                      {meta.label}
+                    </span>
+                    {item.domain && (
+                      <span className="rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-600">
+                        {item.domain}
+                      </span>
+                    )}
+                    <span className="text-xs text-gray-500">{item.period}</span>
+                    {item.current && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                        <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                        진행중
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="mb-1 font-semibold">{item.title}</h3>
+                  <p className="mb-2 line-clamp-2 text-sm text-gray-600">
+                    {item.description}
+                  </p>
+                  {item.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {item.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ─────── 스터디 — 보기 전용, 편집은 관리 모달 ─────── */}
+      <div>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">스터디</h2>
+          <button
+            type="button"
+            onClick={() => setStudyMgrOpen(true)}
+            className="rounded-full bg-amber-500 px-3 py-1 text-xs font-medium text-white shadow-sm transition-all hover:bg-amber-600"
+          >
+            + 추가 / 관리
+          </button>
+        </div>
+
+        {studyItems.length === 0 ? (
+          <button
+            type="button"
+            onClick={() => setStudyMgrOpen(true)}
+            className="card flex w-full items-center justify-center border-dashed py-6 text-center text-sm text-gray-400 transition-all hover:border-amber-300 hover:text-amber-600"
+          >
+            아직 등록된 스터디가 없습니다. 추가하기 +
+          </button>
+        ) : (
+          <ul className="space-y-2">
+            {studyItems.map((item) => (
+              <li key={item.id}>
+                <Link
+                  href={`/portfolio/${item.id}`}
+                  className="card flex items-start gap-3 transition-all hover:shadow-md"
+                >
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-50 text-sm">
+                    📚
+                  </span>
+                  <div className="flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-semibold text-gray-800">
+                        {item.title}
+                      </p>
+                      {item.current && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                          <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                          진행중
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-0.5 line-clamp-1 text-sm text-gray-600">
+                      {item.description}
+                    </p>
+                    <p className="mt-1 text-xs text-gray-400">{item.period}</p>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* ─────── 실무 경험 모달 (폼 + 리스트) ─────── */}
+      {expModalOpen && (
+        <div
+          onClick={() => setExpModalOpen(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
+          >
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+              <h2 className="text-lg font-bold">실무 경험 & 이력</h2>
+              <button
+                onClick={() => setExpModalOpen(false)}
+                aria-label="닫기"
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 스크롤 영역 */}
+            <div className="flex-1 overflow-y-auto px-6 py-5">
+              {/* 폼 */}
+              <div className="mb-6">
+                <h3 className="mb-3 text-sm font-semibold text-gray-700">
+                  {expEditId === null ? '+ 새 항목 추가' : '항목 수정 중'}
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-700">
+                      회사명
+                    </label>
+                    <input
+                      type="text"
+                      value={expForm.company}
+                      onChange={(e) => {
+                        setExpForm((f) => ({ ...f, company: e.target.value }));
+                        if (expError) setExpError('');
+                      }}
+                      placeholder="예: OpenAI Korea"
+                      className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 ${
+                        expError
+                          ? 'border-red-300 focus:border-red-400 focus:ring-red-100'
+                          : 'border-gray-200 focus:border-blue-400 focus:ring-blue-100'
+                      }`}
+                    />
+                    {expError && (
+                      <p className="mt-1 text-xs text-red-500">{expError}</p>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-700">
+                        팀 / 부서{' '}
+                        <span className="text-xs font-normal text-gray-400">
+                          (선택)
+                        </span>
+                      </label>
+                      <input
+                        type="text"
+                        value={expForm.team}
+                        onChange={(e) =>
+                          setExpForm((f) => ({ ...f, team: e.target.value }))
+                        }
+                        placeholder="예: 연구팀"
+                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-700">
+                        역할
+                      </label>
+                      <input
+                        type="text"
+                        value={expForm.role}
+                        onChange={(e) =>
+                          setExpForm((f) => ({ ...f, role: e.target.value }))
+                        }
+                        placeholder="예: 리서치 인턴"
+                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-700">
+                      기간
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="text"
+                        value={expForm.period}
+                        onChange={(e) =>
+                          setExpForm((f) => ({ ...f, period: e.target.value }))
+                        }
+                        placeholder="예: 2026.03 - 현재"
+                        className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                      />
+                      <label className="inline-flex items-center gap-2 text-sm text-gray-600">
+                        <input
+                          type="checkbox"
+                          checked={expForm.current}
+                          onChange={(e) =>
+                            setExpForm((f) => ({
+                              ...f,
+                              current: e.target.checked,
+                            }))
+                          }
+                          className="h-4 w-4 rounded border-gray-300"
+                        />
+                        재직중
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex justify-end gap-2">
+                  {expEditId !== null && (
+                    <button
+                      type="button"
+                      onClick={resetExpForm}
+                      className="rounded-full border border-gray-200 px-4 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+                    >
+                      편집 취소
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={saveExp}
+                    className="rounded-full bg-blue-600 px-4 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700"
+                  >
+                    {expEditId === null ? '추가' : '수정 저장'}
+                  </button>
+                </div>
+              </div>
+
+              {/* 리스트 */}
+              <div className="border-t border-gray-100 pt-5">
+                <h3 className="mb-3 text-sm font-semibold text-gray-700">
+                  등록된 항목 ({experiences.length})
+                </h3>
+                {experiences.length === 0 ? (
+                  <p className="text-sm text-gray-500">
+                    아직 등록된 항목이 없습니다.
+                  </p>
+                ) : (
+                  <ol className="space-y-2">
+                    {experiences.map((exp) => {
+                      const editing = expEditId === exp.id;
+                      return (
+                        <li
+                          key={exp.id}
+                          className={`flex items-start gap-3 rounded-lg border p-3 transition-all ${
+                            editing
+                              ? 'border-blue-300 bg-blue-50/40'
+                              : 'border-gray-100 hover:bg-gray-50'
+                          }`}
+                        >
+                          <div className="flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-sm font-semibold text-gray-800">
+                                {exp.company} {exp.team}
+                              </p>
+                              {exp.current && (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">
+                                  재직중
+                                </span>
+                              )}
+                            </div>
+                            <p className="mt-0.5 text-xs text-gray-600">
+                              {exp.role}
+                            </p>
+                            <p className="mt-0.5 text-[11px] text-gray-400">
+                              {exp.period}
+                            </p>
+                          </div>
+                          <div className="flex shrink-0 gap-1">
+                            <button
+                              type="button"
+                              onClick={() => loadExpToForm(exp)}
+                              className="rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-white hover:text-blue-600"
+                            >
+                              수정
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => deleteExp(exp.id)}
+                              className="rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-white hover:text-red-500"
+                            >
+                              삭제
+                            </button>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                )}
+              </div>
+            </div>
+
+            <div className="border-t border-gray-100 px-6 py-3">
+              <button
+                onClick={() => setExpModalOpen(false)}
+                className="w-full rounded-full bg-gray-100 py-2 text-sm text-gray-700 hover:bg-gray-200"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─────── 경력 모달 (폼 + 리스트) ─────── */}
+      {careerModalOpen && (
+        <div
+          onClick={() => setCareerModalOpen(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
+          >
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+              <h2 className="text-lg font-bold">경력</h2>
+              <button
+                onClick={() => setCareerModalOpen(false)}
+                aria-label="닫기"
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-6 py-5">
+              {/* 폼 */}
+              <div className="mb-6">
+                <h3 className="mb-3 text-sm font-semibold text-gray-700">
+                  {careerEditId === null ? '+ 새 항목 추가' : '항목 수정 중'}
+                </h3>
+                <p className="mb-3 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                  예시:{' '}
+                  <span className="font-medium">
+                    2024년 xxxx 해커톤 은상 수상
+                  </span>
+                  ,{' '}
+                  <span className="font-medium">2023년 0000 부트캠프 참여</span>
+                </p>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-700">
+                      연도
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={careerForm.year}
+                      onChange={(e) => {
+                        setCareerForm((f) => ({
+                          ...f,
+                          year: e.target.value
+                            .replace(/[^0-9]/g, '')
+                            .slice(0, 4),
+                        }));
+                        if (careerError) setCareerError('');
+                      }}
+                      placeholder="예: 2024"
+                      maxLength={4}
+                      className="w-32 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-700">
+                      내용
+                    </label>
+                    <input
+                      type="text"
+                      value={careerForm.content}
+                      onChange={(e) => {
+                        setCareerForm((f) => ({
+                          ...f,
+                          content: e.target.value.slice(0, CAREER_CONTENT_MAX),
+                        }));
+                        if (careerError) setCareerError('');
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') saveCareer();
+                      }}
+                      placeholder="예: xxxx 해커톤 은상 수상"
+                      maxLength={CAREER_CONTENT_MAX}
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                    />
+                    <p className="mt-1 text-right text-xs text-gray-400">
+                      {careerForm.content.length} / {CAREER_CONTENT_MAX}
+                    </p>
+                  </div>
+
+                  {careerError && (
+                    <p className="text-xs text-red-500">{careerError}</p>
+                  )}
+                </div>
+
+                <div className="mt-4 flex justify-end gap-2">
+                  {careerEditId !== null && (
+                    <button
+                      type="button"
+                      onClick={resetCareerForm}
+                      className="rounded-full border border-gray-200 px-4 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+                    >
+                      편집 취소
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={saveCareer}
+                    className="rounded-full bg-blue-600 px-4 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700"
+                  >
+                    {careerEditId === null ? '추가' : '수정 저장'}
+                  </button>
+                </div>
+              </div>
+
+              {/* 리스트 */}
+              <div className="border-t border-gray-100 pt-5">
+                <h3 className="mb-3 text-sm font-semibold text-gray-700">
+                  등록된 항목 ({sortedCareers.length})
+                </h3>
+                {sortedCareers.length === 0 ? (
+                  <p className="text-sm text-gray-500">
+                    아직 등록된 항목이 없습니다.
+                  </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {sortedCareers.map((c) => {
+                      const editing = careerEditId === c.id;
+                      return (
+                        <li
+                          key={c.id}
+                          className={`flex items-start gap-2 rounded-lg border px-3 py-2 transition-all ${
+                            editing
+                              ? 'border-blue-300 bg-blue-50/40'
+                              : 'border-gray-100 hover:bg-gray-50'
+                          }`}
+                        >
+                          <span
+                            className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500"
+                            aria-hidden
+                          />
+                          <p className="flex-1 text-sm leading-relaxed text-gray-700">
+                            <span className="font-semibold text-gray-900">
+                              {c.year}년
+                            </span>{' '}
+                            {c.content}
+                          </p>
+                          <div className="flex shrink-0 gap-1">
+                            <button
+                              type="button"
+                              onClick={() => loadCareerToForm(c)}
+                              className="rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-white hover:text-blue-600"
+                            >
+                              수정
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => deleteCareer(c.id)}
+                              className="rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-white hover:text-red-500"
+                            >
+                              삭제
+                            </button>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            </div>
+
+            <div className="border-t border-gray-100 px-6 py-3">
+              <button
+                onClick={() => setCareerModalOpen(false)}
+                className="w-full rounded-full bg-gray-100 py-2 text-sm text-gray-700 hover:bg-gray-200"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─────── 포트폴리오 관리 모달 ─────── */}
+      {portfolioMgrOpen && (
+        <ItemMgrModal
+          title="포트폴리오 관리"
+          items={portfolioItems}
+          addLabel="+ 새 포트폴리오 항목 추가"
+          addHref="/portfolio/edit"
+          onClose={() => setPortfolioMgrOpen(false)}
+          onDelete={deleteItem}
+        />
+      )}
+
+      {/* ─────── 스터디 관리 모달 ─────── */}
+      {studyMgrOpen && (
+        <ItemMgrModal
+          title="스터디 관리"
+          items={studyItems}
+          addLabel="+ 새 스터디 추가"
+          addHref="/portfolio/edit?type=study"
+          onClose={() => setStudyMgrOpen(false)}
+          onDelete={deleteItem}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─────── 포트폴리오/스터디 공용 관리 모달 ───────
+function ItemMgrModal({
+  title,
+  items,
+  addLabel,
+  addHref,
+  onClose,
+  onDelete,
+}: {
+  title: string;
+  items: PortfolioItem[];
+  addLabel: string;
+  addHref: string;
+  onClose: () => void;
+  onDelete: (id: number) => void;
+}) {
+  return (
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="flex max-h-full w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
+      >
+        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+          <h2 className="text-lg font-bold">{title}</h2>
+          <button
+            onClick={onClose}
+            aria-label="닫기"
+            className="text-gray-400 hover:text-gray-600"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          {/* 새 항목 추가 — 페이지 이동 (상세 폼) */}
+          <Link
+            href={addHref}
+            className="mb-5 flex items-center justify-center rounded-xl border-2 border-dashed border-blue-200 bg-blue-50/50 px-4 py-4 text-sm font-medium text-blue-600 transition-all hover:border-blue-400 hover:bg-blue-50"
+          >
+            {addLabel}
+          </Link>
+
+          <div className="border-t border-gray-100 pt-5">
+            <h3 className="mb-3 text-sm font-semibold text-gray-700">
+              등록된 항목 ({items.length})
+            </h3>
+            {items.length === 0 ? (
+              <p className="text-sm text-gray-500">
+                아직 등록된 항목이 없습니다.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {items.map((item) => {
+                  const meta = TYPE_META[item.type];
+                  return (
+                    <li
+                      key={item.id}
+                      className="flex items-start gap-3 rounded-lg border border-gray-100 p-3 transition-all hover:bg-gray-50"
+                    >
+                      <div className="flex-1">
+                        <div className="mb-1 flex flex-wrap items-center gap-2">
+                          <span
+                            className={`rounded px-2 py-0.5 text-[10px] ${meta.bg} ${meta.text}`}
+                          >
+                            {meta.label}
+                          </span>
+                          {item.domain && (
+                            <span className="rounded bg-blue-50 px-2 py-0.5 text-[10px] text-blue-600">
+                              {item.domain}
+                            </span>
+                          )}
+                          <span className="text-[11px] text-gray-500">
+                            {item.period}
+                          </span>
+                        </div>
+                        <p className="text-sm font-semibold text-gray-800">
+                          {item.title}
+                        </p>
+                        <p className="mt-0.5 line-clamp-1 text-xs text-gray-500">
+                          {item.description}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 gap-1">
+                        <Link
+                          href={`/portfolio/edit?id=${item.id}`}
+                          className="rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-white hover:text-blue-600"
+                        >
+                          수정
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => onDelete(item.id)}
+                          className="rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-white hover:text-red-500"
+                        >
+                          삭제
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </div>
+
+        <div className="border-t border-gray-100 px-6 py-3">
+          <button
+            onClick={onClose}
+            className="w-full rounded-full bg-gray-100 py-2 text-sm text-gray-700 hover:bg-gray-200"
+          >
+            닫기
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

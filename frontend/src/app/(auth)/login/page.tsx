@@ -2,16 +2,22 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useMockAuth } from '@/hooks/useMockAuth';
 
 /** 로그인 페이지 */
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const router = useRouter();
+  const { login } = useMockAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: 로그인 API 호출
-    console.log('로그인:', { email, password });
+    // TODO: 백엔드 연동 — POST /api/auth/login 호출 후 토큰 저장.
+    //       지금은 프론트 mock: localStorage 플래그만 세팅.
+    login();
+    router.push('/profile');
   };
 
   return (
