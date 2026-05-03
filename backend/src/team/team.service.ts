@@ -94,6 +94,7 @@ export class TeamService {
           include: {
             user: {
               select: {
+                id: true,
                 name: true,
               }
             }

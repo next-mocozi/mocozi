@@ -3,7 +3,6 @@
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import api from '@/lib/api';
-import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 
 interface Application {
@@ -39,7 +38,6 @@ export default function ApplicationsPage({
 }) {
   const { id: teamId } = use(params);
   const router = useRouter();
-  const { user } = useAuth();
 
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,6 +65,7 @@ export default function ApplicationsPage({
       setApplications((prev) =>
         prev.map((a) => (a.id === applicationId ? { ...a, status } : a))
       );
+      if (status === 'ACCEPTED') router.refresh();
     } catch {
       setError('처리에 실패했습니다. 다시 시도해주세요.');
     } finally {
@@ -104,7 +103,12 @@ export default function ApplicationsPage({
             <div key={app.id} className="card space-y-3">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="font-semibold">{app.user.name}</p>
+                  <Link
+                    href={`/profile/${app.user.id}`}
+                    className="font-semibold hover:text-blue-600 hover:underline"
+                  >
+                    {app.user.name}
+                  </Link>
                   <p className="text-sm text-gray-500">
                     {app.user.university} · {app.user.department}
                   </p>

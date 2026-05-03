@@ -18,7 +18,7 @@ interface Member {
   id: string;
   userId: string;
   role: string;
-  user: { name: string };
+  user: { id: string; name: string };
 }
 
 interface Proposal {
@@ -261,7 +261,11 @@ export default function TeamDetailPage({
             </h2>
             <div className="space-y-3">
               {team.members.map((m) => (
-                <div key={m.id} className="flex items-center gap-3">
+                <Link
+                  key={m.id}
+                  href={`/profile/${m.user.id}`}
+                  className="flex items-center gap-3 rounded-xl p-1 transition-colors hover:bg-gray-50"
+                >
                   <div
                     className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
                       m.role === 'LEADER'
@@ -277,7 +281,7 @@ export default function TeamDetailPage({
                       {m.role === 'LEADER' ? '팀장' : '팀원'}
                     </p>
                   </div>
-                </div>
+                </Link>
               ))}
               {maxMembers &&
                 Array.from({ length: maxMembers - memberCount }).map((_, i) => (
