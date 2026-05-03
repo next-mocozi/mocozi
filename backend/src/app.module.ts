@@ -5,6 +5,7 @@ import { UserModule } from './user/user.module';
 import { PortfolioModule } from './portfolio/portfolio.module';
 import { TeamModule } from './team/team.module';
 import { ApplyModule } from './apply/apply.module';
+import { ScoutModule } from './scout/scout.module';
 import { ChatModule } from './chat/chat.module';
 import { SearchModule } from './search/search.module';
 
@@ -17,6 +18,7 @@ import { SearchModule } from './search/search.module';
     PortfolioModule,
     TeamModule,
     ApplyModule,
+    ScoutModule,
     ChatModule,
     SearchModule,
   ],

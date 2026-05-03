@@ -29,12 +29,14 @@ model User {
   updatedAt         DateTime  @updatedAt
 
   // 관계
-  ledTeams      Team[]        @relation("TeamLeader")
-  teamMembers   TeamMember[]
-  applications  Application[]
-  portfolio     Portfolio?
-  sentMessages  ChatMessage[]
-  chatRooms     ChatRoomUser[]
+  ledTeams       Team[]        @relation("TeamLeader")
+  teamMembers    TeamMember[]
+  applications   Application[]
+  receivedScouts Scout[]       @relation("ReceivedScouts")
+  sentScouts     Scout[]       @relation("SentScouts")
+  portfolio      Portfolio?
+  sentMessages   ChatMessage[]
+  chatRooms      ChatRoomUser[]
 
   @@map("users")
 }
@@ -60,6 +62,7 @@ model Team {
   members     TeamMember[]
   proposal    TeamProposal?
   applications Application[]
+  scouts      Scout[]
 
   @@map("teams")
 }
@@ -117,6 +120,30 @@ model Application {
 }
 
 enum ApplicationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+// 스카우트 모델 (팀 → 유저)
+model Scout {
+  id           String      @id @default(uuid())
+  teamId       String
+  targetUserId String
+  leaderId     String
+  status       ScoutStatus @default(PENDING)
+  message      String
+  createdAt    DateTime    @default(now())
+
+  team       Team @relation(fields: [teamId], references: [id])
+  targetUser User @relation("ReceivedScouts", fields: [targetUserId], references: [id])
+  leader     User @relation("SentScouts", fields: [leaderId], references: [id])
+
+  @@unique([teamId, targetUserId])
+  @@map("scouts")
+}
+
+enum ScoutStatus {
   PENDING
   ACCEPTED
   REJECTED

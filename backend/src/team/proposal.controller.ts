@@ -14,7 +14,7 @@ export class ProposalController {
   @Post(':id/proposal')
   async createProposal(
     @Param('id') teamId: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: { id: string },
     @Body() createProposalDto: CreateProposalDto,
   ) {
     return this.teamService.createProposal(teamId, user.id, createProposalDto);
@@ -23,7 +23,7 @@ export class ProposalController {
   @Patch(':id/proposal')
   async updateProposal(
     @Param('id') teamId: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: { id: string },
     @Body() updateProposalDto: UpdateProposalDto,
   ) {
     return this.teamService.updateProposal(teamId, user.id, updateProposalDto);
@@ -32,7 +32,7 @@ export class ProposalController {
   @Patch(':id/proposal/visibility')
   async updateVisibility(
     @Param('id') teamId: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: { id: string },
     @Body() updateVisibilityDto: UpdateVisibilityDto,
   ) {
     return this.teamService.updateVisibility(teamId, user.id, updateVisibilityDto);

@@ -11,7 +11,7 @@ export class TeamController {
   constructor(private readonly teamService: TeamService) {}
 
   @Post()
-  async createTeam(@CurrentUser() user: any, @Body() createTeamDto: CreateTeamDto) {
+  async createTeam(@CurrentUser() user: { id: string }, @Body() createTeamDto: CreateTeamDto) {
     return this.teamService.createTeam(user.id, createTeamDto);
   }
 
@@ -28,7 +28,7 @@ export class TeamController {
   @Patch(':id')
   async updateTeam(
     @Param('id') teamId: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: { id: string },
     @Body() updateTeamDto: UpdateTeamDto,
   ) {
     return this.teamService.updateTeam(teamId, user.id, updateTeamDto);
@@ -48,7 +48,7 @@ export class TeamController {
   async removeMember(
     @Param('id') teamId: string,
     @Param('userId') targetUserId: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: { id: string },
   ) {
     return this.teamService.removeMember(teamId, user.id, targetUserId);
   }
@@ -57,7 +57,7 @@ export class TeamController {
   async updateMemberRole(
     @Param('id') teamId: string,
     @Param('userId') targetUserId: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: { id: string },
     @Body('role') role: string,
   ) {
     return this.teamService.updateMemberRole(teamId, user.id, targetUserId, role);
