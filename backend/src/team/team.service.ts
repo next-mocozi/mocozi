@@ -52,9 +52,10 @@ export class TeamService {
         schedule,
         recruitingRoles,
         requiredSkills,
-        referenceLinks,
+        referenceLinks: referenceLinks ?? [],
         detailedPlan,
         expectedOutcome,
+        publicFields: [],
       }
     });
 
