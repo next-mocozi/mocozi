@@ -17,145 +17,145 @@ export default function RecruitListPage() {
   {
     id: 1,
     name: '백승준',
-    school: '고려대학교',
+    university: '고려대학교',
     department: '인공지능학과',
     schoolColor: '#8B0000',
     mainRole: 'AI/ML',
     subRoles: ['데이터'],
     skills: ['Python', 'TensorFlow', 'NLP', 'Computer Vision'],
-    intro: '참고로 CV, NLP, 오픈소스 구현에 관심 있으며 개발자로 성장 중입니다.',
+    bio: '참고로 CV, NLP, 오픈소스 구현에 관심 있으며 개발자로 성장 중입니다.',
     image: null,
   },
   {
     id: 2,
     name: '김민준',
-    school: '한양대학교',
+    university: '한양대학교',
     department: '컴퓨터공학과',
     schoolColor: '#003876',
     mainRole: '프론트엔드',
     subRoles: ['풀스택'],
     skills: ['React', 'Next.js', 'TypeScript', 'Tailwind CSS'],
-    intro: '사용자 경험을 중요하게 생각하는 프론트엔드 개발자입니다.',
+    bio: '사용자 경험을 중요하게 생각하는 프론트엔드 개발자입니다.',
     image: null,
   },
   {
     id: 3,
     name: '이서연',
-    school: '연세대학교',
+    university: '연세대학교',
     department: '소프트웨어학과',
     schoolColor: '#00205B',
     mainRole: '백엔드',
     subRoles: ['DevOps/인프라'],
     skills: ['Spring Boot', 'Java', 'MySQL', 'Docker'],
-    intro: '안정적인 서버 설계를 좋아하는 백엔드 개발자입니다.',
+    bio: '안정적인 서버 설계를 좋아하는 백엔드 개발자입니다.',
     image: null,
   },
    {
     id: 4,
     name: '박지훈',
-    school: '서울대학교',
+    university: '서울대학교',
     department: '전기정보공학부',
     schoolColor: '#000080',
     mainRole: '풀스택',
     subRoles: ['백엔드', '프론트엔드'],
     skills: ['Next.js', 'Spring Boot', 'PostgreSQL', 'Docker'],
-    intro: '처음부터 끝까지 혼자서도 만들 수 있는 풀스택 개발자를 목표로 합니다.',
+    bio: '처음부터 끝까지 혼자서도 만들 수 있는 풀스택 개발자를 목표로 합니다.',
     image: null,
   },
   {
     id: 5,
     name: '최유진',
-    school: '성균관대학교',
+    university: '성균관대학교',
     department: '글로벌융합학부',
     schoolColor: '#004B23',
     mainRole: 'UI/UX 디자이너',
     subRoles: ['PM/PO'],
     skills: ['Figma', 'React', 'Tailwind CSS', 'Jira'],
-    intro: '사용자 입장에서 생각하고 디자인과 개발을 연결하는 걸 좋아합니다.',
+    bio: '사용자 입장에서 생각하고 디자인과 개발을 연결하는 걸 좋아합니다.',
     image: null,
   },
   {
     id: 6,
     name: '정하늘',
-    school: '고려대학교',
+    university: '고려대학교',
     department: '컴퓨터학과',
     schoolColor: '#8B0000',
     mainRole: '백엔드',
     subRoles: ['DevOps/인프라'],
     skills: ['Node.js', 'NestJS', 'PostgreSQL', 'AWS', 'Docker'],
-    intro: '대규모 트래픽을 다루는 백엔드 시스템에 관심이 많습니다.',
+    bio: '대규모 트래픽을 다루는 백엔드 시스템에 관심이 많습니다.',
     image: null,
   },
   {
     id: 7,
     name: '강수빈',
-    school: 'KAIST',
+    university: 'KAIST',
     department: '전산학부',
     schoolColor: '#004A99',
     mainRole: '모바일',
     subRoles: ['프론트엔드'],
     skills: ['React Native', 'Flutter', 'TypeScript', 'iOS', 'Android'],
-    intro: '크로스 플랫폼 모바일 앱 개발을 좋아합니다.',
+    bio: '크로스 플랫폼 모바일 앱 개발을 좋아합니다.',
     image: null,
   },
   {
     id: 8,
     name: '윤도현',
-    school: '한양대학교',
+    university: '한양대학교',
     department: '데이터사이언스학부',
     schoolColor: '#003876',
     mainRole: '데이터',
     subRoles: ['AI/ML'],
     skills: ['Python', 'Pandas', 'PyTorch', 'TensorFlow', 'MySQL'],
-    intro: '데이터로 인사이트를 만드는 일에 흥미를 느낍니다.',
+    bio: '데이터로 인사이트를 만드는 일에 흥미를 느낍니다.',
     image: null,
   },
   {
     id: 9,
     name: '한지원',
-    school: '포항공과대학교',
+    university: '포항공과대학교',
     department: '컴퓨터공학과',
     schoolColor: '#7B1A1A',
     mainRole: 'AI/ML',
     subRoles: ['데이터'],
     skills: ['Python', 'PyTorch', 'LangChain', 'OpenAI API'],
-    intro: 'LLM 기반 서비스 개발에 관심이 있습니다.',
+    bio: 'LLM 기반 서비스 개발에 관심이 있습니다.',
     image: null,
   },
   {
     id: 10,
     name: '오시현',
-    school: '고려대학교',
+    university: '고려대학교',
     department: '미디어학부',
     schoolColor: '#8B0000',
     mainRole: 'UI/UX 디자이너',
     subRoles: ['프론트엔드'],
     skills: ['Figma', 'React', 'Tailwind CSS', 'TypeScript'],
-    intro: '디자인 시스템과 컴포넌트 설계에 관심 많습니다.',
+    bio: '디자인 시스템과 컴포넌트 설계에 관심 많습니다.',
     image: null,
   },
   {
     id: 11,
     name: '임채원',
-    school: '연세대학교',
+    university: '연세대학교',
     department: '컴퓨터과학과',
     schoolColor: '#00205B',
     mainRole: '풀스택',
     subRoles: ['프론트엔드', '백엔드'],
     skills: ['Next.js', 'NestJS', 'TypeScript', 'PostgreSQL', 'Docker'],
-    intro: '개인 프로젝트 여러개 운영중인 풀스택 개발자입니다.',
+    bio: '개인 프로젝트 여러개 운영중인 풀스택 개발자입니다.',
     image: null,
   },
   {
     id: 12,
     name: '백승현',
-    school: '서울대학교',
+    university: '서울대학교',
     department: '컴퓨터공학부',
     schoolColor: '#000080',
     mainRole: '게임',
     subRoles: ['프론트엔드'],
     skills: ['JavaScript', 'TypeScript', 'React'],
-    intro: '인디 게임 개발에 관심 많은 개발자입니다.',
+    bio: '인디 게임 개발에 관심 많은 개발자입니다.',
     image: null,
   },
 ];
@@ -176,14 +176,14 @@ export default function RecruitListPage() {
   const filteredProfiles = useMemo(() => {
     return MOCK_PROFILES.filter((p) => {
       // 1) 키워드: 이름·학과·소개·직군·스킬 부분일치
-      //    NOTE: 학교(p.school)는 의도적으로 제외 — 특정 학교명 검색을 막아
+      //    NOTE: 학교(p.university)는 의도적으로 제외 — 특정 학교명 검색을 막아
       //    학교 차별 위험을 방지함. 학교 기반 검색은 '같은 학교' 토글로만 가능.
       if (appliedKeyword) {
         const q = appliedKeyword.toLowerCase();
         const haystack = [
           p.name,
           p.department,
-          p.intro,
+          p.bio,
           p.mainRole,
           ...p.subRoles,
           ...p.skills,
@@ -208,7 +208,7 @@ export default function RecruitListPage() {
       }
 
       // 4) 같은 학교: 현재 사용자 학교와 일치해야 통과
-      if (appliedSameSchool && p.school !== CURRENT_USER_SCHOOL) return false;
+      if (appliedSameSchool && p.university !== CURRENT_USER_SCHOOL) return false;
 
       return true;
     });
@@ -382,9 +382,9 @@ export default function RecruitListPage() {
       {/* 상단 학교 배경 */}
       <div
   className="flex h-28 flex-col items-center justify-center"
-  style={{ backgroundColor: person.schoolColor }}
+  style={{ backgroundColor: person.universityColor }}
 >
-        <p className="font-bold text-white">{person.school}</p>
+        <p className="font-bold text-white">{person.university}</p>
         <p className="text-xs text-white opacity-70">{person.department}</p>
       </div>
 
@@ -421,7 +421,7 @@ export default function RecruitListPage() {
         </div>
 
         {/* 한줄 소개 */}
-        <p className="mb-3 text-center text-sm text-gray-500 line-clamp-2">{person.intro}</p>
+        <p className="mb-3 text-center text-sm text-gray-500 line-clamp-2">{person.bio}</p>
 
         {/* 스킬 태그 */}
         <div className="mb-4 flex flex-wrap justify-center gap-1">

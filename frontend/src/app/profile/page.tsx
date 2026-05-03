@@ -23,9 +23,9 @@ const DEFAULT_LINKS: ProfileLink[] = [
 
 const MOCK_PROFILE = {
   name: '홍길동',
-  school: 'OO대학교',
+  university: 'OO대학교',
   department: '컴퓨터공학과',
-  intro:
+  bio:
     '풀스택 개발에 관심이 많은 대학생입니다. 다양한 프로젝트 경험을 쌓고 싶습니다.',
   mainRole: '풀스택',
   subRoles: ['프론트엔드', '백엔드'],
@@ -78,9 +78,9 @@ export default function MyProfilePage() {
               <h1 className="text-2xl font-bold">{profile.name}</h1>
             </div>
             <p className="text-gray-600">
-              {profile.school} {profile.department}
+              {profile.university} {profile.department}
             </p>
-            <p className="mt-2 text-sm text-gray-500">{profile.intro}</p>
+            <p className="mt-2 text-sm text-gray-500">{profile.bio}</p>
 
             {/* 직군 */}
             <div className="mt-3 flex flex-wrap items-center gap-1">

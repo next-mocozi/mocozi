@@ -67,9 +67,9 @@ export default function ProfileEditPage() {
 
   // 초기값은 일단 하드코딩 (백엔드 연동 시 GET /api/users/me 응답으로 교체)
   const [name, setName] = useState('홍길동');
-  const [school, setSchool] = useState('OO대학교');
+  const [university, setUniversity] = useState('OO대학교');
   const [department, setDepartment] = useState('컴퓨터공학과');
-  const [intro, setIntro] = useState(
+  const [bio, setBio] = useState(
     '풀스택 개발에 관심이 많은 대학생입니다. 다양한 프로젝트 경험을 쌓고 싶습니다.'
   );
   const [mainRole, setMainRole] = useState('풀스택');
@@ -235,8 +235,8 @@ export default function ProfileEditPage() {
             <label className="mb-1 block text-sm font-medium text-gray-700">학교</label>
             <input
               type="text"
-              value={school}
-              onChange={(e) => setSchool(e.target.value)}
+              value={university}
+              onChange={(e) => setUniversity(e.target.value)}
               placeholder="예: 고려대학교"
               className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
             />
@@ -259,8 +259,8 @@ export default function ProfileEditPage() {
             한줄 소개
           </label>
           <textarea
-            value={intro}
-            onChange={(e) => setIntro(e.target.value)}
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
             rows={3}
             className="w-full resize-none rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
           />

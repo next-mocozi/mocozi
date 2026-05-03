@@ -72,7 +72,7 @@ type CareerItem = {
 
 const MOCK_PROFILE = {
   name: '홍길동',
-  school: 'OO대학교',
+  university: 'OO대학교',
   department: '컴퓨터공학과',
 };
 
@@ -375,7 +375,7 @@ export default function MyPortfolioPage() {
               <h1 className="text-2xl font-bold">{profile.name}</h1>
             </div>
             <p className="text-gray-600">
-              {profile.school} {profile.department}
+              {profile.university} {profile.department}
             </p>
 
             {links.length > 0 && (

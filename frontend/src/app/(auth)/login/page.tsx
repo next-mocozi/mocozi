@@ -3,21 +3,24 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useMockAuth } from '@/hooks/useMockAuth';
+import { useAuth } from '@/hooks/useAuth';
 
 /** 로그인 페이지 */
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const router = useRouter();
-  const { login } = useMockAuth();
+  const { login } = useAuth();
+  const [error, setError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: any) => {
     e.preventDefault();
-    // TODO: 백엔드 연동 — POST /api/auth/login 호출 후 토큰 저장.
-    //       지금은 프론트 mock: localStorage 플래그만 세팅.
-    login();
-    router.push('/profile');
+    try {
+      await login(email, password);
+      router.push('/profile');
+    } catch {
+      setError('이메일 또는 비밀번호가 올바르지 않습니다.');
+    }
   };
 
   return (
@@ -57,6 +60,7 @@ export default function LoginPage() {
           <button type="submit" className="btn-primary w-full py-3">
             로그인
           </button>
+          {error && <p className="text-sm text-red-500">{error}</p>}
         </form>
 
         <p className="mt-4 text-center text-sm text-gray-600">

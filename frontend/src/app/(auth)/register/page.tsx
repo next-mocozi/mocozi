@@ -2,9 +2,12 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import api from '@/lib/api';
 
 /** 회원가입 페이지 */
 export default function RegisterPage() {
+  const router = useRouter();
   const [form, setForm] = useState({
     email: '',
     password: '',
@@ -12,20 +15,33 @@ export default function RegisterPage() {
     name: '',
     university: '',
     department: '',
+    grade: '',
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: any) => {
     e.preventDefault();
     if (form.password !== form.passwordConfirm) {
       alert('비밀번호가 일치하지 않습니다.');
       return;
     }
-    // TODO: 회원가입 API 호출
-    console.log('회원가입:', form);
+    try {
+      const res = await api.post('/api/auth/register', {
+        email: form.email,
+        password: form.password,
+        name: form.name,
+        university: form.university,
+        department: form.department,
+        grade: form.grade,
+      });
+      const { verificationToken } = res.data.data;
+      router.push(`/verify-email?token=${verificationToken}`);
+    } catch (err: any) {
+      alert(err.response?.data?.message || '회원가입에 실패했습니다.');
+    }
   };
 
   return (
@@ -123,6 +139,21 @@ export default function RegisterPage() {
               value={form.department}
               onChange={handleChange}
               placeholder="학과를 입력하세요"
+              className="input-field"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              학년
+            </label>
+            <input
+              type="text"
+              name="grade"
+              value={form.grade}
+              onChange={handleChange}
+              placeholder="예: 2학년"
               className="input-field"
               required
             />
