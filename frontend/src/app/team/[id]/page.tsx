@@ -263,7 +263,7 @@ export default function TeamDetailPage({
               {team.members.map((m) => (
                 <Link
                   key={m.id}
-                  href={`/profile/${m.user.id}`}
+                  href={`/profile/${m.userId}`}
                   className="flex items-center gap-3 rounded-xl p-1 transition-colors hover:bg-gray-50"
                 >
                   <div
