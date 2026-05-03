@@ -11,10 +11,16 @@ import {
   type ProfileLink,
 } from './_platforms';
 
-// TODO: 백엔드 연동 — `GET /api/users/me`, `GET /api/users/me/links` 로 교체
-//       (CLAUDE.md §11). 현재는 mock — localStorage로 edit 페이지와 동기화.
+// TODO: 백엔드 연동 — `GET /api/users/me`, `GET /api/users/me/links`,
+//       `GET /api/portfolios/me` 로 교체 (CLAUDE.md §11). 현재는 mock —
+//       /portfolio 페이지가 저장한 localStorage 값을 그대로 읽어 표시한다.
 
 const LINKS_STORAGE_KEY = 'mock_profile_links';
+const INTRO_STORAGE_KEY = 'mock_portfolio_intro';
+const EXPS_STORAGE_KEY = 'mock_portfolio_experiences';
+const CAREERS_STORAGE_KEY = 'mock_portfolio_career_items';
+const ITEMS_STORAGE_KEY = 'mock_portfolio_items';
+const PROFILE_SECTIONS_KEY = 'mock_profile_portfolio_sections';
 
 const DEFAULT_LINKS: ProfileLink[] = [
   { id: 1, url: 'https://github.com/honggildong' },
@@ -31,43 +37,181 @@ const MOCK_PROFILE = {
   mainRole: '풀스택',
   subRoles: ['프론트엔드', '백엔드'],
   skills: ['React', 'TypeScript', 'Node.js', 'Next.js'],
-  experiences: [
-    {
-      id: 1,
-      company: 'OpenAI Korea',
-      team: '연구팀',
-      role: '리서치 인턴',
-      period: '2026.03 - 현재',
-      current: true,
-    },
-    {
-      id: 2,
-      company: '삼성 SDI',
-      team: '기획부서',
-      role: '인턴',
-      period: '2025.07 - 2025.08',
-      current: false,
-    },
-  ],
 };
 
-/** 내 프로필 페이지 (보기 전용 — 수정은 /profile/edit) */
+// /portfolio 페이지와 같은 형태 — 단순 표시 용도라 import 없이 정의
+type Experience = {
+  id: number;
+  company: string;
+  team: string;
+  role: string;
+  period: string;
+  current: boolean;
+};
+
+type CareerItem = {
+  id: number;
+  year: string;
+  content: string;
+};
+
+type PortfolioItemType =
+  | 'project'
+  | 'research'
+  | 'study'
+  | 'activity'
+  | 'etc';
+
+type PortfolioItem = {
+  id: number;
+  type: PortfolioItemType;
+  title: string;
+  description: string;
+  period: string;
+  current: boolean;
+  domain?: string;
+  tags: string[];
+};
+
+const TYPE_META: Record<
+  PortfolioItemType,
+  { label: string; bg: string; text: string }
+> = {
+  project: { label: '프로젝트', bg: 'bg-purple-100', text: 'text-purple-700' },
+  research: { label: '연구', bg: 'bg-blue-100', text: 'text-blue-700' },
+  study: { label: '스터디', bg: 'bg-amber-100', text: 'text-amber-700' },
+  activity: { label: '활동', bg: 'bg-green-100', text: 'text-green-700' },
+  etc: { label: '기타', bg: 'bg-gray-100', text: 'text-gray-700' },
+};
+
+// 포트폴리오에서 가져올 수 있는 항목들
+type SectionKey = 'intro' | 'experiences' | 'careers' | 'projects';
+
+const SECTION_ORDER: SectionKey[] = [
+  'intro',
+  'experiences',
+  'careers',
+  'projects',
+];
+
+const SECTION_META: Record<SectionKey, { label: string; hint: string }> = {
+  intro: {
+    label: '자기소개',
+    hint: '포트폴리오에 작성한 자기소개를 표시합니다.',
+  },
+  experiences: {
+    label: '실무 경험 & 이력',
+    hint: '인턴·직장 등 실무 경험을 표시합니다.',
+  },
+  careers: {
+    label: '경력 요약',
+    hint: '수상·자격증·활동을 연도별로 표시합니다.',
+  },
+  projects: {
+    label: '프로젝트',
+    hint: '등록된 프로젝트 카드를 표시합니다.',
+  },
+};
+
+/** 내 프로필 페이지 (보기 전용 — 수정은 /profile/edit, /portfolio) */
 export default function MyProfilePage() {
   const { user, loading } = useAuth();
   const [links, setLinks] = useState<ProfileLink[]>(DEFAULT_LINKS);
 
-  // edit 페이지에서 저장한 링크가 있으면 그걸로 표시
+  // 포트폴리오에서 가져온 데이터
+  const [intro, setIntro] = useState('');
+  const [experiences, setExperiences] = useState<Experience[]>([]);
+  const [careers, setCareers] = useState<CareerItem[]>([]);
+  const [items, setItems] = useState<PortfolioItem[]>([]);
+
+  // 어떤 항목을 가져와 표시할지 (선택 상태)
+  const [selected, setSelected] = useState<SectionKey[]>(SECTION_ORDER);
+
+  // 가져오기 모달
+  const [importOpen, setImportOpen] = useState(false);
+  const [draftSelected, setDraftSelected] =
+    useState<SectionKey[]>(SECTION_ORDER);
+
+  // localStorage 에서 모든 데이터 로드 (edit / portfolio 페이지가 저장한 값)
   useEffect(() => {
+    const loadJson = <T,>(key: string, fallback: T): T => {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? (JSON.parse(raw) as T) : fallback;
+      } catch {
+        return fallback;
+      }
+    };
+    setLinks(loadJson(LINKS_STORAGE_KEY, DEFAULT_LINKS));
+    setExperiences(loadJson(EXPS_STORAGE_KEY, [] as Experience[]));
+    setCareers(loadJson(CAREERS_STORAGE_KEY, [] as CareerItem[]));
+    setItems(loadJson(ITEMS_STORAGE_KEY, [] as PortfolioItem[]));
     try {
-      const raw = localStorage.getItem(LINKS_STORAGE_KEY);
-      if (raw) setLinks(JSON.parse(raw));
+      const i = localStorage.getItem(INTRO_STORAGE_KEY);
+      if (i !== null) setIntro(i);
     } catch {
-      // 파싱 실패 시 기본값 유지
+      // 무시
+    }
+    const savedSections = loadJson<SectionKey[] | null>(
+      PROFILE_SECTIONS_KEY,
+      null,
+    );
+    if (savedSections) {
+      setSelected(savedSections);
+      setDraftSelected(savedSections);
     }
   }, []);
 
-  if (loading) return <div className="flex min-h-screen items-center justify-center">로딩 중...</div>;
+  if (loading)
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        로딩 중...
+      </div>
+    );
   if (!user) return null;
+
+  // 프로젝트(스터디 제외) — 정렬된 경력
+  const projects = items.filter((it) => it.type !== 'study');
+  const sortedCareers = [...careers].sort((a, b) => {
+    const ya = Number(a.year);
+    const yb = Number(b.year);
+    if (yb !== ya) return yb - ya;
+    return b.id - a.id;
+  });
+
+  // 가져오기 모달 핸들러
+  const openImport = () => {
+    setDraftSelected(selected);
+    setImportOpen(true);
+  };
+
+  const toggleDraft = (key: SectionKey) => {
+    setDraftSelected((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
+    );
+  };
+
+  const saveImport = () => {
+    const ordered = SECTION_ORDER.filter((k) => draftSelected.includes(k));
+    setSelected(ordered);
+    try {
+      localStorage.setItem(PROFILE_SECTIONS_KEY, JSON.stringify(ordered));
+    } catch {
+      // 저장 실패 시 무시
+    }
+    setImportOpen(false);
+  };
+
+  const sectionCount = (k: SectionKey) =>
+    k === 'intro'
+      ? intro.trim()
+        ? 1
+        : 0
+      : k === 'experiences'
+        ? experiences.length
+        : k === 'careers'
+          ? careers.length
+          : projects.length;
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
@@ -148,87 +292,287 @@ export default function MyProfilePage() {
         )}
       </div>
 
-      {/* 실무 경험 / 인턴 / 이력 */}
-      <div className="card mb-6">
-        <h2 className="mb-4 text-lg font-semibold">실무 경험 & 이력</h2>
-        {MOCK_PROFILE.experiences.length === 0 ? (
-          <p className="text-sm text-gray-500">아직 등록된 실무 경험이 없습니다.</p>
-        ) : (
-          <ol className="space-y-3">
-            {MOCK_PROFILE.experiences.map((exp, i) => (
-              <li
-                key={exp.id}
-                className="flex items-start gap-3 rounded-xl border border-gray-100 p-4 transition-all hover:bg-gray-50"
-              >
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-50 text-xs font-semibold text-blue-600">
-                  {i + 1}
-                </span>
-                <div className="flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-semibold text-gray-800">
-                      {exp.company} {exp.team}
-                    </p>
-                    {exp.current && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                        <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                        재직중
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-0.5 text-sm text-gray-600">{exp.role}</p>
-                  <p className="mt-1 text-xs text-gray-400">{exp.period}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-        )}
-      </div>
-
-      {/* 경력 요약 */}
-      <div className="card mb-6">
-        <h2 className="mb-4 text-lg font-semibold">경력 요약</h2>
-        <p className="text-gray-600">
-          아직 등록된 경력 요약이 없습니다. 프로필을 수정하여 추가해보세요.
-        </p>
-      </div>
-
-      {/* 포트폴리오 카드 리스트 */}
-      <div>
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">포트폴리오</h2>
-          <button className="btn-primary text-sm">새 항목 추가</button>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="card">
-            <div className="mb-2 flex items-center gap-2">
-              <span className="rounded bg-purple-100 px-2 py-0.5 text-xs text-purple-700">
-                프로젝트
-              </span>
-              <span className="text-xs text-gray-500">2024.01 - 2024.03</span>
-            </div>
-            <h3 className="mb-1 font-semibold">웹 포트폴리오 사이트</h3>
-            <p className="mb-2 text-sm text-gray-600">
-              개인 포트폴리오 웹사이트를 제작했습니다.
+      {/* ─────── 포트폴리오 (큰 카테고리) — /portfolio 의 항목들을 가져와서 표시 ─────── */}
+      <section className="mb-6">
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">포트폴리오</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              포트폴리오에서 항목을 가져와 프로필에 표시할 수 있어요.
             </p>
-            <div className="flex flex-wrap gap-1">
-              <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-                Next.js
-              </span>
-              <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-                Tailwind
-              </span>
-            </div>
           </div>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/portfolio"
+              className="text-xs text-gray-500 hover:text-blue-600"
+            >
+              포트폴리오 편집 →
+            </Link>
+            <button
+              type="button"
+              onClick={openImport}
+              className="rounded-full bg-blue-600 px-4 py-1.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-blue-700"
+            >
+              + 가져오기
+            </button>
+          </div>
+        </div>
 
-          <div className="card flex items-center justify-center border-dashed text-center text-gray-400">
-            <div>
-              <div className="mb-2 text-3xl">+</div>
-              <p className="text-sm">새 포트폴리오 항목 추가</p>
+        {selected.length === 0 ? (
+          <button
+            type="button"
+            onClick={openImport}
+            className="card flex w-full flex-col items-center justify-center border-dashed py-12 text-center text-gray-400 transition-all hover:border-blue-300 hover:text-blue-500"
+          >
+            <span className="mb-2 text-3xl">+</span>
+            <p className="text-sm">포트폴리오에서 항목 가져오기</p>
+          </button>
+        ) : (
+          <div className="space-y-4">
+            {selected.includes('intro') && (
+              <div className="card">
+                <h3 className="mb-3 text-base font-semibold text-gray-900">
+                  자기소개
+                </h3>
+                {intro.trim() ? (
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-700">
+                    {intro}
+                  </p>
+                ) : (
+                  <p className="text-sm text-gray-400">
+                    포트폴리오에서 자기소개를 작성해주세요.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {selected.includes('experiences') && (
+              <div className="card">
+                <h3 className="mb-3 text-base font-semibold text-gray-900">
+                  실무 경험 & 이력
+                </h3>
+                {experiences.length === 0 ? (
+                  <p className="text-sm text-gray-400">
+                    포트폴리오에 등록된 실무 경험이 없습니다.
+                  </p>
+                ) : (
+                  <ol className="space-y-3">
+                    {experiences.map((exp, i) => (
+                      <li
+                        key={exp.id}
+                        className="flex items-start gap-3 rounded-xl border border-gray-100 p-4"
+                      >
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-50 text-xs font-semibold text-blue-600">
+                          {i + 1}
+                        </span>
+                        <div className="flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-semibold text-gray-800">
+                              {exp.company} {exp.team}
+                            </p>
+                            {exp.current && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                                <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                                재직중
+                              </span>
+                            )}
+                          </div>
+                          <p className="mt-0.5 text-sm text-gray-600">
+                            {exp.role}
+                          </p>
+                          <p className="mt-1 text-xs text-gray-400">
+                            {exp.period}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </div>
+            )}
+
+            {selected.includes('careers') && (
+              <div className="card">
+                <h3 className="mb-3 text-base font-semibold text-gray-900">
+                  경력 요약
+                </h3>
+                {sortedCareers.length === 0 ? (
+                  <p className="text-sm text-gray-400">
+                    포트폴리오에 등록된 경력이 없습니다.
+                  </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {sortedCareers.map((c) => (
+                      <li key={c.id} className="flex items-start gap-2">
+                        <span
+                          className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500"
+                          aria-hidden
+                        />
+                        <p className="flex-1 text-sm leading-relaxed text-gray-700">
+                          <span className="font-semibold text-gray-900">
+                            {c.year}년
+                          </span>{' '}
+                          {c.content}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+
+            {selected.includes('projects') && (
+              <div className="card">
+                <h3 className="mb-3 text-base font-semibold text-gray-900">
+                  프로젝트
+                </h3>
+                {projects.length === 0 ? (
+                  <p className="text-sm text-gray-400">
+                    포트폴리오에 등록된 프로젝트가 없습니다.
+                  </p>
+                ) : (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {projects.map((item) => {
+                      const meta = TYPE_META[item.type];
+                      return (
+                        <Link
+                          key={item.id}
+                          href={`/portfolio/${item.id}`}
+                          className="block rounded-xl border border-gray-100 p-3 transition-all hover:border-blue-200 hover:shadow-sm"
+                        >
+                          <div className="mb-2 flex flex-wrap items-center gap-2">
+                            <span
+                              className={`rounded px-2 py-0.5 text-xs ${meta.bg} ${meta.text}`}
+                            >
+                              {meta.label}
+                            </span>
+                            {item.domain && (
+                              <span className="rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-600">
+                                {item.domain}
+                              </span>
+                            )}
+                            <span className="text-xs text-gray-500">
+                              {item.period}
+                            </span>
+                          </div>
+                          <h4 className="mb-1 text-sm font-semibold text-gray-900">
+                            {item.title}
+                          </h4>
+                          <p className="line-clamp-2 text-xs text-gray-600">
+                            {item.description}
+                          </p>
+                          {item.tags.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              {item.tags.map((tag) => (
+                                <span
+                                  key={tag}
+                                  className="rounded bg-gray-100 px-2 py-0.5 text-[10px] text-gray-600"
+                                >
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* ─────── 가져오기 모달 ─────── */}
+      {importOpen && (
+        <div
+          onClick={() => setImportOpen(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
+          >
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
+              <h2 className="text-lg font-bold text-gray-900">
+                포트폴리오에서 가져오기
+              </h2>
+              <button
+                onClick={() => setImportOpen(false)}
+                aria-label="닫기"
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-6 py-5">
+              <p className="mb-4 text-sm text-gray-600">
+                프로필에 표시할 항목을 선택해주세요.
+              </p>
+              <div className="space-y-2">
+                {SECTION_ORDER.map((k) => {
+                  const meta = SECTION_META[k];
+                  const checked = draftSelected.includes(k);
+                  const count = sectionCount(k);
+                  const countLabel =
+                    k === 'intro'
+                      ? count
+                        ? '작성됨'
+                        : '미작성'
+                      : `${count}건`;
+                  return (
+                    <label
+                      key={k}
+                      className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-all ${
+                        checked
+                          ? 'border-blue-300 bg-blue-50/40'
+                          : 'border-gray-100 hover:bg-gray-50'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleDraft(k)}
+                        className="mt-0.5 h-4 w-4 rounded border-gray-300"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold text-gray-900">
+                            {meta.label}
+                          </p>
+                          <span className="text-xs text-gray-400">
+                            {countLabel}
+                          </span>
+                        </div>
+                        <p className="mt-0.5 text-xs text-gray-500">
+                          {meta.hint}
+                        </p>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 border-t border-gray-100 px-6 py-3">
+              <button
+                type="button"
+                onClick={() => setImportOpen(false)}
+                className="rounded-full border border-gray-200 px-4 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={saveImport}
+                className="rounded-full bg-blue-600 px-4 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
+              >
+                저장
+              </button>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

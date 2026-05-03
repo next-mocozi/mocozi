@@ -132,18 +132,130 @@ const DEFAULT_ITEMS: PortfolioItem[] = [
   },
 ];
 
-const EMPTY_EXP_FORM: Omit<Experience, 'id'> = {
+type ExpFormState = {
+  company: string;
+  team: string;
+  role: string;
+  startDate: string; // YYYY-MM (HTML <input type="month">)
+  endDate: string; // YYYY-MM
+  current: boolean;
+};
+
+const EMPTY_EXP_FORM: ExpFormState = {
   company: '',
   team: '',
   role: '',
-  period: '',
+  startDate: '',
+  endDate: '',
   current: false,
 };
+
+// "2026.03 - 현재" / "2025.07 - 2025.08" 같은 문자열을 month-input 값으로 분해
+function parsePeriod(period: string): {
+  startDate: string;
+  endDate: string;
+  current: boolean;
+} {
+  const m = period.match(
+    /^\s*(\d{4})\.(\d{1,2})\s*-\s*(현재|(\d{4})\.(\d{1,2}))\s*$/,
+  );
+  if (!m) return { startDate: '', endDate: '', current: false };
+  const startDate = `${m[1]}-${m[2].padStart(2, '0')}`;
+  if (m[3] === '현재') return { startDate, endDate: '', current: true };
+  const endDate = `${m[4]}-${m[5]!.padStart(2, '0')}`;
+  return { startDate, endDate, current: false };
+}
+
+function formatPeriod(
+  startDate: string,
+  endDate: string,
+  current: boolean,
+): string {
+  if (!startDate) return '';
+  const [sy, sm] = startDate.split('-');
+  const start = `${sy}.${sm}`;
+  if (current) return `${start} - 현재`;
+  if (!endDate) return start;
+  const [ey, em] = endDate.split('-');
+  return `${start} - ${ey}.${em}`;
+}
 
 const EMPTY_CAREER_FORM: Omit<CareerItem, 'id'> = {
   year: '',
   content: '',
 };
+
+// 실무 경험 기간 — 년/월 드롭다운 옵션
+const CURRENT_YEAR = new Date().getFullYear();
+const YEAR_OPTIONS = Array.from(
+  { length: 32 },
+  (_, i) => CURRENT_YEAR + 1 - i, // 최신 연도가 위
+);
+const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1);
+
+/** YYYY-MM 값을 년/월 두 개의 select 로 입력받는 컴포넌트 */
+function YearMonthPicker({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string; // 'YYYY-MM' 또는 ''
+  onChange: (next: string) => void;
+  disabled?: boolean;
+}) {
+  const [year, setYear] = useState(value ? value.split('-')[0] : '');
+  const [month, setMonth] = useState(value ? value.split('-')[1] : '');
+
+  // 외부에서 value 가 바뀌면 (예: 항목 수정으로 폼 로드) 내부 선택 동기화
+  useEffect(() => {
+    setYear(value ? value.split('-')[0] : '');
+    setMonth(value ? value.split('-')[1] : '');
+  }, [value]);
+
+  const emit = (y: string, m: string) => onChange(y && m ? `${y}-${m}` : '');
+
+  const selectClass =
+    'rounded-lg border border-gray-200 bg-white px-2.5 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400';
+
+  return (
+    <div className="inline-flex gap-1.5">
+      <select
+        value={year}
+        onChange={(e) => {
+          setYear(e.target.value);
+          emit(e.target.value, month);
+        }}
+        disabled={disabled}
+        aria-label="년"
+        className={selectClass}
+      >
+        <option value="">년</option>
+        {YEAR_OPTIONS.map((y) => (
+          <option key={y} value={String(y)}>
+            {y}년
+          </option>
+        ))}
+      </select>
+      <select
+        value={month}
+        onChange={(e) => {
+          setMonth(e.target.value);
+          emit(year, e.target.value);
+        }}
+        disabled={disabled}
+        aria-label="월"
+        className={selectClass}
+      >
+        <option value="">월</option>
+        {MONTH_OPTIONS.map((m) => (
+          <option key={m} value={String(m).padStart(2, '0')}>
+            {m}월
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
 
 /** 내 포트폴리오 — 이력서형 페이지 (각 섹션 "+ 추가" 모달에서 통합 관리) */
 export default function MyPortfolioPage() {
@@ -170,7 +282,7 @@ export default function MyPortfolioPage() {
   // 실무 경험 모달 (폼 + 리스트 통합)
   const [expModalOpen, setExpModalOpen] = useState(false);
   const [expEditId, setExpEditId] = useState<number | null>(null);
-  const [expForm, setExpForm] = useState<Omit<Experience, 'id'>>(EMPTY_EXP_FORM);
+  const [expForm, setExpForm] = useState<ExpFormState>(EMPTY_EXP_FORM);
   const [expError, setExpError] = useState('');
 
   // 경력 모달 (폼 + 리스트 통합)
@@ -248,12 +360,14 @@ export default function MyPortfolioPage() {
 
   const loadExpToForm = (exp: Experience) => {
     setExpEditId(exp.id);
+    const parsed = parsePeriod(exp.period);
     setExpForm({
       company: exp.company,
       team: exp.team,
       role: exp.role,
-      period: exp.period,
-      current: exp.current,
+      startDate: parsed.startDate,
+      endDate: parsed.endDate,
+      current: exp.current || parsed.current,
     });
     setExpError('');
   };
@@ -269,11 +383,39 @@ export default function MyPortfolioPage() {
       setExpError('회사명을 입력해주세요.');
       return;
     }
+    if (!expForm.startDate) {
+      setExpError('시작 월을 선택해주세요.');
+      return;
+    }
+    if (!expForm.current && !expForm.endDate) {
+      setExpError('종료 월을 선택하거나 "재직중"을 체크해주세요.');
+      return;
+    }
+    if (
+      !expForm.current &&
+      expForm.endDate &&
+      expForm.endDate < expForm.startDate
+    ) {
+      setExpError('종료 월은 시작 월 이후여야 합니다.');
+      return;
+    }
+    const period = formatPeriod(
+      expForm.startDate,
+      expForm.endDate,
+      expForm.current,
+    );
+    const payload: Omit<Experience, 'id'> = {
+      company: expForm.company,
+      team: expForm.team,
+      role: expForm.role,
+      period,
+      current: expForm.current,
+    };
     const next: Experience[] =
       expEditId === null
-        ? [...experiences, { id: Date.now(), ...expForm }]
+        ? [...experiences, { id: Date.now(), ...payload }]
         : experiences.map((e) =>
-            e.id === expEditId ? { id: e.id, ...expForm } : e,
+            e.id === expEditId ? { id: e.id, ...payload } : e,
           );
     setExperiences(next);
     persist(EXPS_STORAGE_KEY, next);
@@ -775,15 +917,22 @@ export default function MyPortfolioPage() {
                       <label className="mb-2 block text-sm font-medium text-gray-700">
                         기간
                       </label>
-                      <div className="flex items-center gap-4">
-                        <input
-                          type="text"
-                          value={expForm.period}
-                          onChange={(e) =>
-                            setExpForm((f) => ({ ...f, period: e.target.value }))
-                          }
-                          placeholder="예: 2026.03 - 현재"
-                          className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                        <YearMonthPicker
+                          value={expForm.startDate}
+                          onChange={(v) => {
+                            setExpForm((f) => ({ ...f, startDate: v }));
+                            if (expError) setExpError('');
+                          }}
+                        />
+                        <span className="text-sm text-gray-400">~</span>
+                        <YearMonthPicker
+                          value={expForm.current ? '' : expForm.endDate}
+                          onChange={(v) => {
+                            setExpForm((f) => ({ ...f, endDate: v }));
+                            if (expError) setExpError('');
+                          }}
+                          disabled={expForm.current}
                         />
                         <label className="inline-flex items-center gap-2 text-sm text-gray-700">
                           <input
@@ -793,6 +942,7 @@ export default function MyPortfolioPage() {
                               setExpForm((f) => ({
                                 ...f,
                                 current: e.target.checked,
+                                endDate: e.target.checked ? '' : f.endDate,
                               }))
                             }
                             className="h-4 w-4 rounded border-gray-300"

@@ -8,6 +8,7 @@ import {
   type PortfolioItem,
   type PortfolioItemType,
 } from '../page';
+import ProjectInterview from './_interview';
 
 // TODO: 백엔드 연동
 //   - GET    /api/portfolios/:id   로 초기값 로드 (편집 모드)
@@ -41,8 +42,25 @@ const DEFAULT_ITEMS: PortfolioItem[] = [
   },
 ];
 
-/** 포트폴리오 항목 작성/수정 페이지 */
+/** 포트폴리오 항목 작성/수정 페이지
+ *  - 신규 프로젝트(type=project) 추가 시: 대화형 인터뷰 UI (_interview.tsx)
+ *  - 그 외(스터디 등) 또는 기존 항목 편집: 아래 단순 폼
+ */
 export default function PortfolioEditPage() {
+  const searchParams = useSearchParams();
+  const editIdParam = searchParams.get('id');
+  const isEdit = editIdParam !== null && Number.isFinite(Number(editIdParam));
+  const initialTypeParam = searchParams.get('type');
+  const initialType: PortfolioItemType =
+    initialTypeParam && initialTypeParam in TYPE_META
+      ? (initialTypeParam as PortfolioItemType)
+      : 'project';
+
+  if (!isEdit && initialType === 'project') return <ProjectInterview />;
+  return <SimpleForm />;
+}
+
+function SimpleForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editIdParam = searchParams.get('id');

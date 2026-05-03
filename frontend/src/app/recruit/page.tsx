@@ -382,7 +382,7 @@ export default function RecruitListPage() {
       {/* 상단 학교 배경 */}
       <div
   className="flex h-28 flex-col items-center justify-center"
-  style={{ backgroundColor: person.universityColor }}
+  style={{ backgroundColor: person.schoolColor }}
 >
         <p className="font-bold text-white">{person.university}</p>
         <p className="text-xs text-white opacity-70">{person.department}</p>
