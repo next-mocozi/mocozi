@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import api from '@/lib/api';
 import {
   PlatformIcon,
   PLATFORM_META,
@@ -11,12 +13,6 @@ import {
   type PlatformKey,
   type ProfileLink,
 } from '../_platforms';
-
-// TODO: 백엔드 연동
-//   - GET  /api/users/me           로 초기값 로드 (현재는 하드코딩)
-//   - PUT  /api/users/me           로 저장
-//   - POST /api/users/me/links     로 링크 저장
-// (CLAUDE.md §11 TODO)
 
 const ROLE_OPTIONS = [
   '프론트엔드',
@@ -34,22 +30,14 @@ const ROLE_OPTIONS = [
   'PM/PO',
 ];
 
-// 링크 mock 영속화 — view 페이지와 같은 키 사용
 const LINKS_STORAGE_KEY = 'mock_profile_links';
+const ROLES_STORAGE_KEY = 'mock_profile_roles';
 
-const DEFAULT_LINKS: ProfileLink[] = [
-  { id: 1, url: 'https://github.com/honggildong' },
-  { id: 2, url: 'https://linkedin.com/in/honggildong' },
-  { id: 3, url: 'https://honggildong.notion.site' },
-];
-
-// 빠른 추가 (큰 버튼) — GitHub / LinkedIn
 const QUICK_ADD: { key: PlatformKey; prefix: string }[] = [
   { key: 'github', prefix: 'https://github.com/' },
   { key: 'linkedin', prefix: 'https://linkedin.com/in/' },
 ];
 
-// 기타 자동 인식 플랫폼 (작은 칩)
 const OTHER_PLATFORMS: { key: PlatformKey; prefix: string }[] = [
   { key: 'googledrive', prefix: 'https://drive.google.com/' },
   { key: 'youtube', prefix: 'https://youtube.com/@' },
@@ -64,53 +52,68 @@ const OTHER_PLATFORMS: { key: PlatformKey; prefix: string }[] = [
 /** 프로필 수정 페이지 */
 export default function ProfileEditPage() {
   const router = useRouter();
+  const { user, loading } = useAuth();
 
-  // 초기값은 일단 하드코딩 (백엔드 연동 시 GET /api/users/me 응답으로 교체)
-  const [name, setName] = useState('홍길동');
-  const [university, setUniversity] = useState('OO대학교');
-  const [department, setDepartment] = useState('컴퓨터공학과');
-  const [bio, setBio] = useState(
-    '풀스택 개발에 관심이 많은 대학생입니다. 다양한 프로젝트 경험을 쌓고 싶습니다.'
-  );
-  const [mainRole, setMainRole] = useState('풀스택');
-  const [subRoles, setSubRoles] = useState<string[]>(['프론트엔드', '백엔드']);
-  const [skills, setSkills] = useState<string[]>([
-    'React',
-    'TypeScript',
-    'Node.js',
-    'Next.js',
-  ]);
+  const [name, setName] = useState('');
+  const [university, setUniversity] = useState('');
+  const [department, setDepartment] = useState('');
+  const [bio, setBio] = useState('');
+  const [mainRole, setMainRole] = useState('');
+  const [subRoles, setSubRoles] = useState<string[]>([]);
+  const [skills, setSkills] = useState<string[]>([]);
   const [skillInput, setSkillInput] = useState('');
 
-  // ───────── 링크 ─────────
-  const [links, setLinks] = useState<ProfileLink[]>(DEFAULT_LINKS);
+  const [links, setLinks] = useState<ProfileLink[]>([]);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [newUrl, setNewUrl] = useState('');
   const [newLabel, setNewLabel] = useState('');
   const [urlError, setUrlError] = useState('');
   const urlInputRef = useRef<HTMLInputElement>(null);
 
-  // 마운트 시 localStorage에서 기존 링크 로드
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+
+  // API에서 초기값 로드
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(LINKS_STORAGE_KEY);
-      if (raw) setLinks(JSON.parse(raw));
-    } catch {
-      // 파싱 실패 시 기본값 유지
+    if (!user) return;
+    setName(user.name);
+    setUniversity(user.university);
+    setDepartment(user.department);
+    setBio(user.bio ?? '');
+    setSkills(user.skills ?? []);
+  }, [user]);
+
+  // localStorage에서 roles, links 로드
+  useEffect(() => {
+    const loadJson = <T,>(key: string, fallback: T): T => {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? (JSON.parse(raw) as T) : fallback;
+      } catch {
+        return fallback;
+      }
+    };
+    const roles = loadJson<{ mainRole: string; subRoles: string[] } | null>(
+      ROLES_STORAGE_KEY,
+      null,
+    );
+    if (roles) {
+      setMainRole(roles.mainRole);
+      setSubRoles(roles.subRoles);
     }
+    setLinks(loadJson(LINKS_STORAGE_KEY, [] as ProfileLink[]));
   }, []);
 
   const toggleSubRole = (role: string) => {
     if (role === mainRole) return;
     setSubRoles((prev) =>
-      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]
+      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role],
     );
   };
 
   const addSkill = () => {
     const v = skillInput.trim();
-    if (!v) return;
-    if (skills.includes(v)) {
+    if (!v || skills.includes(v)) {
       setSkillInput('');
       return;
     }
@@ -118,11 +121,8 @@ export default function ProfileEditPage() {
     setSkillInput('');
   };
 
-  const removeSkill = (s: string) => {
-    setSkills((prev) => prev.filter((x) => x !== s));
-  };
+  const removeSkill = (s: string) => setSkills((prev) => prev.filter((x) => x !== s));
 
-  // 링크 핸들러
   const resetLinkForm = () => {
     setNewUrl('');
     setNewLabel('');
@@ -139,72 +139,56 @@ export default function ProfileEditPage() {
     setUrlError('');
     setTimeout(() => {
       urlInputRef.current?.focus();
-      const len = prefix.length;
-      urlInputRef.current?.setSelectionRange(len, len);
+      urlInputRef.current?.setSelectionRange(prefix.length, prefix.length);
     }, 0);
   };
 
   const previewKey: PlatformKey | null = (() => {
     if (!newUrl.trim()) return null;
-    try {
-      new URL(newUrl);
-    } catch {
-      return null;
-    }
+    try { new URL(newUrl); } catch { return null; }
     return detectPlatform(newUrl);
   })();
 
   const handleAddLink = () => {
     const url = newUrl.trim();
-    if (!url) {
-      setUrlError('URL을 입력해주세요.');
-      return;
-    }
-    try {
-      new URL(url);
-    } catch {
+    if (!url) { setUrlError('URL을 입력해주세요.'); return; }
+    try { new URL(url); } catch {
       setUrlError('올바른 URL 형식이 아닙니다. (예: https://example.com)');
       return;
     }
-    if (links.some((l) => l.url === url)) {
-      setUrlError('이미 추가된 URL입니다.');
-      return;
-    }
+    if (links.some((l) => l.url === url)) { setUrlError('이미 추가된 URL입니다.'); return; }
     const newKey = detectPlatform(url);
-    if (
-      newKey !== 'website' &&
-      links.some((l) => detectPlatform(l.url) === newKey)
-    ) {
-      setUrlError(
-        `이미 ${PLATFORM_META[newKey].label} 링크가 등록되어 있어요. 한 플랫폼당 하나만 추가할 수 있습니다.`
-      );
+    if (newKey !== 'website' && links.some((l) => detectPlatform(l.url) === newKey)) {
+      setUrlError(`이미 ${PLATFORM_META[newKey].label} 링크가 등록되어 있어요.`);
       return;
     }
-    setLinks((prev) => [
-      ...prev,
-      { id: Date.now(), url, label: newLabel.trim() || undefined },
-    ]);
+    setLinks((prev) => [...prev, { id: Date.now(), url, label: newLabel.trim() || undefined }]);
     resetLinkForm();
     setIsAddOpen(false);
   };
 
-  const handleRemoveLink = (id: number) => {
-    setLinks((prev) => prev.filter((l) => l.id !== id));
+  const handleRemoveLink = (id: number) => setLinks((prev) => prev.filter((l) => l.id !== id));
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveError('');
+    try {
+      await api.put('/api/users/me', { name, university, department, bio, skills });
+      localStorage.setItem(LINKS_STORAGE_KEY, JSON.stringify(links));
+      localStorage.setItem(ROLES_STORAGE_KEY, JSON.stringify({ mainRole, subRoles }));
+      router.push('/profile');
+    } catch {
+      setSaveError('저장에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleSave = () => {
-    // TODO: PUT /api/users/me 호출 (현재는 mock 저장 후 바로 이동)
-    try {
-      localStorage.setItem(LINKS_STORAGE_KEY, JSON.stringify(links));
-    } catch {
-      // 저장 실패해도 이동은 진행
-    }
-    router.push('/profile');
-  };
+  if (loading) return <div className="flex min-h-screen items-center justify-center">로딩 중...</div>;
+  if (!user) return null;
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
-      {/* 헤더 */}
       <div className="mb-6 flex items-center justify-between">
         <div>
           <Link
@@ -255,9 +239,7 @@ export default function ProfileEditPage() {
 
         {/* 한줄 소개 */}
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">
-            한줄 소개
-          </label>
+          <label className="mb-1 block text-sm font-medium text-gray-700">한줄 소개</label>
           <textarea
             value={bio}
             onChange={(e) => setBio(e.target.value)}
@@ -268,9 +250,7 @@ export default function ProfileEditPage() {
 
         {/* 메인 직군 */}
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">
-            메인 직군
-          </label>
+          <label className="mb-2 block text-sm font-medium text-gray-700">메인 직군</label>
           <div className="flex flex-wrap gap-2">
             {ROLE_OPTIONS.map((role) => (
               <button
@@ -296,9 +276,7 @@ export default function ProfileEditPage() {
         <div>
           <label className="mb-2 block text-sm font-medium text-gray-700">
             서브 직군{' '}
-            <span className="text-xs font-normal text-gray-400">
-              (다중 선택 가능, 메인 직군 제외)
-            </span>
+            <span className="text-xs font-normal text-gray-400">(다중 선택 가능, 메인 직군 제외)</span>
           </label>
           <div className="flex flex-wrap gap-2">
             {ROLE_OPTIONS.filter((r) => r !== mainRole).map((role) => (
@@ -320,20 +298,13 @@ export default function ProfileEditPage() {
 
         {/* 기술 스택 */}
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">
-            기술 스택
-          </label>
+          <label className="mb-2 block text-sm font-medium text-gray-700">기술 스택</label>
           <div className="mb-2 flex gap-2">
             <input
               type="text"
               value={skillInput}
               onChange={(e) => setSkillInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  addSkill();
-                }
-              }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSkill(); } }}
               placeholder="기술명 입력 후 Enter (예: React)"
               className="flex-1 rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
             />
@@ -348,19 +319,9 @@ export default function ProfileEditPage() {
           {skills.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {skills.map((s) => (
-                <span
-                  key={s}
-                  className="inline-flex items-center gap-1 rounded bg-blue-50 px-2 py-1 text-xs text-blue-600"
-                >
+                <span key={s} className="inline-flex items-center gap-1 rounded bg-blue-50 px-2 py-1 text-xs text-blue-600">
                   {s}
-                  <button
-                    type="button"
-                    onClick={() => removeSkill(s)}
-                    className="text-blue-400 hover:text-blue-700"
-                    aria-label={`${s} 제거`}
-                  >
-                    ✕
-                  </button>
+                  <button type="button" onClick={() => removeSkill(s)} className="text-blue-400 hover:text-blue-700" aria-label={`${s} 제거`}>✕</button>
                 </span>
               ))}
             </div>
@@ -387,10 +348,7 @@ export default function ProfileEditPage() {
                 const key = detectPlatform(link.url);
                 const meta = PLATFORM_META[key];
                 return (
-                  <div
-                    key={link.id}
-                    className={`group inline-flex items-center gap-2 rounded-full pl-3 pr-1 py-1 text-sm shadow-sm transition-all hover:shadow-md ${meta.bg} ${meta.text}`}
-                  >
+                  <div key={link.id} className={`group inline-flex items-center gap-2 rounded-full pl-3 pr-1 py-1 text-sm shadow-sm ${meta.bg} ${meta.text}`}>
                     <span className="inline-flex items-center gap-2 py-1">
                       <PlatformIcon k={key} className="h-4 w-4" />
                       <span className="font-medium">{getDisplayLabel(link, key)}</span>
@@ -412,50 +370,39 @@ export default function ProfileEditPage() {
       </div>
 
       {/* 액션 */}
-      <div className="mt-6 flex justify-end gap-2">
-        <Link
-          href="/profile"
-          className="rounded-full border border-gray-200 px-6 py-2.5 text-sm text-gray-600 hover:bg-gray-50"
-        >
-          취소
-        </Link>
-        <button
-          onClick={handleSave}
-          className="rounded-full bg-blue-600 px-6 py-2.5 text-sm text-white shadow-md hover:bg-blue-700"
-        >
-          저장
-        </button>
+      <div className="mt-6 flex flex-col items-end gap-2">
+        {saveError && <p className="text-sm text-red-500">{saveError}</p>}
+        <div className="flex gap-2">
+          <Link
+            href="/profile"
+            className="rounded-full border border-gray-200 px-6 py-2.5 text-sm text-gray-600 hover:bg-gray-50"
+          >
+            취소
+          </Link>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="rounded-full bg-blue-600 px-6 py-2.5 text-sm text-white shadow-md hover:bg-blue-700 disabled:opacity-60"
+          >
+            {saving ? '저장 중...' : '저장'}
+          </button>
+        </div>
       </div>
 
       {/* 링크 추가 모달 */}
       {isAddOpen && (
-        <div
-          onClick={() => setIsAddOpen(false)}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
-          >
+        <div onClick={() => setIsAddOpen(false)} className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-bold">링크 추가</h2>
-              <button
-                onClick={() => setIsAddOpen(false)}
-                className="text-gray-400 hover:text-gray-600"
-                aria-label="닫기"
-              >
-                ✕
-              </button>
+              <button onClick={() => setIsAddOpen(false)} className="text-gray-400 hover:text-gray-600" aria-label="닫기">✕</button>
             </div>
 
-            {/* 빠른 추가 */}
             <div className="mb-4">
               <p className="mb-2 text-sm font-medium text-gray-700">빠른 추가</p>
               <div className="flex gap-2">
                 {QUICK_ADD.map((q) => {
-                  const alreadyAdded = links.some(
-                    (l) => detectPlatform(l.url) === q.key
-                  );
+                  const alreadyAdded = links.some((l) => detectPlatform(l.url) === q.key);
                   const meta = PLATFORM_META[q.key];
                   return (
                     <button
@@ -463,40 +410,23 @@ export default function ProfileEditPage() {
                       type="button"
                       onClick={() => handleQuickAdd(q.prefix)}
                       disabled={alreadyAdded}
-                      title={
-                        alreadyAdded ? '이미 추가됨' : `${meta.label} URL 자동 채우기`
-                      }
-                      className={`group flex flex-1 flex-col items-center gap-1.5 rounded-xl border p-3 transition-all ${
-                        alreadyAdded
-                          ? 'cursor-not-allowed border-gray-100 opacity-40'
-                          : 'border-gray-100 hover:border-blue-300 hover:bg-blue-50'
-                      }`}
+                      className={`group flex flex-1 flex-col items-center gap-1.5 rounded-xl border p-3 transition-all ${alreadyAdded ? 'cursor-not-allowed border-gray-100 opacity-40' : 'border-gray-100 hover:border-blue-300 hover:bg-blue-50'}`}
                     >
-                      <span
-                        className={`flex h-10 w-10 items-center justify-center rounded-full ${meta.bg} ${meta.text}`}
-                      >
+                      <span className={`flex h-10 w-10 items-center justify-center rounded-full ${meta.bg} ${meta.text}`}>
                         <PlatformIcon k={q.key} className="h-5 w-5" />
                       </span>
-                      <span className="text-xs font-medium text-gray-700">
-                        {meta.label}
-                      </span>
+                      <span className="text-xs font-medium text-gray-700">{meta.label}</span>
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* 기타 자동 인식 플랫폼 */}
             <div className="mb-4 rounded-xl bg-gray-50 p-3">
-              <p className="mb-2 text-xs text-gray-600">
-                <span className="font-medium">기타 플랫폼</span> — 클릭하거나 URL을
-                붙여넣으면 자동 인식돼요
-              </p>
+              <p className="mb-2 text-xs text-gray-600"><span className="font-medium">기타 플랫폼</span> — 클릭하거나 URL을 붙여넣으면 자동 인식돼요</p>
               <div className="flex flex-wrap gap-1.5">
                 {OTHER_PLATFORMS.map((p) => {
-                  const alreadyAdded = links.some(
-                    (l) => detectPlatform(l.url) === p.key
-                  );
+                  const alreadyAdded = links.some((l) => detectPlatform(l.url) === p.key);
                   const meta = PLATFORM_META[p.key];
                   return (
                     <button
@@ -504,82 +434,47 @@ export default function ProfileEditPage() {
                       type="button"
                       onClick={() => handleQuickAdd(p.prefix)}
                       disabled={alreadyAdded}
-                      title={
-                        alreadyAdded ? '이미 추가됨' : `${meta.label} URL 자동 채우기`
-                      }
-                      className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs transition-all ${
-                        alreadyAdded
-                          ? 'cursor-not-allowed bg-gray-200 text-gray-400'
-                          : 'bg-white text-gray-700 shadow-sm ring-1 ring-gray-200 hover:scale-105 hover:shadow-md'
-                      }`}
+                      className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs transition-all ${alreadyAdded ? 'cursor-not-allowed bg-gray-200 text-gray-400' : 'bg-white text-gray-700 shadow-sm ring-1 ring-gray-200 hover:scale-105 hover:shadow-md'}`}
                     >
-                      <span
-                        className={`flex h-4 w-4 items-center justify-center rounded-full ${
-                          alreadyAdded ? '' : `${meta.bg} ${meta.text}`
-                        }`}
-                      >
+                      <span className={`flex h-4 w-4 items-center justify-center rounded-full ${alreadyAdded ? '' : `${meta.bg} ${meta.text}`}`}>
                         <PlatformIcon k={p.key} className="h-2.5 w-2.5" />
                       </span>
                       <span className="font-medium">{meta.label}</span>
                     </button>
                   );
                 })}
-                <span
-                  className="flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs text-gray-500 ring-1 ring-gray-200"
-                  title="그 외 모든 웹사이트도 추가 가능"
-                >
-                  <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-white">
-                    <PlatformIcon k="website" className="h-2.5 w-2.5" />
-                  </span>
-                  <span>그 외 일반 사이트</span>
-                </span>
               </div>
             </div>
 
-            {/* 구분선 */}
             <div className="mb-4 flex items-center gap-2 text-xs text-gray-400">
               <div className="h-px flex-1 bg-gray-200" />
               <span>또는 URL 직접 입력</span>
               <div className="h-px flex-1 bg-gray-200" />
             </div>
 
-            {/* URL */}
             <label className="mb-1 block text-sm font-medium text-gray-700">URL</label>
             <input
               ref={urlInputRef}
               type="url"
               value={newUrl}
-              onChange={(e) => {
-                setNewUrl(e.target.value);
-                if (urlError) setUrlError('');
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleAddLink();
-              }}
+              onChange={(e) => { setNewUrl(e.target.value); if (urlError) setUrlError(''); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleAddLink(); }}
               placeholder="https://github.com/your-id"
-              className={`mb-1 w-full rounded-lg border px-4 py-2 text-sm outline-none focus:ring-2 ${
-                urlError
-                  ? 'border-red-300 focus:border-red-400 focus:ring-red-100'
-                  : 'border-gray-200 focus:border-blue-400 focus:ring-blue-100'
-              }`}
+              className={`mb-1 w-full rounded-lg border px-4 py-2 text-sm outline-none focus:ring-2 ${urlError ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : 'border-gray-200 focus:border-blue-400 focus:ring-blue-100'}`}
               autoFocus
             />
             {urlError && <p className="mb-2 text-xs text-red-500">{urlError}</p>}
 
-            {/* 자동 감지 미리보기 */}
             {previewKey && (
               <div className="mb-4 mt-2 flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600">
                 <span>자동 감지:</span>
-                <span
-                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 ${PLATFORM_META[previewKey].bg} ${PLATFORM_META[previewKey].text}`}
-                >
+                <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 ${PLATFORM_META[previewKey].bg} ${PLATFORM_META[previewKey].text}`}>
                   <PlatformIcon k={previewKey} className="h-3.5 w-3.5" />
                   <span className="font-medium">{PLATFORM_META[previewKey].label}</span>
                 </span>
               </div>
             )}
 
-            {/* 라벨 */}
             <label className="mb-1 mt-2 block text-sm font-medium text-gray-700">
               라벨 <span className="text-xs font-normal text-gray-400">(선택)</span>
             </label>
@@ -587,30 +482,15 @@ export default function ProfileEditPage() {
               type="text"
               value={newLabel}
               onChange={(e) => setNewLabel(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleAddLink();
-              }}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleAddLink(); }}
               placeholder="예: 개인 포트폴리오 사이트"
               className="mb-1 w-full rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
             />
-            <p className="mb-4 text-xs text-gray-400">
-              비우면 플랫폼 이름이 표시됩니다.
-            </p>
+            <p className="mb-4 text-xs text-gray-400">비우면 플랫폼 이름이 표시됩니다.</p>
 
-            {/* 액션 */}
             <div className="flex gap-2">
-              <button
-                onClick={() => setIsAddOpen(false)}
-                className="flex-1 rounded-full border border-gray-200 py-2.5 text-sm text-gray-600 hover:bg-gray-50"
-              >
-                취소
-              </button>
-              <button
-                onClick={handleAddLink}
-                className="flex-1 rounded-full bg-blue-600 py-2.5 text-sm text-white shadow-md hover:bg-blue-700"
-              >
-                추가
-              </button>
+              <button onClick={() => setIsAddOpen(false)} className="flex-1 rounded-full border border-gray-200 py-2.5 text-sm text-gray-600 hover:bg-gray-50">취소</button>
+              <button onClick={handleAddLink} className="flex-1 rounded-full bg-blue-600 py-2.5 text-sm text-white shadow-md hover:bg-blue-700">추가</button>
             </div>
           </div>
         </div>

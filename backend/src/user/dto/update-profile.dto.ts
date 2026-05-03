@@ -7,6 +7,16 @@ export class UpdateProfileDto {
   @IsString()
   name?: string;
 
+  /** 학교 */
+  @IsOptional()
+  @IsString()
+  university?: string;
+
+  /** 학과 */
+  @IsOptional()
+  @IsString()
+  department?: string;
+
   /** 자기소개 */
   @IsOptional()
   @IsString()

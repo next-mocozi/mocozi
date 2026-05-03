@@ -1,6 +1,5 @@
 import axios from 'axios';
 
-/** API 클라이언트 인스턴스 */
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080',
   headers: {
@@ -8,7 +7,6 @@ const api = axios.create({
   },
 });
 
-/** 요청 인터셉터 - JWT 토큰 자동 첨부 */
 api.interceptors.request.use(
   (config) => {
     if (typeof window !== 'undefined') {
@@ -22,17 +20,75 @@ api.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
-/** 응답 인터셉터 - 인증 만료 처리 */
+// 토큰 갱신 중복 방지 플래그
+let isRefreshing = false;
+// 갱신 대기 중인 요청들
+let waitingQueue: Array<{
+  resolve: (token: string) => void;
+  reject: (err: unknown) => void;
+}> = [];
+
+const flushQueue = (token: string | null, err: unknown = null) => {
+  waitingQueue.forEach(({ resolve, reject }) => {
+    if (token) resolve(token);
+    else reject(err);
+  });
+  waitingQueue = [];
+};
+
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // 토큰 만료 시 로그인 페이지로 리다이렉트
-      if (typeof window !== 'undefined') {
+  async (error) => {
+    const original = error.config;
+
+    // refresh 엔드포인트 자체가 401이면 즉시 로그아웃 (무한루프 방지)
+    if (error.response?.status === 401 && original.url?.includes('/auth/refresh')) {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      window.location.href = '/login';
+      return Promise.reject(error);
+    }
+
+    if (error.response?.status === 401 && !original._retry) {
+      original._retry = true;
+
+      const refreshToken = localStorage.getItem('refreshToken');
+      if (!refreshToken) {
         localStorage.removeItem('accessToken');
         window.location.href = '/login';
+        return Promise.reject(error);
+      }
+
+      if (isRefreshing) {
+        // 이미 갱신 중이면 대기열에 추가
+        return new Promise((resolve, reject) => {
+          waitingQueue.push({ resolve, reject });
+        }).then((token) => {
+          original.headers.Authorization = `Bearer ${token}`;
+          return api(original);
+        });
+      }
+
+      isRefreshing = true;
+      try {
+        const res = await api.post('/api/auth/refresh', { refreshToken });
+        const { accessToken } = res.data.data;
+        localStorage.setItem('accessToken', accessToken);
+        api.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
+        flushQueue(accessToken);
+        original.headers.Authorization = `Bearer ${accessToken}`;
+        return api(original);
+      } catch (refreshError) {
+        flushQueue(null, refreshError);
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
       }
     }
+
     return Promise.reject(error);
   },
 );

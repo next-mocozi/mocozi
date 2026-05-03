@@ -47,6 +47,7 @@ export class AuthService {
       verificationToken: user.verificationToken, // TODO: 이메일 발송 구현 후 제거
     };
   }
+
   async login(loginDto: LoginDto) {
     const { email, password } = loginDto;
     const user = await this.prisma.user.findUnique({ where: { email } });
@@ -60,19 +61,50 @@ export class AuthService {
     if (!user.emailVerified) {
       throw new UnauthorizedException('이메일 인증이 필요합니다.');
     }
-    
-    const payload = {sub: user.id, email: user.email};
-    const token = this.jwtService.sign(payload);
+
+    const payload = { sub: user.id, email: user.email };
+    const accessToken = this.jwtService.sign(payload);
+    const refreshToken = uuidv4();
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { refreshToken },
+    });
+
     return {
-      accessToken: token,
+      accessToken,
+      refreshToken,
       user: {
         id: user.id,
         email: user.email,
         name: user.name,
       },
-      message: '로그인에 성공하였습니다.'
-  };
+      message: '로그인에 성공하였습니다.',
+    };
   }
+
+  async refresh(refreshToken: string) {
+    const user = await this.prisma.user.findFirst({
+      where: { refreshToken },
+    });
+    if (!user) {
+      throw new UnauthorizedException('유효하지 않은 리프레시 토큰입니다.');
+    }
+
+    const payload = { sub: user.id, email: user.email };
+    const accessToken = this.jwtService.sign(payload);
+
+    return { accessToken };
+  }
+
+  async logout(userId: string) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { refreshToken: null },
+    });
+    return { message: '로그아웃되었습니다.' };
+  }
+
   async verifyEmail(token: string) {
     const user = await this.prisma.user.findFirst({ where: { verificationToken: token } });
     if (!user) {

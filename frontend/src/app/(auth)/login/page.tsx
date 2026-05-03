@@ -17,7 +17,7 @@ export default function LoginPage() {
     e.preventDefault();
     try {
       await login(email, password);
-      router.push('/profile');
+      router.push('/');
     } catch {
       setError('이메일 또는 비밀번호가 올바르지 않습니다.');
     }

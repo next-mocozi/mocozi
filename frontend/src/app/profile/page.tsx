@@ -22,22 +22,9 @@ const CAREERS_STORAGE_KEY = 'mock_portfolio_career_items';
 const ITEMS_STORAGE_KEY = 'mock_portfolio_items';
 const PROFILE_SECTIONS_KEY = 'mock_profile_portfolio_sections';
 
-const DEFAULT_LINKS: ProfileLink[] = [
-  { id: 1, url: 'https://github.com/honggildong' },
-  { id: 2, url: 'https://linkedin.com/in/honggildong' },
-  { id: 3, url: 'https://honggildong.notion.site' },
-];
+const DEFAULT_LINKS: ProfileLink[] = [];
 
-const MOCK_PROFILE = {
-  name: '홍길동',
-  university: 'OO대학교',
-  department: '컴퓨터공학과',
-  bio:
-    '풀스택 개발에 관심이 많은 대학생입니다. 다양한 프로젝트 경험을 쌓고 싶습니다.',
-  mainRole: '풀스택',
-  subRoles: ['프론트엔드', '백엔드'],
-  skills: ['React', 'TypeScript', 'Node.js', 'Next.js'],
-};
+const ROLES_STORAGE_KEY = 'mock_profile_roles';
 
 // /portfolio 페이지와 같은 형태 — 단순 표시 용도라 import 없이 정의
 type Experience = {
@@ -118,6 +105,10 @@ export default function MyProfilePage() {
   const { user, loading } = useAuth();
   const [links, setLinks] = useState<ProfileLink[]>(DEFAULT_LINKS);
 
+  // 직군 (edit 페이지에서 localStorage에 저장)
+  const [mainRole, setMainRole] = useState('');
+  const [subRoles, setSubRoles] = useState<string[]>([]);
+
   // 포트폴리오에서 가져온 데이터
   const [intro, setIntro] = useState('');
   const [experiences, setExperiences] = useState<Experience[]>([]);
@@ -142,7 +133,15 @@ export default function MyProfilePage() {
         return fallback;
       }
     };
-    setLinks(loadJson(LINKS_STORAGE_KEY, DEFAULT_LINKS));
+    setLinks(loadJson(LINKS_STORAGE_KEY, [] as ProfileLink[]));
+    const roles = loadJson<{ mainRole: string; subRoles: string[] } | null>(
+      ROLES_STORAGE_KEY,
+      null,
+    );
+    if (roles) {
+      setMainRole(roles.mainRole);
+      setSubRoles(roles.subRoles);
+    }
     setExperiences(loadJson(EXPS_STORAGE_KEY, [] as Experience[]));
     setCareers(loadJson(CAREERS_STORAGE_KEY, [] as CareerItem[]));
     setItems(loadJson(ITEMS_STORAGE_KEY, [] as PortfolioItem[]));
@@ -228,26 +227,32 @@ export default function MyProfilePage() {
             <p className="text-gray-600">
               {user.university} {user.department}
             </p>
-            <p className="mt-2 text-sm text-gray-500">{user.bio}</p>
+            {user.bio && (
+              <p className="mt-2 text-sm text-gray-500">{user.bio}</p>
+            )}
 
             {/* 직군 */}
-            <div className="mt-3 flex flex-wrap items-center gap-1">
-              <span className="inline-flex items-center justify-center rounded-full bg-blue-600 px-3 py-1 text-xs leading-none text-white">
-                {MOCK_PROFILE.mainRole}
-              </span>
-              {MOCK_PROFILE.subRoles.map((role) => (
-                <span
-                  key={role}
-                  className="inline-flex items-center justify-center rounded-full border border-blue-200 px-3 py-1 text-xs leading-none text-blue-600"
-                >
-                  {role}
-                </span>
-              ))}
-            </div>
+            {(mainRole || subRoles.length > 0) && (
+              <div className="mt-3 flex flex-wrap items-center gap-1">
+                {mainRole && (
+                  <span className="inline-flex items-center justify-center rounded-full bg-blue-600 px-3 py-1 text-xs leading-none text-white">
+                    {mainRole}
+                  </span>
+                )}
+                {subRoles.map((role) => (
+                  <span
+                    key={role}
+                    className="inline-flex items-center justify-center rounded-full border border-blue-200 px-3 py-1 text-xs leading-none text-blue-600"
+                  >
+                    {role}
+                  </span>
+                ))}
+              </div>
+            )}
 
             {/* 기술 스택 */}
             <div className="mt-2 flex flex-wrap gap-1">
-              {user.skills.map((skill) => (
+              {(user.skills ?? []).map((skill) => (
                 <span
                   key={skill}
                   className="rounded bg-blue-50 px-2 py-1 text-xs text-blue-600"
@@ -437,7 +442,7 @@ export default function MyProfilePage() {
                       return (
                         <Link
                           key={item.id}
-                          href={`/portfolio/${item.id}`}
+                          href="/portfolio"
                           className="block rounded-xl border border-gray-100 p-3 transition-all hover:border-blue-200 hover:shadow-sm"
                         >
                           <div className="mb-2 flex flex-wrap items-center gap-2">
