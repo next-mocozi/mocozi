@@ -18,7 +18,7 @@ export default function RegisterPage() {
     grade: '',
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
@@ -148,15 +148,20 @@ export default function RegisterPage() {
             <label className="mb-1 block text-sm font-medium text-gray-700">
               학년
             </label>
-            <input
-              type="text"
+            <select
               name="grade"
               value={form.grade}
               onChange={handleChange}
-              placeholder="예: 2학년"
               className="input-field"
               required
-            />
+            >
+              <option value="">선택</option>
+              <option value="1">1학년</option>
+              <option value="2">2학년</option>
+              <option value="3">3학년</option>
+              <option value="4">4학년</option>
+              <option value="대학원">대학원</option>
+            </select>
           </div>
 
           <button type="submit" className="btn-primary w-full py-3">

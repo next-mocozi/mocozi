@@ -226,6 +226,11 @@ export default function MyProfilePage() {
             </div>
             <p className="text-gray-600">
               {user.university} {user.department}
+              {user.grade && (
+                <span className="ml-1 text-sm text-gray-400">
+                  · {/^\d+$/.test(user.grade) ? `${user.grade}학년` : user.grade}
+                </span>
+              )}
             </p>
             {user.bio && (
               <p className="mt-2 text-sm text-gray-500">{user.bio}</p>

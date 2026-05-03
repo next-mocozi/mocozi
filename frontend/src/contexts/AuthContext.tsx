@@ -10,6 +10,7 @@ export interface AuthUser {
   name: string;
   university: string;
   department: string;
+  grade: string | null;
   bio: string | null;
   skills: string[];
   careerSummary: string | null;
@@ -20,6 +21,7 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<AuthUser>;
   logout: () => void;
+  refreshUser: () => Promise<void>;
   isAuthenticated: boolean;
 }
 
@@ -52,6 +54,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return userData;
   };
 
+  const refreshUser = async () => {
+    const res = await api.get('/api/users/me');
+    setUser(res.data.data);
+  };
+
   const logout = async () => {
     try {
       await logoutApi();
@@ -66,7 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, login, logout, isAuthenticated: !!user }}
+      value={{ user, loading, login, logout, refreshUser, isAuthenticated: !!user }}
     >
       {children}
     </AuthContext.Provider>

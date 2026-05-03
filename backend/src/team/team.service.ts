@@ -65,18 +65,18 @@ export class TeamService {
   async getTeams() {
     return this.prisma.team.findMany({
       include: {
-        leader: {
-          select: {
-            name: true,
-          }
-        },
+        leader: { select: { id: true, name: true } },
         proposal: {
           select: {
             projectName: true,
             overview: true,
-          }
-        }
-      }
+            recruitingRoles: true,
+            requiredSkills: true,
+          },
+        },
+        _count: { select: { members: true } },
+      },
+      orderBy: { createdAt: 'desc' },
     });
   }
 

@@ -51,12 +51,15 @@ enum TeamType {
   
 // 팀 모델
 model Team {
-  id        String   @id @default(uuid())
-  name      String   @unique
-  leaderId  String
-  teamType  TeamType
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(uuid())
+  name         String   @unique
+  leaderId     String
+  teamType     TeamType
+  description  String?
+  maxMembers   Int?
+  isRecruiting Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   // 관계
   leader      User         @relation("TeamLeader", fields: [leaderId], references: [id])

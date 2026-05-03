@@ -78,6 +78,12 @@ export class AuthService {
         id: user.id,
         email: user.email,
         name: user.name,
+        university: user.university,
+        department: user.department,
+        grade: user.grade,
+        bio: user.bio,
+        skills: user.skills,
+        careerSummary: user.careerSummary,
       },
       message: '로그인에 성공하였습니다.',
     };

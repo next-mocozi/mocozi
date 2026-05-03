@@ -17,6 +17,7 @@ export class UserService {
         name: true,
         university: true,
         department: true,
+        grade: true,
         role: true,
         profileImage: true,
         bio: true,

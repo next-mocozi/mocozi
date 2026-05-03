@@ -52,11 +52,12 @@ const OTHER_PLATFORMS: { key: PlatformKey; prefix: string }[] = [
 /** 프로필 수정 페이지 */
 export default function ProfileEditPage() {
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user, loading, refreshUser } = useAuth();
 
   const [name, setName] = useState('');
   const [university, setUniversity] = useState('');
   const [department, setDepartment] = useState('');
+  const [grade, setGrade] = useState('');
   const [bio, setBio] = useState('');
   const [mainRole, setMainRole] = useState('');
   const [subRoles, setSubRoles] = useState<string[]>([]);
@@ -76,9 +77,10 @@ export default function ProfileEditPage() {
   // API에서 초기값 로드
   useEffect(() => {
     if (!user) return;
-    setName(user.name);
-    setUniversity(user.university);
-    setDepartment(user.department);
+    setName(user.name ?? '');
+    setUniversity(user.university ?? '');
+    setDepartment(user.department ?? '');
+    setGrade(user.grade ?? '');
     setBio(user.bio ?? '');
     setSkills(user.skills ?? []);
   }, [user]);
@@ -173,9 +175,10 @@ export default function ProfileEditPage() {
     setSaving(true);
     setSaveError('');
     try {
-      await api.put('/api/users/me', { name, university, department, bio, skills });
+      await api.put('/api/users/me', { name, university, department, grade, bio, skills });
       localStorage.setItem(LINKS_STORAGE_KEY, JSON.stringify(links));
       localStorage.setItem(ROLES_STORAGE_KEY, JSON.stringify({ mainRole, subRoles }));
+      await refreshUser();
       router.push('/profile');
     } catch {
       setSaveError('저장에 실패했습니다. 다시 시도해주세요.');
@@ -213,8 +216,8 @@ export default function ProfileEditPage() {
           />
         </div>
 
-        {/* 학교 / 학과 */}
-        <div className="grid gap-4 md:grid-cols-2">
+        {/* 학교 / 학과 / 학년 */}
+        <div className="grid gap-4 md:grid-cols-3">
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">학교</label>
             <input
@@ -234,6 +237,21 @@ export default function ProfileEditPage() {
               placeholder="예: 컴퓨터공학과"
               className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
             />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">학년</label>
+            <select
+              value={grade}
+              onChange={(e) => setGrade(e.target.value)}
+              className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+            >
+              <option value="">선택</option>
+              <option value="1">1학년</option>
+              <option value="2">2학년</option>
+              <option value="3">3학년</option>
+              <option value="4">4학년</option>
+              <option value="대학원">대학원</option>
+            </select>
           </div>
         </div>
 

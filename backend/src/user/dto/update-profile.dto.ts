@@ -17,6 +17,11 @@ export class UpdateProfileDto {
   @IsString()
   department?: string;
 
+  /** 학년 */
+  @IsOptional()
+  @IsString()
+  grade?: string;
+
   /** 자기소개 */
   @IsOptional()
   @IsString()
