@@ -155,6 +155,15 @@ export default function ApplicationsPage({
                   </button>
                 </div>
               )}
+              {app.status === 'ACCEPTED' && (
+                <button
+                  onClick={() => updateStatus(app.id, 'ACCEPTED')}
+                  disabled={processing === app.id}
+                  className="w-full rounded-full border border-blue-200 py-2 text-sm text-blue-600 hover:bg-blue-50 disabled:opacity-60"
+                >
+                  팀원 재등록
+                </button>
+              )}
             </div>
           ))}
         </div>
