@@ -9,6 +9,10 @@ interface AuthUser {
   email: string;
   name: string;
   university: string;
+  department: string;
+  bio: string | null;
+  skills: string[];
+  careerSummary: string | null;
 }
 
 /** 인증 훅 - 로그인/로그아웃/사용자 상태 관리 */

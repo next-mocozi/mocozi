@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import {
   PlatformIcon,
   PLATFORM_META,
@@ -52,7 +53,7 @@ const MOCK_PROFILE = {
 
 /** 내 프로필 페이지 (보기 전용 — 수정은 /profile/edit) */
 export default function MyProfilePage() {
-  const profile = MOCK_PROFILE;
+  const { user, loading } = useAuth();
   const [links, setLinks] = useState<ProfileLink[]>(DEFAULT_LINKS);
 
   // edit 페이지에서 저장한 링크가 있으면 그걸로 표시
@@ -65,6 +66,9 @@ export default function MyProfilePage() {
     }
   }, []);
 
+  if (loading) return <div className="flex min-h-screen items-center justify-center">로딩 중...</div>;
+  if (!user) return null;
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
       {/* 프로필 요약 */}
@@ -75,19 +79,19 @@ export default function MyProfilePage() {
           </div>
           <div className="flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold">{profile.name}</h1>
+              <h1 className="text-2xl font-bold">{user.name}</h1>
             </div>
             <p className="text-gray-600">
-              {profile.university} {profile.department}
+              {user.university} {user.department}
             </p>
-            <p className="mt-2 text-sm text-gray-500">{profile.bio}</p>
+            <p className="mt-2 text-sm text-gray-500">{user.bio}</p>
 
             {/* 직군 */}
             <div className="mt-3 flex flex-wrap items-center gap-1">
               <span className="inline-flex items-center justify-center rounded-full bg-blue-600 px-3 py-1 text-xs leading-none text-white">
-                {profile.mainRole}
+                {MOCK_PROFILE.mainRole}
               </span>
-              {profile.subRoles.map((role) => (
+              {MOCK_PROFILE.subRoles.map((role) => (
                 <span
                   key={role}
                   className="inline-flex items-center justify-center rounded-full border border-blue-200 px-3 py-1 text-xs leading-none text-blue-600"
@@ -99,7 +103,7 @@ export default function MyProfilePage() {
 
             {/* 기술 스택 */}
             <div className="mt-2 flex flex-wrap gap-1">
-              {profile.skills.map((skill) => (
+              {user.skills.map((skill) => (
                 <span
                   key={skill}
                   className="rounded bg-blue-50 px-2 py-1 text-xs text-blue-600"
@@ -147,11 +151,11 @@ export default function MyProfilePage() {
       {/* 실무 경험 / 인턴 / 이력 */}
       <div className="card mb-6">
         <h2 className="mb-4 text-lg font-semibold">실무 경험 & 이력</h2>
-        {profile.experiences.length === 0 ? (
+        {MOCK_PROFILE.experiences.length === 0 ? (
           <p className="text-sm text-gray-500">아직 등록된 실무 경험이 없습니다.</p>
         ) : (
           <ol className="space-y-3">
-            {profile.experiences.map((exp, i) => (
+            {MOCK_PROFILE.experiences.map((exp, i) => (
               <li
                 key={exp.id}
                 className="flex items-start gap-3 rounded-xl border border-gray-100 p-4 transition-all hover:bg-gray-50"
