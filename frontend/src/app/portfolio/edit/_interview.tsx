@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, Dispatch, ReactNode, SetStateAction } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import type { PortfolioItem } from '../page';
 
 // ─────── Storage keys ───────
@@ -11,16 +11,16 @@ const DRAFT_STORAGE_KEY = 'mock_portfolio_draft';
 const DETAILS_STORAGE_KEY = 'mock_portfolio_details';
 
 // ─────── Types ───────
-type Asset = {
+export type Asset = {
   id: string;
   alias: string;
   filename: string;
   dataUrl: string;
 };
 
-type Block = { text: string; assetIds: string[] };
+export type Block = { text: string; assetIds: string[] };
 
-type Draft = {
+export type Draft = {
   name: string;
   activityTypes: string[];
   fieldTags: string[];
@@ -166,6 +166,10 @@ type StepKey =
 
 type StepCfg = { key: StepKey; title: string; subtitle?: string };
 
+// 필수 응답이 있어야 다음으로 넘어갈 수 있는 단계 (isStepValid 와 동기화)
+const isStepRequired = (k: StepKey): boolean =>
+  k !== 'deliverables' && k !== 'summary';
+
 const buildSteps = (hasDomain: boolean | null): StepCfg[] => {
   const arr: StepCfg[] = [
     { key: 'name', title: '프로젝트명', subtitle: '어떤 프로젝트인가요?' },
@@ -262,6 +266,14 @@ const buildSteps = (hasDomain: boolean | null): StepCfg[] => {
 // ─────── Main component ───────
 export default function ProjectInterview() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editIdParam = searchParams.get('id');
+  const editId =
+    editIdParam !== null && Number.isFinite(Number(editIdParam))
+      ? Number(editIdParam)
+      : null;
+  const isEdit = editId !== null;
+
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   const [phase, setPhase] = useState<'loading' | 'resume' | 'form'>('loading');
   const [toast, setToast] = useState<string | null>(null);
@@ -272,8 +284,41 @@ export default function ProjectInterview() {
   const isLast = stepCfg.key === 'summary';
   const isLastInput = stepIdx === steps.length - 2;
 
-  // 초기 로드 — 저장된 draft 가 있으면 resume 모달
+  // 초기 로드 — 수정 모드면 details 에서 답변 불러와 미리보기, 아니면 draft resume
   useEffect(() => {
+    // 1) 수정 모드: 저장된 인터뷰 답변 불러오기
+    if (isEdit) {
+      try {
+        const detailsRaw = localStorage.getItem(DETAILS_STORAGE_KEY);
+        const map: Record<string, Draft> = detailsRaw
+          ? JSON.parse(detailsRaw)
+          : {};
+        const saved = map[String(editId)];
+        if (saved) {
+          // 마지막 단계(미리보기)로 이동시켜 작성한 답변을 같은 양식으로 보여줌
+          const stepsForSaved = buildSteps(saved.hasDomain);
+          setDraft({
+            ...saved,
+            stepIdx: stepsForSaved.length - 1,
+          });
+          setPhase('form');
+          return;
+        }
+        // 인터뷰 details 가 없는 기존 항목 → 제목만 가져와서 처음부터
+        const itemsRaw = localStorage.getItem(ITEMS_STORAGE_KEY);
+        const items: PortfolioItem[] = itemsRaw ? JSON.parse(itemsRaw) : [];
+        const found = items.find((it) => it.id === editId);
+        if (found) {
+          setDraft({ ...EMPTY_DRAFT, name: found.title });
+        }
+      } catch {
+        // 로드 실패 시 빈 폼
+      }
+      setPhase('form');
+      return;
+    }
+
+    // 2) 신규 작성: 저장된 draft 가 있으면 resume 모달
     try {
       const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
       if (raw) {
@@ -288,17 +333,26 @@ export default function ProjectInterview() {
       // 무시
     }
     setPhase('form');
-  }, []);
+  }, [isEdit, editId]);
 
   // 자동 저장
+  // - 신규: draft 키에 자동 저장 (다음 진입 시 resume 가능)
+  // - 수정: details 맵에 해당 id 자리를 직접 갱신 (즉시 반영)
   useEffect(() => {
     if (phase !== 'form') return;
     try {
-      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+      if (isEdit && editId !== null) {
+        const raw = localStorage.getItem(DETAILS_STORAGE_KEY);
+        const map: Record<string, Draft> = raw ? JSON.parse(raw) : {};
+        map[String(editId)] = draft;
+        localStorage.setItem(DETAILS_STORAGE_KEY, JSON.stringify(map));
+      } else {
+        localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+      }
     } catch {
       // 용량 초과 시 무시 — base64 이미지 누적 가능성
     }
-  }, [draft, phase]);
+  }, [draft, phase, isEdit, editId]);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -377,9 +431,9 @@ export default function ProjectInterview() {
   }, [stepCfg.key, draft]);
 
   const handleSaveProject = () => {
-    const id = Date.now();
+    const targetId = isEdit && editId !== null ? editId : Date.now();
     const item: PortfolioItem = {
-      id,
+      id: targetId,
       type: 'project',
       title: draft.name.trim() || '(제목 없음)',
       description:
@@ -389,7 +443,8 @@ export default function ProjectInterview() {
         '',
       period: '',
       current: false,
-      domain: draft.hasDomain && draft.domainTags[0] ? draft.domainTags[0] : undefined,
+      domain:
+        draft.hasDomain && draft.domainTags[0] ? draft.domainTags[0] : undefined,
       tags: Array.from(
         new Set([...draft.activityTypes, ...draft.fieldTags, ...draft.roles]),
       ).filter(Boolean),
@@ -397,23 +452,33 @@ export default function ProjectInterview() {
     try {
       const itemsRaw = localStorage.getItem(ITEMS_STORAGE_KEY);
       const list: PortfolioItem[] = itemsRaw ? JSON.parse(itemsRaw) : [];
-      list.push(item);
-      localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(list));
+      const next = isEdit
+        ? list.map((it) => (it.id === targetId ? item : it))
+        : [...list, item];
+      // 수정인데 list 에 없는 경우(이상 케이스)도 안전하게 추가
+      const ensured =
+        isEdit && !list.some((it) => it.id === targetId) ? [...next, item] : next;
+      localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(ensured));
     } catch {
       // 무시
     }
     try {
       const detailsRaw = localStorage.getItem(DETAILS_STORAGE_KEY);
-      const map: Record<string, Draft> = detailsRaw ? JSON.parse(detailsRaw) : {};
-      map[String(id)] = draft;
+      const map: Record<string, Draft> = detailsRaw
+        ? JSON.parse(detailsRaw)
+        : {};
+      map[String(targetId)] = draft;
       localStorage.setItem(DETAILS_STORAGE_KEY, JSON.stringify(map));
     } catch {
       // 무시
     }
-    try {
-      localStorage.removeItem(DRAFT_STORAGE_KEY);
-    } catch {
-      // 무시
+    if (!isEdit) {
+      // 신규 저장 후엔 임시 draft 비우기 (수정은 draft 안 씀)
+      try {
+        localStorage.removeItem(DRAFT_STORAGE_KEY);
+      } catch {
+        // 무시
+      }
     }
     router.push('/portfolio');
   };
@@ -432,8 +497,30 @@ export default function ProjectInterview() {
       `}</style>
 
       <div className="mx-auto flex min-h-[calc(100vh-10rem)] max-w-2xl flex-col justify-center px-6 py-14 sm:px-10 sm:py-16">
-        {/* 상단: 진행률 + 닫기 */}
-        <div className="mb-9 flex items-center gap-4">
+        {/* 상단: 모드 배너 + 자동 저장 안내 */}
+        <div
+          style={{ marginTop: '2.5rem', marginBottom: '1rem' }}
+          className="flex flex-wrap items-center justify-between gap-3 text-xs leading-relaxed"
+        >
+          {isEdit ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 font-medium text-amber-700">
+              ✎ 수정 중
+            </span>
+          ) : (
+            <span className="text-gray-400">
+              입력하시는 내용은 자동으로 저장돼요.
+            </span>
+          )}
+          <span className="text-gray-400">
+            <span className="font-medium text-red-500">*</span> 표시는 필수
+            항목입니다.
+            {isEdit && ' · 변경 내용은 자동으로 저장됩니다.'}
+          </span>
+        </div>
+        <div
+          style={{ marginBottom: '1.25rem' }}
+          className="flex items-center gap-3"
+        >
           <div className="flex-1">
             <div className="mb-2 flex items-center justify-between text-xs text-gray-500">
               <span>
@@ -451,33 +538,58 @@ export default function ProjectInterview() {
           <button
             type="button"
             onClick={handleClose}
-            aria-label="저장하고 닫기"
-            title="저장하고 닫기"
-            className="ml-1 flex h-9 w-9 items-center justify-center rounded-full bg-white text-gray-500 shadow-sm hover:bg-gray-100 hover:text-gray-700"
+            aria-label="여기까지 저장하고 나가기"
+            title="여기까지 저장하고 나가기"
+            style={{ paddingLeft: '1.25rem', paddingRight: '1.25rem' }}
+            className="ml-2 inline-flex items-center gap-2 rounded-full bg-white py-2 text-xs leading-relaxed text-gray-600 shadow-sm hover:bg-gray-100 hover:text-gray-800"
           >
-            ✕
+            <span aria-hidden>✕</span>
+            <span className="whitespace-nowrap font-medium">
+              저장하고 나가기
+            </span>
           </button>
         </div>
 
-        {/* 단계 카드 */}
+        {/* 단계 카드 — min-h 로 모든 단계 카드 크기 통일 (이전/다음 버튼 위치 고정) */}
         <div
           key={stepIdx}
-          className="mocozi-step-in rounded-2xl bg-white p-8 shadow-sm sm:p-10"
+          style={{ minHeight: '32rem' }}
+          className="mocozi-step-in flex flex-col rounded-2xl bg-white p-8 shadow-sm sm:p-10"
         >
-          <h2 className="mb-3 text-xl font-bold leading-snug text-gray-900">
+          <h2
+            style={{ marginBottom: '1rem' }}
+            className="text-xl font-bold leading-snug text-gray-900"
+          >
             {stepCfg.title}
+            {isStepRequired(stepCfg.key) && (
+              <span
+                className="ml-1.5 text-red-500"
+                aria-label="필수 항목"
+                title="필수 항목"
+              >
+                *
+              </span>
+            )}
           </h2>
           {stepCfg.subtitle && (
-            <p className="mb-9 text-sm leading-7 text-gray-500">
+            <p
+              style={{ marginBottom: '1rem' }}
+              className="text-sm leading-7 text-gray-500"
+            >
               {stepCfg.subtitle}
             </p>
           )}
-          <StepBody cfg={stepCfg} draft={draft} setDraft={setDraft} />
+          <div className="flex-1">
+            <StepBody cfg={stepCfg} draft={draft} setDraft={setDraft} />
+          </div>
         </div>
 
         {/* 하단 네비게이션 */}
         {!isLast ? (
-          <div className="mt-8 flex items-center justify-between gap-2">
+          <div
+            style={{ marginTop: '1.25rem', marginBottom: '1.25rem' }}
+            className="flex items-center justify-between gap-2"
+          >
             <button
               type="button"
               disabled={stepIdx === 0}
@@ -496,7 +608,10 @@ export default function ProjectInterview() {
             </button>
           </div>
         ) : (
-          <div className="mt-8 flex items-center justify-between gap-2">
+          <div
+            style={{ marginTop: '1.25rem', marginBottom: '2rem' }}
+            className="flex items-center justify-between gap-2"
+          >
             <button
               type="button"
               onClick={prev}
@@ -509,7 +624,7 @@ export default function ProjectInterview() {
               onClick={handleSaveProject}
               className="rounded-full bg-blue-600 px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
             >
-              포트폴리오에 저장
+              {isEdit ? '수정 완료' : '포트폴리오에 저장'}
             </button>
           </div>
         )}
@@ -587,6 +702,7 @@ function StepBody({
           options={ACTIVITY_OPTIONS}
           selected={draft.activityTypes}
           onChange={(v) => setDraft((d) => ({ ...d, activityTypes: v }))}
+          allowCustom
         />
       );
     case 'field':
@@ -770,7 +886,10 @@ function TagSelect({
   const customs = selected.filter((s) => !options.includes(s));
   return (
     <div>
-      <div className="flex flex-wrap gap-x-2.5 gap-y-3">
+      <div
+        style={{ rowGap: '1rem', columnGap: '0.625rem' }}
+        className="flex flex-wrap"
+      >
         {options.map((opt) => {
           const on = selected.includes(opt);
           return (
@@ -801,7 +920,7 @@ function TagSelect({
         ))}
       </div>
       {allowCustom && (
-        <div className="mt-5 flex gap-2.5">
+        <div style={{ marginTop: '1rem' }} className="flex gap-2.5">
           <input
             type="text"
             value={custom}
@@ -842,7 +961,10 @@ function SimpleTextarea({
   return (
     <div>
       {showHint && (
-        <p className="mb-4 rounded-lg bg-amber-50 px-4 py-3 text-xs leading-7 text-amber-700">
+        <p
+          style={{ marginBottom: '1rem' }}
+          className="rounded-lg bg-amber-50 px-4 py-3 text-xs leading-7 text-amber-700"
+        >
           ⭐ {FIRST_TEXTAREA_HINT}
         </p>
       )}
@@ -983,7 +1105,10 @@ function AssetTextarea({
         )}
       </div>
 
-      <div className="mt-5 flex flex-wrap items-center gap-x-2.5 gap-y-3">
+      <div
+        style={{ marginTop: '1rem', rowGap: '1rem', columnGap: '0.625rem' }}
+        className="flex flex-wrap items-center"
+      >
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
@@ -1024,7 +1149,10 @@ function AssetTextarea({
         ))}
       </div>
 
-      <p className="mt-4 text-xs leading-7 text-gray-400">
+      <p
+        style={{ marginTop: '1rem' }}
+        className="text-xs leading-7 text-gray-400"
+      >
         텍스트에서 <span className="font-mono">@</span> 를 입력하면 업로드한 자료를
         인용할 수 있어요. 예: <span className="font-mono">@[A]</span>
       </p>

@@ -56,7 +56,9 @@ export default function PortfolioEditPage() {
       ? (initialTypeParam as PortfolioItemType)
       : 'project';
 
-  if (!isEdit && initialType === 'project') return <ProjectInterview />;
+  // 프로젝트는 신규/수정 모두 대화형 인터뷰 UI 사용
+  // (수정 시 _interview.tsx 가 mock_portfolio_details 에서 답변을 불러와 미리보기로 표시)
+  if (initialType === 'project') return <ProjectInterview />;
   return <SimpleForm />;
 }
 
