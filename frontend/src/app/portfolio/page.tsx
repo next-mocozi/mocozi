@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   PlatformIcon,
   PLATFORM_META,
@@ -157,6 +157,15 @@ export default function MyPortfolioPage() {
   const [introSaved, setIntroSaved] = useState(DEFAULT_INTRO);
   const [introDraft, setIntroDraft] = useState(DEFAULT_INTRO);
   const [introJustSaved, setIntroJustSaved] = useState(false);
+  const introRef = useRef<HTMLTextAreaElement>(null);
+
+  // 자기소개 textarea — 내용에 따라 세로로 자동 확장
+  useEffect(() => {
+    const el = introRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [introDraft]);
 
   // 실무 경험 모달 (폼 + 리스트 통합)
   const [expModalOpen, setExpModalOpen] = useState(false);
@@ -354,9 +363,10 @@ export default function MyPortfolioPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
-      {/* ─────── 기본 정보 (프로필에서 가져옴 — 읽기 전용) ─────── */}
+      {/* ─────── 기본 정보 + 자기소개 (한 카드로 통합) ─────── */}
       <div className="card mb-6">
-        <div className="flex items-start gap-6">
+        {/* 기본 정보 (프로필에서 가져옴 — 읽기 전용) */}
+        <div className="flex items-start gap-6 mb-6">
           <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-primary-100 text-3xl text-primary-600">
             👤
           </div>
@@ -392,11 +402,12 @@ export default function MyPortfolioPage() {
             )}
           </div>
         </div>
-      </div>
 
-      {/* ─────── 자기소개 (저장 버튼 패턴) ─────── */}
-      <div className="card mb-6">
-        <div className="mb-3 flex items-center justify-between">
+        {/* 구분선 */}
+        <div className="my-5 border-t border-gray-100" />
+        {/* 자기소개 (저장 버튼 패턴) */}
+        <div className="px-1 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
           <h2 className="text-lg font-semibold">자기소개</h2>
           <span
             className={`text-xs ${
@@ -409,14 +420,24 @@ export default function MyPortfolioPage() {
           >
             {introDraft.length} / {INTRO_MAX}
           </span>
+          </div>
+          <button
+            type="button"
+            onClick={saveIntro}
+            disabled={!introDirty}
+            className="rounded-full bg-blue-600 px-4 py-1.5 text-xs font-medium text-white shadow-sm transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            저장
+          </button>
         </div>
         <textarea
+          ref={introRef}
           value={introDraft}
           onChange={handleIntroChange}
           maxLength={INTRO_MAX}
-          rows={5}
+          rows={2}
           placeholder="포트폴리오 상단에 노출될 자기소개를 작성해주세요. (최대 500자)"
-          className="w-full resize-none rounded-lg border border-gray-200 px-4 py-3 text-sm leading-relaxed outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+          className="block w-full resize-none overflow-hidden rounded-lg border border-gray-200 px-4 py-3 text-sm leading-relaxed outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
         />
         <div className="mt-3 flex items-center justify-end gap-2">
           {introJustSaved && !introDirty && (
@@ -427,22 +448,6 @@ export default function MyPortfolioPage() {
               저장되지 않은 변경사항이 있어요.
             </span>
           )}
-          <button
-            type="button"
-            onClick={resetIntro}
-            disabled={!introDirty}
-            className="rounded-full border border-gray-200 px-4 py-1.5 text-xs text-gray-600 transition-all hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            되돌리기
-          </button>
-          <button
-            type="button"
-            onClick={saveIntro}
-            disabled={!introDirty}
-            className="rounded-full bg-blue-600 px-4 py-1.5 text-xs font-medium text-white shadow-sm transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            저장
-          </button>
         </div>
       </div>
 
@@ -538,7 +543,7 @@ export default function MyPortfolioPage() {
       {/* ─────── 포트폴리오 — 보기 전용 카드, 편집은 관리 모달 ─────── */}
       <div className="mb-6">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">포트폴리오</h2>
+          <h2 className="text-lg font-semibold">프로젝트</h2>
           <button
             type="button"
             onClick={() => setPortfolioMgrOpen(true)}
@@ -677,8 +682,8 @@ export default function MyPortfolioPage() {
             onClick={(e) => e.stopPropagation()}
             className="flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
           >
-            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
-              <h2 className="text-lg font-bold  px-1 py-3 text-gray-900">
+            <div className="flex items-center justify-between border-b border-gray-100 px-4 py-5">
+              <h2 className="text-lg font-bold px-1 py-2 text-gray-900">
                 실무 경험 & 이력
               </h2>
               <button
@@ -691,120 +696,116 @@ export default function MyPortfolioPage() {
             </div>
 
             {/* 스크롤 영역 */}
-            <div className="flex-1 overflow-y-auto px-6 pb-8 pt-10">
+            <div className="flex-1 overflow-y-auto px-6 pb-8 pt-14">
               {/* 폼 섹션 */}
-              <section className="mb-14">
-                <h3 className="mb-1 flex items-center gap-2 text-base font-bold text-gray-900">
-                  <span className="h-4 w-1 rounded-full bg-blue-600" />
-                  {expEditId === null ? '새 항목 추가' : '항목 수정 중'}
-                </h3>
-                <div className="space-y-2 rounded-xl bg-gray-50/70 p-5">
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-gray-700">
-                      회사명
-                    </label>
-                    <input
-                      type="text"
-                      value={expForm.company}
-                      onChange={(e) => {
-                        setExpForm((f) => ({ ...f, company: e.target.value }));
-                        if (expError) setExpError('');
-                      }}
-                      placeholder="예: OpenAI Korea"
-                      className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 ${
-                        expError
-                          ? 'border-red-300 focus:border-red-400 focus:ring-red-100'
-                          : 'border-gray-200 focus:border-blue-400 focus:ring-blue-100'
-                      }`}
-                    />
-                    {expError && (
-                      <p className="mt-1 text-xs text-red-500">{expError}</p>
+              <section className="mb-14 pt-2">
+                <div className="mb-1 flex items-center justify-between py-5">
+                  <h3 className="text-base font-bold text-gray-900">
+                    {expEditId === null ? '새 항목 추가' : '항목 수정 중'}
+                  </h3>
+                  <div className="flex gap-3">
+                    {expEditId !== null && (
+                      <button
+                        type="button"
+                        onClick={resetExpForm}
+                        className="rounded-full border border-gray-200 px-5 py-1 text-sm font-medium text-gray-600 hover:bg-gray-50"
+                      >
+                        편집 취소
+                      </button>
                     )}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="mb-2 block text-sm font-medium text-gray-700">
-                        팀 / 부서{' '}
-                        <span className="text-xs font-normal text-gray-500">
-                          (선택)
-                        </span>
-                      </label>
-                      <input
-                        type="text"
-                        value={expForm.team}
-                        onChange={(e) =>
-                          setExpForm((f) => ({ ...f, team: e.target.value }))
-                        }
-                        placeholder="예: 연구팀"
-                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-2 block text-sm font-medium text-gray-700">
-                        역할
-                      </label>
-                      <input
-                        type="text"
-                        value={expForm.role}
-                        onChange={(e) =>
-                          setExpForm((f) => ({ ...f, role: e.target.value }))
-                        }
-                        placeholder="예: 리서치 인턴"
-                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-gray-700">
-                      기간
-                    </label>
-                    <div className="flex items-center gap-4">
-                      <input
-                        type="text"
-                        value={expForm.period}
-                        onChange={(e) =>
-                          setExpForm((f) => ({ ...f, period: e.target.value }))
-                        }
-                        placeholder="예: 2026.03 - 현재"
-                        className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                      />
-                      <label className="inline-flex items-center gap-2 text-sm text-gray-700">
-                        <input
-                          type="checkbox"
-                          checked={expForm.current}
-                          onChange={(e) =>
-                            setExpForm((f) => ({
-                              ...f,
-                              current: e.target.checked,
-                            }))
-                          }
-                          className="h-4 w-4 rounded border-gray-300"
-                        />
-                        재직중
-                      </label>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-6 flex justify-end gap-3">
-                  {expEditId !== null && (
                     <button
                       type="button"
-                      onClick={resetExpForm}
-                      className="rounded-full border border-gray-200 px-5 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+                      onClick={saveExp}
+                      className="rounded-full bg-blue-600 px-5 py-1 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
                     >
-                      편집 취소
+                      {expEditId === null ? '추가' : '수정 저장'}
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={saveExp}
-                    className="rounded-full bg-blue-600 px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
-                  >
-                    {expEditId === null ? '추가' : '수정 저장'}
-                  </button>
+                  </div>
+                </div>
+                                
+                  <div className="space-y-2 rounded-xl bg-gray-50/70 p-5">
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-gray-700">
+                        회사명
+                      </label>
+                      <input
+                        type="text"
+                        value={expForm.company}
+                        onChange={(e) => {
+                          setExpForm((f) => ({ ...f, company: e.target.value }));
+                          if (expError) setExpError('');
+                        }}
+                        placeholder="예: OpenAI Korea"
+                        className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 ${
+                          expError
+                            ? 'border-red-300 focus:border-red-400 focus:ring-red-100'
+                            : 'border-gray-200 focus:border-blue-400 focus:ring-blue-100'
+                        }`}
+                      />
+                      {expError && (
+                        <p className="mt-1 text-xs text-red-500">{expError}</p>
+                      )}
+                    </div>
+
+                      <div>
+                        <label className="mb-2 block text-sm font-medium text-gray-700">
+                          팀 / 부서{' '}
+                          <span className="text-xs font-normal text-gray-500">(선택)</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={expForm.team}
+                          onChange={(e) => setExpForm((f) => ({ ...f, team: e.target.value }))}
+                          placeholder="예: 연구팀"
+                          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-sm font-medium text-gray-700">역할</label>
+                        <input
+                          type="text"
+                          value={expForm.role}
+                          onChange={(e) => setExpForm((f) => ({ ...f, role: e.target.value }))}
+                          placeholder="예: 리서치 인턴"
+                          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                        />
+</div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-gray-700">
+                        기간
+                      </label>
+                      <div className="flex items-center gap-4">
+                        <input
+                          type="text"
+                          value={expForm.period}
+                          onChange={(e) =>
+                            setExpForm((f) => ({ ...f, period: e.target.value }))
+                          }
+                          placeholder="예: 2026.03 - 현재"
+                          className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                        />
+                        <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                          <input
+                            type="checkbox"
+                            checked={expForm.current}
+                            onChange={(e) =>
+                              setExpForm((f) => ({
+                                ...f,
+                                current: e.target.checked,
+                              }))
+                            }
+                            className="h-4 w-4 rounded border-gray-300"
+                          />
+                          재직중
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 flex justify-end gap-3">
+
+
                 </div>
               </section>
 
@@ -909,14 +910,33 @@ export default function MyPortfolioPage() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-6 pb-8 pt-10">
+            <div className="flex-1 overflow-y-auto px-6 pb-8 pt-16">
               {/* 폼 섹션 */}
-              <section className="mb-14">
-                <h3 className="mb-1 flex items-center gap-2 text-base font-bold text-gray-900">
-                  <span className="h-4 w-1 rounded-full bg-blue-600" />
-                  {careerEditId === null ? '새 항목 추가' : '항목 수정 중'}
-                </h3>
-                <p className="mb-5 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2.5 text-xs text-gray-600">
+              <section className="mb-14 pt-2">
+                <div className="mb-1 flex items-center justify-between py-5">
+                  <h3 className="text-base font-bold text-gray-900">
+                    {careerEditId === null ? '새 항목 추가' : '항목 수정 중'}
+                  </h3>
+                  <div className="flex gap-3">
+                    {careerEditId !== null && (
+                      <button
+                        type="button"
+                        onClick={resetCareerForm}
+                        className="rounded-full border border-gray-200 px-5 py-1 text-sm font-medium text-gray-600 hover:bg-gray-50"
+                      >
+                        편집 취소
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={saveCareer}
+                      className="rounded-full bg-blue-600 px-5 py-1 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
+                    >
+                      {careerEditId === null ? '추가' : '수정 저장'}
+                    </button>
+                  </div>
+                </div>
+                <p className="mb-5 mt-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2.5 text-xs text-gray-600">
                   예시:{' '}
                   <span className="font-medium">
                     2024년 xxxx 해커톤 은상 수상
@@ -927,7 +947,7 @@ export default function MyPortfolioPage() {
 
                 <div className="space-y-5 rounded-xl bg-gray-50/70 p-5">
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-gray-700">
+                    <label className="mb-2 mt-1 block text-sm font-medium text-gray-700">
                       연도
                     </label>
                     <input
@@ -949,55 +969,39 @@ export default function MyPortfolioPage() {
                     />
                   </div>
 
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-gray-700">
-                      내용
-                    </label>
-                    <input
-                      type="text"
-                      value={careerForm.content}
-                      onChange={(e) => {
-                        setCareerForm((f) => ({
-                          ...f,
-                          content: e.target.value.slice(0, CAREER_CONTENT_MAX),
-                        }));
-                        if (careerError) setCareerError('');
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') saveCareer();
-                      }}
-                      placeholder="예: xxxx 해커톤 은상 수상"
-                      maxLength={CAREER_CONTENT_MAX}
-                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                    />
-                    <p className="mt-2 text-right text-xs text-gray-500">
-                      {careerForm.content.length} / {CAREER_CONTENT_MAX}
-                    </p>
-                  </div>
+                    <div>
+                     <div className="mb-2 mt-1 flex items-center justify-between">
+                        <label className="text-sm font-medium text-gray-700">내용</label>
+                        <p className="text-xs text-gray-500">
+                          {careerForm.content.length} / {CAREER_CONTENT_MAX}
+                        </p>
+                      </div>
+                      <input
+                        type="text"
+                        value={careerForm.content}
+                        onChange={(e) => {
+                          setCareerForm((f) => ({
+                            ...f,
+                            content: e.target.value.slice(0, CAREER_CONTENT_MAX),
+                          }));
+                          if (careerError) setCareerError('');
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') saveCareer();
+                        }}
+                        placeholder="예: xxxx 해커톤 은상 수상"
+                        maxLength={CAREER_CONTENT_MAX}
+                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                      />
+
+                    </div>
 
                   {careerError && (
                     <p className="text-xs text-red-500">{careerError}</p>
                   )}
                 </div>
 
-                <div className="mt-6 flex justify-end gap-3">
-                  {careerEditId !== null && (
-                    <button
-                      type="button"
-                      onClick={resetCareerForm}
-                      className="rounded-full border border-gray-200 px-5 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
-                    >
-                      편집 취소
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={saveCareer}
-                    className="rounded-full bg-blue-600 px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
-                  >
-                    {careerEditId === null ? '추가' : '수정 저장'}
-                  </button>
-                </div>
+
               </section>
 
               {/* 리스트 섹션 */}
