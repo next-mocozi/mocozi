@@ -50,9 +50,20 @@ export class ApplyService {
     if (!team || team.leaderId !== leaderId) {
       throw new BadRequestException('팀장만 지원을 처리할 수 있습니다.');
     }
-    return this.prisma.application.update({
+
+    const updated = await this.prisma.application.update({
       where: { id: applicationId },
       data: { status },
     });
+
+    if (status === 'ACCEPTED') {
+      await this.prisma.teamMember.upsert({
+        where: { teamId_userId: { teamId: application.teamId, userId: application.userId } },
+        create: { teamId: application.teamId, userId: application.userId, role: 'MEMBER' },
+        update: {},
+      });
+    }
+
+    return updated;
   }
 }
