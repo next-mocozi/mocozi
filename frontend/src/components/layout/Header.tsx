@@ -45,12 +45,6 @@ export default function Header() {
             </Link>
           )}
           <Link
-              href="/profile"
-              className="text-gray-600 transition-colors hover:text-primary-600"
-            >
-              프로필
-            </Link>
-          <Link
             href="/chat"
             className="text-gray-600 transition-colors hover:text-primary-600"
           >
