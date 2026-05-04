@@ -1,9 +1,12 @@
 'use client';
 import { Fascinate_Inline } from 'next/font/google';
-import {useState, useMemo} from 'react';
+import {useState, useMemo, useEffect} from 'react';
+import { usePagination } from '@/hooks/usePagination';
+import { Pagination } from '@/components/ui/Pagination';
 
 // auth 연결 전 임시값 (로그인한 사용자의 학교)
 const CURRENT_USER_SCHOOL = '고려대학교';
+const PAGE_SIZE = 12;
 
 const toggleItem = (item: string, list: string[], setList: (v: string[]) => void) => {
   if (list.includes(item)) {
@@ -158,6 +161,54 @@ export default function RecruitListPage() {
     bio: '인디 게임 개발에 관심 많은 개발자입니다.',
     image: null,
   },
+  {
+    id: 13,
+    name: '김동균',
+    university: '서강대학교',
+    department: '컴퓨터공학과',
+    schoolColor: '#b6001f',
+    mainRole: '임베디드',
+    subRoles: ['프론트엔드', '백엔드'],
+    skills: ['JavaScript', 'TypeScript', 'Go', 'FastAPI'],
+    bio: '반수한 김동균입니다.',
+    image: null,
+  },
+  {
+    id: 14,
+    name: '김동균',
+    university: '서강대학교',
+    department: '컴퓨터공학과',
+    schoolColor: '#b6001f',
+    mainRole: '임베디드',
+    subRoles: ['프론트엔드', '백엔드'],
+    skills: ['JavaScript', 'TypeScript', 'Go', 'FastAPI'],
+    bio: '반수한 김동균입니다.',
+    image: null,
+  },
+  {
+    id: 15,
+    name: '김동균',
+    university: '서강대학교',
+    department: '컴퓨터공학과',
+    schoolColor: '#b6001f',
+    mainRole: '임베디드',
+    subRoles: ['프론트엔드', '백엔드'],
+    skills: ['JavaScript', 'TypeScript', 'Go', 'FastAPI'],
+    bio: '반수한 김동균입니다.',
+    image: null,
+  },
+  {
+    id: 16,
+    name: '김동균',
+    university: '서강대학교',
+    department: '컴퓨터공학과',
+    schoolColor: '#b6001f',
+    mainRole: '임베디드',
+    subRoles: ['프론트엔드', '백엔드'],
+    skills: ['JavaScript', 'TypeScript', 'Go', 'FastAPI'],
+    bio: '반수한 김동균입니다.',
+    image: null,
+  },
 ];
   const[isOpen, setIsOpen] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
@@ -220,6 +271,20 @@ export default function RecruitListPage() {
     appliedSkills.length > 0 ||
     appliedSameSchool;
 
+  const { currentPage, setPage, totalPages, startIndex, endIndex } =
+    usePagination({ totalItems: filteredProfiles.length, pageSize: PAGE_SIZE });
+
+  const pageItems = useMemo(
+    () => filteredProfiles.slice(startIndex, endIndex),
+    [filteredProfiles, startIndex, endIndex],
+  );
+
+  // 필터/검색이 바뀌면 1페이지로 리셋
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    setPage(1);
+  }, [appliedKeyword, appliedRoles, appliedSkills, appliedSameSchool]);
+
 
   return (
    <div className="flex gap-2 w-full items-center">
@@ -277,7 +342,7 @@ export default function RecruitListPage() {
     }}
     className="rounded-full border border-blue-200 bg-white px-6 py-3 text-blue-600 shadow-md transition-all hover:bg-blue-600 hover:text-white hover:shadow-lg"
   >
-    ➕🔎
+    ➕ 검색 필터
   </button>
 
 </div>
@@ -376,7 +441,7 @@ export default function RecruitListPage() {
   </div>
 ) : (
 <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-  {filteredProfiles.map((person) => (
+  {pageItems.map((person) => (
     <div key={person.id} className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-all hover:shadow-md">
 
       {/* 상단 학교 배경 */}
@@ -447,6 +512,14 @@ export default function RecruitListPage() {
   ))}
 </div>
 )}
+{filteredProfiles.length > 0 && (
+  <Pagination
+    currentPage={currentPage}
+    totalPages={totalPages}
+    onPageChange={setPage}
+    className="mt-8"
+  />
+)}
     </div>
 
     {isOpen&& (
@@ -461,7 +534,7 @@ export default function RecruitListPage() {
 >
   {/* 헤더 */}
   <div className="mb-6 flex items-center justify-between">
-    <h2 className="text-lg font-bold">상세 검색</h2>
+    <h2 className="text-lg font-bold">검색 필터</h2>
     <button
       onClick={() => setIsOpen(false)}
       className="text-gray-400 hover:text-gray-600"
