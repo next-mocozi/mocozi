@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import {
   PlatformIcon,
   PLATFORM_META,
@@ -259,7 +260,7 @@ function YearMonthPicker({
 
 /** 내 포트폴리오 — 이력서형 페이지 (각 섹션 "+ 추가" 모달에서 통합 관리) */
 export default function MyPortfolioPage() {
-  const profile = MOCK_PROFILE;
+  const { user, loading } = useAuth();
   const [links, setLinks] = useState<ProfileLink[]>(DEFAULT_LINKS);
   const [items, setItems] = useState<PortfolioItem[]>(DEFAULT_ITEMS);
   const [experiences, setExperiences] = useState<Experience[]>(DEFAULT_EXPS);
@@ -319,6 +320,15 @@ export default function MyPortfolioPage() {
       // 기본값 유지
     }
   }, []);
+
+  // 로그인 가드 — 모든 훅 호출 이후에 위치
+  if (loading)
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        로딩 중...
+      </div>
+    );
+  if (!user) return null;
 
   const persist = (key: string, value: unknown) => {
     try {
@@ -514,10 +524,10 @@ export default function MyPortfolioPage() {
           </div>
           <div className="flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold">{profile.name}</h1>
+              <h1 className="text-2xl font-bold">{user.name}</h1>
             </div>
             <p className="text-gray-600">
-              {profile.university} {profile.department}
+              {user.university} {user.department}
             </p>
 
             {links.length > 0 && (
