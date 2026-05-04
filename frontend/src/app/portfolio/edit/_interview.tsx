@@ -11,17 +11,42 @@ const DRAFT_STORAGE_KEY = 'mock_portfolio_draft';
 const DETAILS_STORAGE_KEY = 'mock_portfolio_details';
 
 // ─────── Types ───────
+/** 시각 자료가 첨부될 수 있는 단계 — 각 단계의 자료는 다른 단계와 격리됨 */
+export type AssetStepKey = 'architecture' | 'result' | 'retro';
+
 export type Asset = {
   id: string;
-  alias: string;
+  alias: string; // stepKey 단위로만 유일 (단계가 다르면 같은 alias 가능)
   filename: string;
   dataUrl: string;
+  stepKey: AssetStepKey;
 };
 
 export type Block = { text: string; assetIds: string[] };
 
+export type ProjectPeriod = {
+  startYear: string;
+  startMonth: string;
+  startDay: string; // 선택
+  endYear: string;
+  endMonth: string;
+  endDay: string; // 선택
+  current: boolean;
+};
+
+const EMPTY_PERIOD: ProjectPeriod = {
+  startYear: '',
+  startMonth: '',
+  startDay: '',
+  endYear: '',
+  endMonth: '',
+  endDay: '',
+  current: false,
+};
+
 export type Draft = {
   name: string;
+  period: ProjectPeriod;
   activityTypes: string[];
   fieldTags: string[];
   toolTags: string[];
@@ -45,6 +70,7 @@ export type Draft = {
 
 const EMPTY_DRAFT: Draft = {
   name: '',
+  period: EMPTY_PERIOD,
   activityTypes: [],
   fieldTags: [],
   toolTags: [],
@@ -206,6 +232,37 @@ const DOMAIN_OPTIONS = ['의료', '금융', '법률', '교육', '기타'];
 const FIRST_TEXTAREA_HINT =
   '핵심만 간결하게 — 긴 나열보다 임팩트 있는 내용을 담아주세요.';
 
+// ─────── 작성 예시 (포트폴리오를 처음 작성해보는 사용자를 위한 가이드) ───────
+// 줄글 단계: 회색 박스로 textarea 위에 표시
+// 선택 단계: 작은 회색 글씨로 옵션 위에 표시
+const EXAMPLES: Partial<Record<StepKey, string>> = {
+  name: 'MediScan — 흉부 X-ray 기반 폐 질환 자동 탐지 시스템',
+  period: '2024년 3월 15일 ~ 2024년 9월 (진행 중인 경우 "진행중"을 체크해주세요)',
+  activity: '팀 프로젝트, 공모전',
+  field: 'CV, MLOps',
+  tools: 'Python, PyTorch, OpenCV, FastAPI, Docker, AWS',
+  roles: 'ML Engineer, BE',
+  motivation:
+    '흉부 X-ray 판독은 영상의학과 전문의가 부족한 지역병원에서 병목이 발생한다. 실제로 국내 2차 의료기관의 42%가 영상 판독 지연(평균 18시간)을 겪고 있다. 이를 AI로 1차 스크리닝해 판독 우선순위를 제안하는 보조 도구가 필요하다고 판단했다.',
+  techChoice:
+    '• PyTorch + EfficientNet-B4: 의료 영상 벤치마크(CheXpert)에서 검증된 경량 모델. 동일 성능 대비 ResNet-50 대비 파라미터 60% 절감.\n• FastAPI: 병원 내 PACS 시스템과 REST 연동이 필요해 경량 비동기 서버 선택.\n• Docker + AWS ECS: 병원마다 다른 인프라 환경을 컨테이너로 추상화.',
+  architecture:
+    '[설계] DICOM → 전처리 파이프라인 → EfficientNet 분류 → 히트맵(Grad-CAM) 오버레이 → 판독 보조 리포트 생성 순서로 처리 흐름 설계.\n[문제 1] 폐 병변 데이터 클래스 불균형(정상 7:비정상 3)\n→ Focal Loss + 오버샘플링(SMOTE) 조합으로 F1 +0.11 개선.',
+  result:
+    '• 폐 결절 탐지 AUROC 0.924 (전문의 기준선 0.891 대비 +3.3%p)\n• 평균 판독 보조 소요 시간 1.2초/장 (기존 대비 약 900배 단축)\n• 파트너 병원 2곳 파일럿 적용, 판독 우선순위 정확도 91.3%\n• 공모전 최우수상 수상 (한국의료AI학회 주관)',
+  retro:
+    '[잘 된 점] 초기부터 임상의와 주 1회 리뷰 세션을 가진 덕분에 히트맵 시각화 방향이 실제 판독 흐름과 맞았다.\n[아쉬운 점] 외부 데이터셋(NIH ChestX-ray14)으로만 학습해 국내 환자 데이터 분포와 괴리가 있었다. 실환경 파일럿 후 재학습 필요.\n[개선한다면] 모델 성능보다 설명 가능성(XAI) 설계를 먼저 잡겠다. 임상의 신뢰 확보가 실제 도입의 핵심이었다.',
+  contribution:
+    '전처리 파이프라인과 모델 학습 전 과정을 단독 담당. 특히 DICOM 포맷의 HU값 정규화 및 Lung segmentation 전처리에서 팀 내 노하우가 없어 논문 3편을 직접 재현하며 최적 방식을 찾았다. 또한 FastAPI 추론 서버를 설계해 팀원들이 프론트에서 바로 결과를 확인할 수 있는 내부 데모 환경을 구축했다.',
+  domainTags: '의료',
+  domainExpertise:
+    '영상의학과 레지던트 1인과 협업해 병변 라벨링 기준을 정의했다. DICOM 포맷의 HU(Hounsfield Unit) 값의 의미와 폐창(Lung Window) 설정 방식을 직접 학습해 전처리에 반영했다.',
+  domainComm:
+    '매주 30분 영상의학과 전공의와 리뷰 세션 진행. AI가 강조하는 영역이 실제 판독 포인트와 다를 때 그 이유를 논의하며 Grad-CAM 레이어 선택 기준을 수정했다. 초반에는 "정확도"로 소통했는데, 임상 현장에선 "민감도(Sensitivity)"가 더 중요한 지표임을 배웠다.',
+  domainLimits:
+    '병변 크기(nodule size) 기준이나 Fleischner 가이드라인 같은 도메인 지식이 없어 초반 라벨 분류 기준을 잘못 설정했다. 전문의 피드백 후 전체 라벨 재정의에 2주가 소요됐다. → 도메인 용어집 먼저 정리하고 시작하는 것이 필요하다고 느꼈다.',
+};
+
 // ─────── Helpers ───────
 const aliasForIndex = (i: number): string => {
   // 0=A, 1=B, ..., 25=Z, 26=AA, 27=AB...
@@ -236,8 +293,32 @@ const fileToDataUrl = (file: File) =>
     r.readAsDataURL(file);
   });
 
+const isPeriodEmpty = (p: ProjectPeriod) =>
+  !p.startYear &&
+  !p.startMonth &&
+  !p.startDay &&
+  !p.endYear &&
+  !p.endMonth &&
+  !p.endDay &&
+  !p.current;
+
+/** "2024.03 - 2024.06" / "2024.03.15 - 현재" 형태로 포맷 */
+const formatPeriod = (p: ProjectPeriod): string => {
+  if (!p.startYear || !p.startMonth) return '';
+  const start =
+    `${p.startYear}.${p.startMonth.padStart(2, '0')}` +
+    (p.startDay ? `.${p.startDay.padStart(2, '0')}` : '');
+  if (p.current) return `${start} - 현재`;
+  if (!p.endYear || !p.endMonth) return start;
+  const end =
+    `${p.endYear}.${p.endMonth.padStart(2, '0')}` +
+    (p.endDay ? `.${p.endDay.padStart(2, '0')}` : '');
+  return `${start} - ${end}`;
+};
+
 const isDraftEmpty = (d: Draft) =>
   !d.name &&
+  isPeriodEmpty(d.period) &&
   d.activityTypes.length === 0 &&
   d.fieldTags.length === 0 &&
   d.toolTags.length === 0 &&
@@ -255,6 +336,7 @@ const isDraftEmpty = (d: Draft) =>
 // ─────── Step config ───────
 type StepKey =
   | 'name'
+  | 'period'
   | 'activity'
   | 'field'
   | 'tools'
@@ -292,6 +374,12 @@ const buildSteps = (hasDomain: boolean | null): StepCfg[] => {
       label: 'Q1.',
       title: '1. 프로젝트명',
       subtitle: '어떤 프로젝트인가요?',
+    },
+    {
+      key: 'period',
+      label: 'Q2.',
+      title: '1. 프로젝트명',
+      subtitle: '진행한 날짜를 선택해주세요.',
     },
     {
       key: 'activity',
@@ -345,7 +433,7 @@ const buildSteps = (hasDomain: boolean | null): StepCfg[] => {
       key: 'retro',
       label: 'Q5.',
       title: '4. 프로젝트 개요',
-      subtitle: '회고 (잘된 점 / 아쉬운 점 / 바꿀 점)',
+      subtitle: '회고 (잘된 점 / 아쉬운 점 / 개선할 점)',
     },
     {
       key: 'contribution',
@@ -439,7 +527,14 @@ export default function ProjectInterview() {
           // 마지막 단계(미리보기)로 이동시켜 작성한 답변을 같은 양식으로 보여줌
           const stepsForSaved = buildSteps(saved.hasDomain);
           setDraft({
+            ...EMPTY_DRAFT,
             ...saved,
+            period: { ...EMPTY_PERIOD, ...(saved.period ?? {}) },
+            // 기존(stepKey 없는) 자료는 'architecture' 로 기본 마이그레이션
+            assets: (saved.assets ?? []).map((a) => ({
+              ...a,
+              stepKey: a.stepKey ?? 'architecture',
+            })),
             stepIdx: stepsForSaved.length - 1,
           });
           setPhase('form');
@@ -464,8 +559,18 @@ export default function ProjectInterview() {
       const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as Draft;
-        if (!isDraftEmpty(parsed)) {
-          setDraft(parsed);
+        const merged: Draft = {
+          ...EMPTY_DRAFT,
+          ...parsed,
+          period: { ...EMPTY_PERIOD, ...(parsed.period ?? {}) },
+          // 기존(stepKey 없는) 자료는 'architecture' 로 기본 마이그레이션
+          assets: (parsed.assets ?? []).map((a) => ({
+            ...a,
+            stepKey: a.stepKey ?? 'architecture',
+          })),
+        };
+        if (!isDraftEmpty(merged)) {
+          setDraft(merged);
           setPhase('resume');
           return;
         }
@@ -534,6 +639,18 @@ export default function ProjectInterview() {
     switch (stepCfg.key) {
       case 'name':
         return draft.name.trim().length > 0;
+      case 'period': {
+        const p = draft.period;
+        if (!p.startYear || !p.startMonth) return false;
+        if (!p.current && (!p.endYear || !p.endMonth)) return false;
+        // 종료가 시작보다 빠르면 무효 (일 무시, YYYYMM 비교)
+        if (!p.current && p.endYear && p.endMonth) {
+          const s = Number(p.startYear) * 100 + Number(p.startMonth);
+          const e = Number(p.endYear) * 100 + Number(p.endMonth);
+          if (e < s) return false;
+        }
+        return true;
+      }
       case 'activity':
         return draft.activityTypes.length > 0;
       case 'field':
@@ -584,8 +701,8 @@ export default function ProjectInterview() {
         draft.contribution.trim() ||
         draft.result.text.trim() ||
         '',
-      period: '',
-      current: false,
+      period: formatPeriod(draft.period),
+      current: draft.period.current,
       domain:
         draft.hasDomain && draft.domainTags[0] ? draft.domainTags[0] : undefined,
       tags: Array.from(
@@ -644,10 +761,10 @@ export default function ProjectInterview() {
         .mocozi-step-in { animation: mocoziStepIn 220ms ease-out; }
       `}</style>
 
-      <div className="mx-auto flex min-h-[calc(100vh-10rem)] max-w-2xl flex-col justify-center px-6 py-14 sm:px-10 sm:py-16">
+      <div className="mx-auto flex min-h-[calc(100vh-10rem)] max-w-2xl flex-col justify-center px-6 py-2 sm:px-10 sm:py-2">
         {/* 상단: 모드 배너 + 자동 저장 안내 */}
         <div
-          style={{ marginTop: '2.5rem', marginBottom: '1rem' }}
+          style={{ marginTop: '1rem', marginBottom: '0.5rem' }}
           className="flex flex-wrap items-center justify-between gap-3 text-xs leading-relaxed"
         >
           {isEdit ? (
@@ -701,8 +818,8 @@ export default function ProjectInterview() {
         {/* 단계 카드 — min-h 로 모든 단계 카드 크기 통일 (이전/다음 버튼 위치 고정) */}
         <div
           key={stepIdx}
-          style={{ minHeight: '44rem' }}
-          className="mocozi-step-in flex flex-col rounded-2xl bg-white p-8 shadow-sm sm:p-10"
+          style={{ minHeight: '30rem' }}
+          className="mocozi-step-in flex flex-col rounded-2xl bg-white p-8 shadow-sm sm:p-6"
         >
           {/* 분류 (예: 프로젝트 분야) — 작게, 회색 */}
           <h2
@@ -838,53 +955,78 @@ function StepBody({
   switch (cfg.key) {
     case 'name':
       return (
-        <input
-          type="text"
-          autoFocus
-          value={draft.name}
-          onChange={(e) =>
-            setDraft((d) => ({ ...d, name: e.target.value }))
-          }
-          placeholder="예: 모코지"
-          className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-        />
+        <>
+          {EXAMPLES.name && <ChoiceExample text={EXAMPLES.name} />}
+          <input
+            type="text"
+            autoFocus
+            value={draft.name}
+            onChange={(e) =>
+              setDraft((d) => ({ ...d, name: e.target.value }))
+            }
+            placeholder="예: 모코지"
+            className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+          />
+        </>
+      );
+    case 'period':
+      return (
+        <>
+          {EXAMPLES.period && <ChoiceExample text={EXAMPLES.period} />}
+          <PeriodPicker
+            period={draft.period}
+            onChange={(p) => setDraft((d) => ({ ...d, period: p }))}
+          />
+        </>
       );
     case 'activity':
       return (
-        <TagSelect
-          options={ACTIVITY_OPTIONS}
-          selected={draft.activityTypes}
-          onChange={(v) => setDraft((d) => ({ ...d, activityTypes: v }))}
-          allowCustom
-        />
+        <>
+          {EXAMPLES.activity && <ChoiceExample text={EXAMPLES.activity} />}
+          <TagSelect
+            options={ACTIVITY_OPTIONS}
+            selected={draft.activityTypes}
+            onChange={(v) => setDraft((d) => ({ ...d, activityTypes: v }))}
+            allowCustom
+          />
+        </>
       );
     case 'field':
       return (
-        <CategorizedTagSelect
-          categories={FIELD_TAGS}
-          selected={draft.fieldTags}
-          onChange={(v) => setDraft((d) => ({ ...d, fieldTags: v }))}
-          previewLimit={TAG_PREVIEW_PER_CATEGORY}
-          allowCustom
-        />
+        <>
+          {EXAMPLES.field && <ChoiceExample text={EXAMPLES.field} />}
+          <CategorizedTagSelect
+            categories={FIELD_TAGS}
+            selected={draft.fieldTags}
+            onChange={(v) => setDraft((d) => ({ ...d, fieldTags: v }))}
+            previewLimit={TAG_PREVIEW_PER_CATEGORY}
+            allowCustom
+          />
+        </>
       );
     case 'tools':
       return (
-        <CategorizedTagSelect
-          categories={TECH_STACK_TAGS}
-          selected={draft.toolTags}
-          onChange={(v) => setDraft((d) => ({ ...d, toolTags: v }))}
-          previewLimit={TAG_PREVIEW_PER_CATEGORY}
-          allowCustom
-        />
+        <>
+          {EXAMPLES.tools && <ChoiceExample text={EXAMPLES.tools} />}
+          <CategorizedTagSelect
+            categories={TECH_STACK_TAGS}
+            selected={draft.toolTags}
+            onChange={(v) => setDraft((d) => ({ ...d, toolTags: v }))}
+            allowCustom
+            scrollable
+          />
+        </>
       );
     case 'roles':
       return (
-        <TagSelect
-          options={ROLE_OPTIONS}
-          selected={draft.roles}
-          onChange={(v) => setDraft((d) => ({ ...d, roles: v }))}
-        />
+        <>
+          {EXAMPLES.roles && <ChoiceExample text={EXAMPLES.roles} />}
+          <TagSelect
+            options={ROLE_OPTIONS}
+            selected={draft.roles}
+            onChange={(v) => setDraft((d) => ({ ...d, roles: v }))}
+          />
+        </>
       );
     case 'motivation':
       return (
@@ -892,6 +1034,7 @@ function StepBody({
           value={draft.motivation}
           onChange={(v) => setDraft((d) => ({ ...d, motivation: v }))}
           showHint
+          example={EXAMPLES.motivation}
           placeholder="해결하고 싶었던 문제, 사용자/맥락을 간결히 적어주세요."
         />
       );
@@ -900,6 +1043,7 @@ function StepBody({
         <SimpleTextarea
           value={draft.techChoice}
           onChange={(v) => setDraft((d) => ({ ...d, techChoice: v }))}
+          example={EXAMPLES.techChoice}
           placeholder="선택한 기술과 대안 대비 장점을 적어주세요."
         />
       );
@@ -910,6 +1054,8 @@ function StepBody({
           onBlockChange={(b) => setDraft((d) => ({ ...d, architecture: b }))}
           assets={draft.assets}
           onAssetsChange={(a) => setDraft((d) => ({ ...d, assets: a }))}
+          example={EXAMPLES.architecture}
+          stepKey="architecture"
           placeholder="문제 정의 → 해결 방법 → 트레이드오프 (각 3개 이하)"
         />
       );
@@ -920,6 +1066,8 @@ function StepBody({
           onBlockChange={(b) => setDraft((d) => ({ ...d, result: b }))}
           assets={draft.assets}
           onAssetsChange={(a) => setDraft((d) => ({ ...d, assets: a }))}
+          example={EXAMPLES.result}
+          stepKey="result"
           placeholder="달성한 지표 (수치화 필수). 예: 응답시간 50% 개선, MAU 300 → 1,200"
         />
       );
@@ -930,7 +1078,9 @@ function StepBody({
           onBlockChange={(b) => setDraft((d) => ({ ...d, retro: b }))}
           assets={draft.assets}
           onAssetsChange={(a) => setDraft((d) => ({ ...d, assets: a }))}
-          placeholder="잘된 점 / 아쉬운 점 / 다시 한다면 바꿀 점"
+          example={EXAMPLES.retro}
+          stepKey="retro"
+          placeholder="잘된 점 / 아쉬운 점 / 개선할 점"
         />
       );
     case 'contribution':
@@ -938,6 +1088,7 @@ function StepBody({
         <SimpleTextarea
           value={draft.contribution}
           onChange={(v) => setDraft((d) => ({ ...d, contribution: v }))}
+          example={EXAMPLES.contribution}
           placeholder="구체적으로 어떤 부분을 주도했는지, 의사결정·산출물 중심으로 적어주세요."
         />
       );
@@ -979,18 +1130,22 @@ function StepBody({
       );
     case 'domainTags':
       return (
-        <TagSelect
-          options={DOMAIN_OPTIONS}
-          selected={draft.domainTags}
-          onChange={(v) => setDraft((d) => ({ ...d, domainTags: v }))}
-          allowCustom
-        />
+        <>
+          {EXAMPLES.domainTags && <ChoiceExample text={EXAMPLES.domainTags} />}
+          <TagSelect
+            options={DOMAIN_OPTIONS}
+            selected={draft.domainTags}
+            onChange={(v) => setDraft((d) => ({ ...d, domainTags: v }))}
+            allowCustom
+          />
+        </>
       );
     case 'domainExpertise':
       return (
         <SimpleTextarea
           value={draft.domainExpertise}
           onChange={(v) => setDraft((d) => ({ ...d, domainExpertise: v }))}
+          example={EXAMPLES.domainExpertise}
           placeholder="공부한 자료, 정보 출처, 학습 방법 등."
         />
       );
@@ -999,6 +1154,7 @@ function StepBody({
         <SimpleTextarea
           value={draft.domainComm}
           onChange={(v) => setDraft((d) => ({ ...d, domainComm: v }))}
+          example={EXAMPLES.domainComm}
           placeholder="전문가 인터뷰, 협업 방식 등."
         />
       );
@@ -1007,6 +1163,7 @@ function StepBody({
         <SimpleTextarea
           value={draft.domainLimits}
           onChange={(v) => setDraft((d) => ({ ...d, domainLimits: v }))}
+          example={EXAMPLES.domainLimits}
           placeholder="현재 결과물의 한계, 향후 보완 방향."
         />
       );
@@ -1020,6 +1177,191 @@ function StepBody({
 }
 
 // ─────── Sub-components ───────
+
+// ─────── 기간 선택 (년/월 필수, 일 선택, 진행중 토글) ───────
+const PERIOD_CURRENT_YEAR = new Date().getFullYear();
+const PERIOD_YEAR_OPTIONS = Array.from(
+  { length: 32 },
+  (_, i) => PERIOD_CURRENT_YEAR + 1 - i, // 최신 연도가 위
+);
+const PERIOD_MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1);
+const PERIOD_DAY_OPTIONS = Array.from({ length: 31 }, (_, i) => i + 1);
+
+function YearMonthDayPicker({
+  year,
+  month,
+  day,
+  onChange,
+  disabled,
+}: {
+  year: string;
+  month: string;
+  day: string;
+  onChange: (year: string, month: string, day: string) => void;
+  disabled?: boolean;
+}) {
+  // 다른 단계의 input/태그와 동일한 높이·radius·포커스 링 사용
+  const selectClass =
+    'rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm leading-relaxed outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400';
+  return (
+    <div
+      style={{ rowGap: '0.625rem', columnGap: '0.625rem' }}
+      className="flex flex-wrap items-center"
+    >
+      <select
+        value={year}
+        onChange={(e) => onChange(e.target.value, month, day)}
+        disabled={disabled}
+        aria-label="년"
+        className={selectClass}
+      >
+        <option value="">년</option>
+        {PERIOD_YEAR_OPTIONS.map((y) => (
+          <option key={y} value={String(y)}>
+            {y}년
+          </option>
+        ))}
+      </select>
+      <select
+        value={month}
+        onChange={(e) => onChange(year, e.target.value, day)}
+        disabled={disabled}
+        aria-label="월"
+        className={selectClass}
+      >
+        <option value="">월</option>
+        {PERIOD_MONTH_OPTIONS.map((m) => (
+          <option key={m} value={String(m).padStart(2, '0')}>
+            {m}월
+          </option>
+        ))}
+      </select>
+      <select
+        value={day}
+        onChange={(e) => onChange(year, month, e.target.value)}
+        disabled={disabled}
+        aria-label="일 (선택)"
+        className={selectClass}
+      >
+        <option value="">일 (선택)</option>
+        {PERIOD_DAY_OPTIONS.map((d) => (
+          <option key={d} value={String(d).padStart(2, '0')}>
+            {d}일
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function PeriodPicker({
+  period,
+  onChange,
+}: {
+  period: ProjectPeriod;
+  onChange: (next: ProjectPeriod) => void;
+}) {
+  const update = (patch: Partial<ProjectPeriod>) =>
+    onChange({ ...period, ...patch });
+
+  const toggleCurrent = () => {
+    const next = !period.current;
+    update(
+      next
+        ? { current: true, endYear: '', endMonth: '', endDay: '' }
+        : { current: false },
+    );
+  };
+
+  // CategorizedTagSelect 의 카테고리 헤더와 동일한 라벨 스타일
+  const sectionLabel =
+    'text-[10px] font-semibold uppercase tracking-wider text-gray-400';
+
+  return (
+    <div className="flex flex-col" style={{ rowGap: '1rem' }}>
+      <div>
+        <h3 style={{ marginBottom: '0.5rem' }} className={sectionLabel}>
+          시작
+        </h3>
+        <YearMonthDayPicker
+          year={period.startYear}
+          month={period.startMonth}
+          day={period.startDay}
+          onChange={(y, m, d) =>
+            update({ startYear: y, startMonth: m, startDay: d })
+          }
+        />
+      </div>
+
+      <div>
+        <h3 style={{ marginBottom: '0.5rem' }} className={sectionLabel}>
+          종료
+        </h3>
+        <div
+          style={{ rowGap: '0.625rem', columnGap: '0.625rem' }}
+          className="flex flex-wrap items-center"
+        >
+          <YearMonthDayPicker
+            year={period.endYear}
+            month={period.endMonth}
+            day={period.endDay}
+            onChange={(y, m, d) =>
+              update({ endYear: y, endMonth: m, endDay: d })
+            }
+            disabled={period.current}
+          />
+          {/* TagSelect 칩과 동일한 토글 버튼 — 종료일과 같은 행에서 의미 명확 */}
+          <button
+            type="button"
+            onClick={toggleCurrent}
+            aria-pressed={period.current}
+            className={`rounded-full border px-4 py-2.5 text-sm leading-relaxed transition-all ${
+              period.current
+                ? 'border-blue-500 bg-blue-500 text-white'
+                : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50'
+            }`}
+          >
+            진행중
+          </button>
+        </div>
+      </div>
+
+      <p className="text-[11px] leading-relaxed text-gray-400">
+        * 년·월은 필수, 일은 선택입니다.
+      </p>
+    </div>
+  );
+}
+
+/** 줄글(textarea) 단계 위에 표시하는 회색 예시 박스 */
+function TextExample({ text }: { text: string }) {
+  return (
+    <div
+      style={{ marginBottom: '0.75rem' }}
+      className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3"
+    >
+      <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+        작성 예시
+      </div>
+      <p className="whitespace-pre-wrap text-xs leading-7 text-gray-400">
+        {text}
+      </p>
+    </div>
+  );
+}
+
+/** 선택형(태그/버튼) 단계 위에 표시하는 작은 회색 예시 한 줄 */
+function ChoiceExample({ text }: { text: string }) {
+  return (
+    <p
+      style={{ marginBottom: '0.75rem' }}
+      className="text-[11px] leading-relaxed text-gray-400"
+    >
+      <span className="mr-1 font-semibold text-gray-500">예시</span>
+      {text}
+    </p>
+  );
+}
 
 function TagSelect({
   options,
@@ -1124,12 +1466,16 @@ function CategorizedTagSelect({
   onChange,
   allowCustom,
   previewLimit = 5,
+  scrollable,
 }: {
   categories: Record<string, readonly string[]>;
   selected: string[];
   onChange: (next: string[]) => void;
   allowCustom?: boolean;
   previewLimit?: number;
+  /** true면 카테고리·직접추가 버튼을 maxHeight 컨테이너에 모두 노출하고
+   *  스크롤로 처리. 직접 입력창은 스크롤 밖에 둠. 전체 30rem 안에 들어감. */
+  scrollable?: boolean;
 }) {
   const [custom, setCustom] = useState('');
 
@@ -1160,11 +1506,11 @@ function CategorizedTagSelect({
   const chipOff =
     'border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50';
 
-  return (
+  const categoryList = (
     <div className="flex flex-col" style={{ rowGap: '1rem' }}>
       {Object.entries(categories).map(([cat, tags]) => {
-        // 더보기 없이 항상 previewLimit 개로 제한 (카드 높이 일정 유지)
-        const visible = tags.slice(0, previewLimit);
+        // scrollable 모드에선 전체 노출, 아니면 previewLimit 만큼만
+        const visible = scrollable ? tags : tags.slice(0, previewLimit);
         return (
           <div key={cat}>
             <h3
@@ -1221,31 +1567,47 @@ function CategorizedTagSelect({
           </div>
         </div>
       )}
+    </div>
+  );
 
-      {allowCustom && (
-        <div style={{ marginTop: '0.25rem' }} className="flex gap-2.5">
-          <input
-            type="text"
-            value={custom}
-            onChange={(e) => setCustom(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                addCustom();
-              }
-            }}
-            placeholder="목록에 없으면 직접 입력 후 추가"
-            className="flex-1 rounded-lg border border-gray-200 px-4 py-2.5 text-sm leading-relaxed outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-          />
-          <button
-            type="button"
-            onClick={addCustom}
-            className="rounded-lg bg-gray-900 px-4 py-2.5 text-sm text-white hover:bg-gray-700"
-          >
-            추가
-          </button>
-        </div>
-      )}
+  const customInput = allowCustom && (
+    <div style={{ marginTop: '0.75rem' }} className="flex shrink-0 gap-2.5">
+      <input
+        type="text"
+        value={custom}
+        onChange={(e) => setCustom(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            addCustom();
+          }
+        }}
+        placeholder="목록에 없으면 직접 입력 후 추가"
+        className="flex-1 rounded-lg border border-gray-200 px-4 py-2.5 text-sm leading-relaxed outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+      />
+      <button
+        type="button"
+        onClick={addCustom}
+        className="rounded-lg bg-gray-900 px-4 py-2.5 text-sm text-white hover:bg-gray-700"
+      >
+        추가
+      </button>
+    </div>
+  );
+
+  if (scrollable) {
+    return (
+      <div style={{ maxHeight: '20rem' }} className="flex flex-col">
+        <div className="flex-1 overflow-y-auto pr-1">{categoryList}</div>
+        {customInput}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col" style={{ rowGap: '1rem' }}>
+      {categoryList}
+      {customInput}
     </div>
   );
 }
@@ -1255,11 +1617,13 @@ function SimpleTextarea({
   onChange,
   placeholder,
   showHint,
+  example,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   showHint?: boolean;
+  example?: string;
 }) {
   return (
     <div>
@@ -1271,11 +1635,12 @@ function SimpleTextarea({
           ⭐ {FIRST_TEXTAREA_HINT}
         </p>
       )}
+      {example && <TextExample text={example} />}
       <textarea
         autoFocus
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        rows={6}
+        rows={4}
         placeholder={placeholder}
         className="w-full resize-y rounded-lg border border-gray-200 px-4 py-4 text-sm leading-8 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
       />
@@ -1289,17 +1654,26 @@ function AssetTextarea({
   assets,
   onAssetsChange,
   placeholder,
+  example,
+  stepKey,
 }: {
   block: Block;
   onBlockChange: (b: Block) => void;
   assets: Asset[];
   onAssetsChange: (a: Asset[]) => void;
   placeholder?: string;
+  example?: string;
+  /** 이 단계에 속한 자료만 표시·관리한다. 다른 단계에 속한 자료는 그대로 보존. */
+  stepKey: AssetStepKey;
 }) {
   const taRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [mentionOpen, setMentionOpen] = useState(false);
   const [mentionQuery, setMentionQuery] = useState('');
+
+  // 이 단계에 속한 자료만 노출 — 다른 단계의 업로드는 보이지 않음
+  const myAssets = assets.filter((a) => a.stepKey === stepKey);
+  const otherAssets = assets.filter((a) => a.stepKey !== stepKey);
 
   const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     const text = e.target.value;
@@ -1338,28 +1712,32 @@ function AssetTextarea({
   const handleAddAsset = async (e: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     e.target.value = '';
-    const nextAssets = assets.slice();
+    const nextMyAssets = myAssets.slice();
     for (const file of files) {
       try {
         const dataUrl = await fileToDataUrl(file);
-        const alias = findNextAlias(nextAssets);
-        nextAssets.push({
-          id: `${Date.now()}-${alias}-${Math.random().toString(36).slice(2, 6)}`,
+        // alias 는 stepKey 단위에서만 유일하면 충분 (단계가 다르면 같은 A 가능)
+        const alias = findNextAlias(nextMyAssets);
+        nextMyAssets.push({
+          id: `${Date.now()}-${stepKey}-${alias}-${Math.random()
+            .toString(36)
+            .slice(2, 6)}`,
           alias,
           filename: file.name,
           dataUrl,
+          stepKey,
         });
       } catch {
         // 개별 실패 무시
       }
     }
-    onAssetsChange(nextAssets);
+    onAssetsChange([...otherAssets, ...nextMyAssets]);
   };
 
   const removeAsset = (id: string) =>
     onAssetsChange(assets.filter((x) => x.id !== id));
 
-  const filteredAssets = assets.filter((a) =>
+  const filteredAssets = myAssets.filter((a) =>
     `${a.alias} ${a.filename}`
       .toLowerCase()
       .includes(mentionQuery.toLowerCase()),
@@ -1367,13 +1745,14 @@ function AssetTextarea({
 
   return (
     <div>
+      {example && <TextExample text={example} />}
       <div className="relative">
         <textarea
           ref={taRef}
           value={block.text}
           onChange={handleChange}
           onBlur={() => setTimeout(() => setMentionOpen(false), 150)}
-          rows={6}
+          rows={4}
           placeholder={placeholder}
           className="w-full resize-y rounded-lg border border-gray-200 px-4 py-4 text-sm leading-8 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
         />
@@ -1427,7 +1806,7 @@ function AssetTextarea({
           onChange={handleAddAsset}
           className="hidden"
         />
-        {assets.map((a) => (
+        {myAssets.map((a) => (
           <span
             key={a.id}
             className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-700"
@@ -1566,41 +1945,51 @@ function DeliverablesStep({
 function SummaryView({ draft }: { draft: Draft }) {
   const [copied, setCopied] = useState(false);
 
-  const renderInline = (text: string): ReactNode => {
-    if (!text) return null;
-    const parts = text.split(/(@\[[^\]]+\])/g);
-    return parts.map((part, i) => {
-      const m = part.match(/^@\[([^\]]+)\]$/);
-      if (m) {
-        const asset = draft.assets.find((a) => a.alias === m[1]);
-        if (asset) {
+  /** 단계별 자료 풀 — alias 가 단계 단위로만 유일하므로 lookup 도 단계별로 분리 */
+  const assetsByStep = (key: AssetStepKey) =>
+    draft.assets.filter((a) => a.stepKey === key);
+
+  /** 주어진 자료 풀 안에서만 @[alias] 를 해석 */
+  const renderInlineFor =
+    (pool: Asset[]) =>
+    (text: string): ReactNode => {
+      if (!text) return null;
+      const parts = text.split(/(@\[[^\]]+\])/g);
+      return parts.map((part, i) => {
+        const m = part.match(/^@\[([^\]]+)\]$/);
+        if (m) {
+          const asset = pool.find((a) => a.alias === m[1]);
+          if (asset) {
+            return (
+              <img
+                key={i}
+                src={asset.dataUrl}
+                alt={asset.filename}
+                className="my-2 max-w-full rounded-lg border border-gray-200"
+              />
+            );
+          }
           return (
-            <img
+            <span
               key={i}
-              src={asset.dataUrl}
-              alt={asset.filename}
-              className="my-2 max-w-full rounded-lg border border-gray-200"
-            />
+              className="rounded bg-amber-50 px-1 font-mono text-xs text-amber-700"
+            >
+              @[{m[1]}]
+            </span>
           );
         }
-        return (
-          <span
-            key={i}
-            className="rounded bg-amber-50 px-1 font-mono text-xs text-amber-700"
-          >
-            @[{m[1]}]
-          </span>
-        );
-      }
-      return <span key={i}>{part}</span>;
-    });
-  };
+        return <span key={i}>{part}</span>;
+      });
+    };
 
-  const replaceMentionsMd = (t: string) =>
+  const replaceMentionsMdFor = (pool: Asset[]) => (t: string) =>
     t.replace(/@\[([^\]]+)\]/g, (_, alias) => {
-      const a = draft.assets.find((x) => x.alias === alias);
+      const a = pool.find((x) => x.alias === alias);
       return a ? `\n\n![${a.filename}](${a.dataUrl})\n\n` : `@[${alias}]`;
     });
+
+  /** 자료 풀이 없는 텍스트(@ 멘션 없음)용 — 그냥 문자열만 출력 */
+  const renderPlain = (text: string): ReactNode => text;
 
   const toMarkdown = () => {
     const lines: string[] = [];
@@ -1614,17 +2003,25 @@ function SummaryView({ draft }: { draft: Draft }) {
       lines.push(`**프로그램:** ${draft.toolTags.join(', ')}`);
     if (draft.roles.length) lines.push(`**역할:** ${draft.roles.join(', ')}`);
     lines.push('');
-    const pushSec = (h: string, body: string) => {
+    const pushSec = (
+      h: string,
+      body: string,
+      pool: Asset[] | null = null,
+    ) => {
       if (!body || !body.trim()) return;
       lines.push(`## ${h}`);
-      lines.push(replaceMentionsMd(body));
+      lines.push(pool ? replaceMentionsMdFor(pool)(body) : body);
       lines.push('');
     };
     pushSec('왜 만들었나요?', draft.motivation);
     pushSec('왜 이 기술 조합을 선택했나요?', draft.techChoice);
-    pushSec('아키텍처 설계 및 과정', draft.architecture.text);
-    pushSec('결과물', draft.result.text);
-    pushSec('회고', draft.retro.text);
+    pushSec(
+      '아키텍처 설계 및 과정',
+      draft.architecture.text,
+      assetsByStep('architecture'),
+    );
+    pushSec('결과물', draft.result.text, assetsByStep('result'));
+    pushSec('회고', draft.retro.text, assetsByStep('retro'));
     pushSec('본인 참여 활동', draft.contribution);
     if (draft.hasDomain) {
       lines.push(`## 도메인`);
@@ -1683,32 +2080,32 @@ function SummaryView({ draft }: { draft: Draft }) {
       <SummarySection
         title="왜 만들었나요?"
         text={draft.motivation}
-        renderInline={renderInline}
+        renderInline={renderPlain}
       />
       <SummarySection
         title="왜 이 기술 조합을 선택했나요?"
         text={draft.techChoice}
-        renderInline={renderInline}
+        renderInline={renderPlain}
       />
       <SummarySection
         title="아키텍처 설계 및 과정"
         text={draft.architecture.text}
-        renderInline={renderInline}
+        renderInline={renderInlineFor(assetsByStep('architecture'))}
       />
       <SummarySection
         title="결과물"
         text={draft.result.text}
-        renderInline={renderInline}
+        renderInline={renderInlineFor(assetsByStep('result'))}
       />
       <SummarySection
         title="회고"
         text={draft.retro.text}
-        renderInline={renderInline}
+        renderInline={renderInlineFor(assetsByStep('retro'))}
       />
       <SummarySection
         title="본인 참여 활동"
         text={draft.contribution}
-        renderInline={renderInline}
+        renderInline={renderPlain}
       />
 
       {draft.hasDomain && (

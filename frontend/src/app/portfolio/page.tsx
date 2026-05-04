@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -261,7 +262,12 @@ function YearMonthPicker({
 /** 내 포트폴리오 — 이력서형 페이지 (각 섹션 "+ 추가" 모달에서 통합 관리) */
 export default function MyPortfolioPage() {
   const { user, loading } = useAuth();
+  const router = useRouter();
   const [links, setLinks] = useState<ProfileLink[]>(DEFAULT_LINKS);
+
+  useEffect(() => {
+    if (!loading && !user) router.replace('/login');
+  }, [loading, user, router]);
   const [items, setItems] = useState<PortfolioItem[]>(DEFAULT_ITEMS);
   const [experiences, setExperiences] = useState<Experience[]>(DEFAULT_EXPS);
   const [careers, setCareers] = useState<CareerItem[]>(DEFAULT_CAREERS);
