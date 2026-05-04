@@ -3,6 +3,10 @@
 import Link from 'next/link';
 import { useState, useMemo, useEffect } from 'react';
 import api from '@/lib/api';
+import { usePagination } from '@/hooks/usePagination';
+import { Pagination } from '@/components/ui/Pagination';
+
+const PAGE_SIZE = 12;
 
 type TeamType = 'STUDY' | 'COMPETITION' | 'HACKATHON' | 'PROJECT';
 
@@ -98,6 +102,20 @@ export default function TeamListPage() {
   const hasActiveFilters = appliedKeyword !== '' || appliedRoles.length > 0 || appliedSkills.length > 0;
 
   const intro = (t: Team) => t.description ?? t.proposal?.overview ?? '';
+
+  const { currentPage, setPage, totalPages, startIndex, endIndex } =
+    usePagination({ totalItems: filteredTeams.length, pageSize: PAGE_SIZE });
+
+  const pageItems = useMemo(
+    () => filteredTeams.slice(startIndex, endIndex),
+    [filteredTeams, startIndex, endIndex],
+  );
+
+  // 필터/검색이 바뀌면 1페이지로 리셋
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    setPage(1);
+  }, [appliedKeyword, appliedRoles, appliedSkills, recruitingFilter, typeFilter]);
 
   return (
     <div className="flex w-full items-center gap-2">
@@ -235,7 +253,7 @@ export default function TeamListPage() {
           </div>
         ) : (
           <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredTeams.map((team) => (
+            {pageItems.map((team) => (
               <Link
                 key={team.id}
                 href={`/team/${team.id}`}
@@ -291,6 +309,14 @@ export default function TeamListPage() {
               </Link>
             ))}
           </div>
+        )}
+        {!loadingTeams && filteredTeams.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            className="mt-8"
+          />
         )}
       </div>
 
