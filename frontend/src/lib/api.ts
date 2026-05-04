@@ -45,7 +45,14 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && original.url?.includes('/auth/refresh')) {
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
+      window.dispatchEvent(new Event('mocozi:auth-changed'));
       window.location.href = '/login';
+      return Promise.reject(error);
+    }
+
+    // 인증 엔드포인트(login/register 등)의 401은 비즈니스 결과 — refresh/redirect 안 함
+    // 호출자(useAuth.login 등)가 에러 메시지 그대로 표시하도록 reject
+    if (error.response?.status === 401 && original.url?.includes('/api/auth/')) {
       return Promise.reject(error);
     }
 
@@ -55,6 +62,7 @@ api.interceptors.response.use(
       const refreshToken = localStorage.getItem('refreshToken');
       if (!refreshToken) {
         localStorage.removeItem('accessToken');
+        window.dispatchEvent(new Event('mocozi:auth-changed'));
         window.location.href = '/login';
         return Promise.reject(error);
       }
@@ -82,6 +90,7 @@ api.interceptors.response.use(
         flushQueue(null, refreshError);
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
+        window.dispatchEvent(new Event('mocozi:auth-changed'));
         window.location.href = '/login';
         return Promise.reject(refreshError);
       } finally {

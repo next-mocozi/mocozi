@@ -2,10 +2,12 @@
 
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
+import { useChatNotifications } from '@/providers/SocketProvider';
 
 /** 공통 헤더 - 네비게이션 바 */
 export default function Header() {
   const { isAuthenticated, loading, logout } = useAuth();
+  const { totalUnread } = useChatNotifications();
 
   return (
     <header className="sticky top-0 z-50 border-b border-gray-200 bg-white">
@@ -37,9 +39,20 @@ export default function Header() {
           </Link>
           <Link
             href="/chat"
-            className="text-gray-600 transition-colors hover:text-primary-600"
+            className="relative text-gray-600 transition-colors hover:text-primary-600"
+            aria-label={
+              totalUnread > 0
+                ? `채팅 (안 읽은 메시지 ${totalUnread}개)`
+                : '채팅'
+            }
           >
             채팅
+            {totalUnread > 0 && (
+              <span
+                className="absolute -right-2 -top-1 h-2 w-2 rounded-full bg-red-500"
+                aria-hidden
+              />
+            )}
           </Link>
         </nav>
 
