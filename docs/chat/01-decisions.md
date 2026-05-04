@@ -1,0 +1,215 @@
+# DM 모듈 — 확정된 설계 결정
+
+> 이 문서는 **결정의 결과**만 담습니다. 비교·토론 과정은 제외하되, 각 결정의 핵심 근거 1~2줄을 함께 기록합니다.
+
+---
+
+## 1. 그룹 DM 형태 — 단계적 확장
+
+| Phase | 형태 | 설명 |
+|---|---|---|
+| **A** (현재) | 단순 N명 DM | 카톡 단톡방 형태. 멤버 추가/나가기 자유, 이름 선택 |
+| **B** (추후) | 채널형 그룹 | Slack 채널 형태. 관리자 권한, 공개 설정 등 |
+
+**구조적 결정**: 두 단계 모두 **같은 `ChatRoom` 테이블**에 `type` enum으로 구분 (`DIRECT` / `GROUP` / `CHANNEL`). 메시지·멤버십 로직이 사실상 동일해서 테이블 분리는 코드 중복만 만듦.
+
+---
+
+## 2. ID 전략 — UUID
+
+**선택**: 모든 채팅 모델의 PK는 `String @id @default(uuid())`.
+
+**근거**:
+- 기존 모코지 DB가 전부 UUID로 통일 (User, Team, RecruitPost 등). 일관성 유지
+- 클라이언트가 `crypto.randomUUID()`로 메시지 ID를 미리 생성 가능 → 낙관적 UI 패턴 지원
+
+---
+
+## 3. 메시지 수정 / 삭제 정책
+
+| 항목 | 정책 |
+|---|---|
+| **수정** | 시간 제한 **없음**. `editedAt` 필드로 표시. UI에서 "(편집됨)" 표기 |
+| **삭제** | **소프트 삭제**. `deletedAt` 필드로 마킹, "삭제된 메시지입니다" placeholder 렌더 |
+| **답글** | `parentId` 자기참조. 부모가 소프트 삭제돼도 답글은 보존 |
+
+**근거**: 답글 기능 때문에 하드 삭제 시 부모-자식 관계가 끊어짐. 소프트 삭제로 데이터 무결성 유지.
+
+---
+
+## 4. 읽음 처리 — 모델 C 채택
+
+**선택**: `ChatRoomMember.lastReadMessageId` (멤버십 row에 단일 컬럼)
+
+**대안 비교**:
+| 모델 | 저장 위치 | 단점 |
+|---|---|---|
+| A. 마지막 읽은 시각 | Member 컬럼 | 시계 동기화 문제 |
+| B. 메시지마다 readBy 배열 | Message 배열 | 메시지 N × 멤버 M 부피, 인덱싱 어려움, 한 번 읽음 처리에 N개 update |
+| **C. 마지막 읽은 메시지 ID** | Member 컬럼 | 정밀도 낮으나 채팅 UX엔 충분 ← **채택** |
+
+**근거**:
+- 카톡/텔레그램/디스코드 표준
+- "안 읽은 개수" 쿼리가 단순 COUNT로 끝남 (`WHERE roomId AND createdAt > ?`)
+- 멤버십 1행 update로 다 읽음 처리 완료 (B는 N개 메시지 update)
+
+**현재 코드 변경 영향**:
+- `backend/prisma/schema.prisma:223` — `readBy String[]` 제거
+- `backend/src/chat/chat.service.ts:41` — `readBy: [senderId]` 제거
+- `shared/types/chat.ts:19` — `readBy: string[]` 제거
+- (신규) `markAsRead(roomId, userId, messageId)` 메서드 추가
+
+---
+
+## 5. 토큰 정책 — access 1시간 + refresh 30일
+
+**선택**: Phase A 동안 도입 (Phase B로 미루지 않음).
+
+| 토큰 | 수명 | 역할 |
+|---|---|---|
+| **access** | 1시간 | 매 요청 검증용. 도난 시 1시간 후 자동 무효화 |
+| **refresh** | 30일 | access 갱신용. DB 저장 → revoke 가능 |
+
+**근거**:
+- access 1일은 도난 시 위험 노출 시간이 너무 김 (업계 표준 15분~1시간)
+- refresh 7일은 사용자 경험 나쁨 (매주 강제 로그인)
+- 1시간 + 30일은 보안과 UX의 균형점. AWS·Google 패턴과 유사
+
+**현재 코드 변경**:
+- `backend/src/auth/auth.module.ts:13` — `expiresIn: '7d'` → `'1h'`
+- `backend/src/auth/auth.service.ts:64-65` — refresh sign + DB 저장 추가
+- `backend/.env.example` — `JWT_REFRESH_SECRET` 변수 추가
+- 신규: `POST /api/auth/refresh` 엔드포인트
+
+→ 인증 담당자 책임. DM 담당은 인터페이스만 가정하고 진행.
+
+---
+
+## 6. 데이터베이스 컨벤션
+
+### @@map (snake_case 테이블명) 유지
+
+기존 모든 모델이 `@@map("snake_case")` 컨벤션을 따름. 채팅 모델도 동일하게:
+- `chat_rooms`, `chat_room_members`, `chat_messages`, `message_reactions`
+
+### onDelete: Cascade — 채팅 영역만 예외 사용
+
+기존 다른 모델(Team, RecruitPost 등)은 cascade를 쓰지 않음. 그러나 채팅에는:
+- `ChatRoom → ChatRoomMember`: cascade
+- `ChatRoom → ChatMessage`: cascade
+- `ChatMessage → MessageReaction`: cascade
+
+**근거**: "방 폭파" 시 데이터 무결성을 위한 안전장치. 일반 운영에서는 메시지를 소프트 삭제(`deletedAt`)하므로 cascade가 발동할 일 거의 없음. 코드 주석으로 예외 사유 명시.
+
+---
+
+## 7. WsJwtGuard 신설 — 위치는 `auth/guards/`
+
+**선택**: `backend/src/auth/guards/ws-jwt.guard.ts` 신규 생성. DM 담당이 만들지만 인증 폴더에 위치.
+
+**근거**:
+- 향후 알림 모듈·협업 화면 공유 등에서 WebSocket 재사용 가능성
+- 인증 관련 가드는 한 위치에 모여 있는 게 발견성 높음
+- 만드는 사람과 위치하는 폴더가 다를 수 있다는 점은 PR 설명에 명시
+
+---
+
+## 8. 모노레포 동기화 원칙
+
+이 프로젝트는 pnpm workspace 모노레포(`@mocozi/backend`, `@mocozi/frontend`, `@mocozi/shared`).
+
+**불변 규칙**: 다음은 **반드시 같은 PR**에 묶여야 함.
+
+| 변경 | 동시 갱신 대상 |
+|---|---|
+| Prisma schema 채팅 영역 | `shared/types/chat.ts` (타입 동기화) |
+| 채팅 service/gateway | DTO 파일들, shared types |
+| API 명세 변경 | `docs/chat/05-api-spec.md` 갱신 |
+
+**위반 시**: 한쪽만 머지되면 빌드 깨짐 (frontend가 옛 타입으로 새 schema 호출 등).
+
+---
+
+## 9. PR 분할 전략
+
+| PR | 범위 | 비고 |
+|---|---|---|
+| **PR1+2 통합** | schema + shared types + service + gateway + DTO + WsJwtGuard | 한 덩어리. 분리 시 빌드 깨짐 |
+| **PR3** | 프론트엔드 (`useSocket`, chat 페이지) | 백엔드 머지 후 별도 진행 |
+| **별개** | 인증 fallback_secret 제거 | 한 줄 수정. 의존성 0 |
+| **별개** | refresh token 도입 | 인증 담당자 작업. DM과 무관 |
+
+**근거**: PR1과 PR2를 분리하면 머지 사이에 백엔드가 옛 schema 가정 코드 + 새 schema로 동작 → 빌드 실패. 같이 가야 안전.
+
+---
+
+## 10. 인앱 알림 — Phase A에 포함 (채팅 모듈 통합)
+
+**선택**: 별도 알림 모듈 만들지 않고 **채팅 모듈에 통합**해서 인앱 알림 구현.
+
+**범위 명확화**:
+- ✅ **인앱 알림 (Phase A)**: 앱이 켜져 있는 상태에서의 화면 내 알림
+- ❌ **푸시 알림 (Phase B 이연)**: 앱이 꺼져 있어도 OS 차원에서 뜨는 알림 (APNs/FCM 필요)
+
+**Phase A에 포함되는 인앱 알림 기능**:
+
+| 기능 | 구현 위치 | 설명 |
+|---|---|---|
+| 안 읽은 메시지 카운트 | 채팅방 목록 API의 `unreadCount` 필드 | `lastReadMessageId` 기반 COUNT 쿼리 |
+| 사이드바 빨간 점 | 프론트엔드 `chat/page.tsx` | `unreadCount > 0`일 때 표시 |
+| 다른 방 메시지 토스트 | 프론트엔드 글로벌 socket 리스너 | 현재 방 아닌 곳에서 메시지 도착 시 화면 위 토스트 |
+| 메시지 도착 사운드 (선택) | 프론트엔드 | 사용자 설정에 따라 |
+
+**근거**:
+- 알림 없이 채팅만 있으면 사용자가 메시지 도착을 모르고 방치 → 서비스 신뢰도 하락
+- 인앱 알림은 채팅 모듈의 자연스러운 확장 (`lastReadMessageId` 이미 존재)
+- 별도 알림 모듈 만들 필요 없음. 추가 작업 4~5시간 수준
+
+**Phase A에 포함하지 않는 것**:
+- 푸시 알림 (모바일 앱 전제. 모코지가 PWA·웹 위주라 의미 작음)
+- 알림 센터 페이지 (종 모양 아이콘으로 보는 알림 목록 — 채팅 외 알림 늘면 그때 도입)
+- 알림 설정 페이지 (방별 음소거 등)
+
+---
+
+## 11. 읽음 처리 시점 정책 (Phase A)
+
+클라이언트가 서버에 "여기까지 읽었어요"를 알려주는 시점. 후보 3가지 중 **①+② 조합** 채택.
+
+| 후보 | 트리거 | Phase A 채택 |
+|---|---|---|
+| ① 채팅방 진입 시 자동 | `conversation:join` → 그 시점의 last 메시지로 lastReadMessageId 갱신 | ✅ 채택 |
+| ② 새 메시지 수신 시 즉시 | 그 방을 보고 있다면 `message:read` 이벤트 즉시 발사 | ✅ 채택 |
+| ③ 스크롤·뷰포트 디바운스 | 메시지가 화면에 들어올 때마다, 디바운스 적용 | ❌ Phase B 검토 |
+
+**근거**:
+- 후보 ① 단독: 방에 들어와 한참 머물면서 새 메시지가 도착해도 unread 안 줄어듦. 사이드바에 unreadCount가 남아있는 버그처럼 보임
+- 후보 ② 단독: 진입 시점부터 누적된 unread는 안 사라짐. 방 들어가도 뱃지 안 사라짐
+- 후보 ③: 정밀하지만 클라이언트 IntersectionObserver + 디바운스 + 다중 메시지 일괄 처리 등 구현 복잡. Phase A 단순성 희생 큼
+- ①+②는 서로 보완적. 진입 시 일괄 catch-up + 머무는 동안 실시간 read
+
+**서버 구현**:
+- `conversation:join` (`chat.gateway.ts`) — assertMembership + room 가입 + `markRoomAsReadToLatest` + `notification:unreadCountChanged` broadcast
+- `message:read` (`chat.gateway.ts`) — `markAsRead` + `notification:unreadCountChanged` broadcast
+
+**다중 디바이스 동기화**:
+- 두 정책 모두 broadcast 대상은 본인 `user:<userId>` glob room
+- 한쪽 디바이스에서 읽으면 다른 쪽 사이드바도 즉시 갱신
+
+**Day 11 진화 가능성**:
+- 사용자 테스트에서 ①+② 조합의 한계가 드러나면 후보 ③(디바운스)로 진화 검토
+- 단, Phase A는 단순성 우선
+
+---
+
+## 12. 결정 변경 이력
+
+| 날짜 | 결정 | 변경 사유 |
+|---|---|---|
+| 2026-05-03 | ID 전략: CUID → **UUID** | 기존 모코지 DB 컨벤션 일관성 |
+| 2026-05-03 | JWT payload: `{sub, email, name}` → **`{sub, email}`** | name은 변경 가능 필드. JwtStrategy.validate()가 DB 조회로 채워줌 |
+| 2026-05-03 | refresh: Phase B로 미룸 → **Phase A에 도입** | 7일 access 단일 운영의 데모 사고 위험 (만료로 강제 로그아웃) |
+| 2026-05-03 | access/refresh: 1d/7d 검토 → **1h/30d** | 업계 표준 + 보안 우위 |
+| 2026-05-03 | 인앱 알림: Phase B 이연 → **Phase A 포함** | 알림 없이 채팅만 있으면 사용자가 메시지 방치. 채팅 모듈 통합으로 추가 비용 작음 |
+| 2026-05-03 | 읽음 처리 시점 정책 추가 (§11) — 후보 ①+② 채택 | 후보 ① 단독은 머무는 동안 새 메시지 unread 누적 / 후보 ② 단독은 진입 시 catch-up 누락. 결합으로 양쪽 시나리오 모두 커버 |
+| 2026-05-03 | Cursor 페이징을 단순 `createdAt` → **`(createdAt, id)` 복합 + base64url opaque** | JS Date의 ms 정밀도와 Postgres microsecond 정밀도 격차로 같은 ms INSERT 시 페이지 경계에서 메시지 영구 누락. tie-breaking으로 방어 |

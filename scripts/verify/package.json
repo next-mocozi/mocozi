@@ -1,0 +1,21 @@
+{
+  "name": "mocozi-verify",
+  "version": "0.0.0",
+  "private": true,
+  "description": "DM 모듈 수동 검증 — REST + Socket.IO 시나리오",
+  "scripts": {
+    "setup": "bash setup.sh",
+    "test:rest": "bash test-rest.sh",
+    "test:ws": "node test-ws.js",
+    "test:edge": "node test-ws-edge.js",
+    "test:edit-delete": "node test-ws-edit-delete.js",
+    "test:reply": "node test-ws-reply.js",
+    "test:reaction": "node test-ws-reaction.js",
+    "test:perf": "node test-perf-pagination.js",
+    "test:reconnect": "node test-ws-reconnect.js",
+    "test:all": "bash setup.sh && bash test-rest.sh && node test-ws.js && node test-ws-edge.js && node test-ws-edit-delete.js && node test-ws-reply.js && node test-ws-reaction.js && node test-ws-reconnect.js && node test-perf-pagination.js"
+  },
+  "dependencies": {
+    "socket.io-client": "^4.8.1"
+  }
+}
