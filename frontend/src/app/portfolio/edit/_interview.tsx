@@ -63,7 +63,7 @@ export type Draft = {
   domainComm: string;
   domainLimits: string;
   deliverableUrl: string;
-  deliverableFiles: Asset[];
+  deliverableFiles: Omit<Asset, 'stepKey'>[];
   assets: Asset[];
   stepIdx: number;
 };
