@@ -168,8 +168,8 @@ export default function RecruitListPage() {
     department: '컴퓨터공학과',
     schoolColor: '#b6001f',
     mainRole: '임베디드',
-    subRoles: ['프론트엔드', '백엔드'],
-    skills: ['JavaScript', 'TypeScript', 'Go', 'FastAPI'],
+    subRoles: ['프론트엔드', '백엔드', '데이터', '모바일', 'PM/PO'],
+    skills: ['React', 'Figma', 'Go', 'FastAPI'],
     bio: '반수한 김동균입니다.',
     image: null,
   },
@@ -476,12 +476,12 @@ export default function RecruitListPage() {
           {person.university} · {person.department}
         </p>
 
-        {/* 메인 직군 + 세부 직군 */}
+        {/* 메인 직군 + 세부 직군 (최대 3개 표시, 초과분은 +N로 축약) */}
         <div className="mb-3 flex flex-wrap items-center gap-1">
           <span className="inline-flex items-center justify-center rounded-full bg-blue-600 px-3 py-1 text-xs leading-none text-white">
             {person.mainRole}
           </span>
-          {person.subRoles.map((role) => (
+          {person.subRoles.slice(0, 2).map((role) => (
             <span
               key={role}
               className="inline-flex items-center justify-center rounded-full border border-blue-200 px-3 py-1 text-xs leading-none text-blue-600"
@@ -489,6 +489,11 @@ export default function RecruitListPage() {
               {role}
             </span>
           ))}
+          {person.subRoles.length > 2 && (
+            <span className="inline-flex items-center justify-center rounded-full border border-blue-100 px-3 py-1 text-xs leading-none text-blue-400">
+              +{person.subRoles.length - 2}
+            </span>
+          )}
         </div>
 
         {/* 스킬 태그 */}
