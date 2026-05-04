@@ -2140,7 +2140,7 @@ function SummaryView({ draft }: { draft: Draft }) {
 
       {(draft.deliverableUrl || draft.deliverableFiles.length > 0) && (
         <section>
-          <h4 className="mb-4 text-sm font-bold text-gray-800">결과물 / 배포물</h4>
+          <h4 className="mb-2 text-sm font-bold text-gray-800">결과물 / 배포물</h4>
           <div className="space-y-3 text-sm leading-7">
             {draft.deliverableUrl && (
               <a

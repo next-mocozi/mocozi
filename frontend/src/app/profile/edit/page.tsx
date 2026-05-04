@@ -14,6 +14,9 @@ import {
   type ProfileLink,
 } from '../_platforms';
 
+/** 아직 직군을 정하지 않은 사용자를 위한 특수 옵션. 메인으로 선택 시 서브 직군은 숨김. */
+const EXPLORING_ROLE = '탐색 중';
+
 const ROLE_OPTIONS = [
   '프론트엔드',
   '백엔드',
@@ -29,6 +32,9 @@ const ROLE_OPTIONS = [
   'UI/UX 디자이너',
   'PM/PO',
 ];
+
+/** 메인 직군 선택지 — 일반 옵션 + "탐색 중" */
+const MAIN_ROLE_OPTIONS = [...ROLE_OPTIONS, EXPLORING_ROLE];
 
 const LINKS_STORAGE_KEY = 'mock_profile_links';
 const ROLES_STORAGE_KEY = 'mock_profile_roles';
@@ -268,51 +274,71 @@ export default function ProfileEditPage() {
 
         {/* 메인 직군 */}
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">메인 직군</label>
+          <label className="mb-2 block text-sm font-medium text-gray-700">
+            메인 직군{' '}
+            <span className="text-xs font-normal text-gray-400">
+              (아직 정하지 않았다면 "탐색 중"을 선택하세요)
+            </span>
+          </label>
           <div className="flex flex-wrap gap-2">
-            {ROLE_OPTIONS.map((role) => (
-              <button
-                key={role}
-                type="button"
-                onClick={() => {
-                  setMainRole(role);
-                  setSubRoles((prev) => prev.filter((r) => r !== role));
-                }}
-                className={`rounded-full border px-3 py-1.5 text-xs transition-all ${
-                  mainRole === role
-                    ? 'border-blue-600 bg-blue-600 text-white'
-                    : 'border-blue-200 text-blue-600 hover:bg-blue-50'
-                }`}
-              >
-                {role}
-              </button>
-            ))}
+            {MAIN_ROLE_OPTIONS.map((role) => {
+              const isExploring = role === EXPLORING_ROLE;
+              const isActive = mainRole === role;
+              return (
+                <button
+                  key={role}
+                  type="button"
+                  onClick={() => {
+                    setMainRole(role);
+                    if (isExploring) {
+                      // 탐색 중 → 서브 직군은 의미 없음, 비움
+                      setSubRoles([]);
+                    } else {
+                      setSubRoles((prev) => prev.filter((r) => r !== role));
+                    }
+                  }}
+                  className={`rounded-full border px-3 py-1.5 text-xs transition-all ${
+                    isActive
+                      ? isExploring
+                        ? 'border-amber-500 bg-amber-500 text-white'
+                        : 'border-blue-600 bg-blue-600 text-white'
+                      : isExploring
+                        ? 'border-dashed border-amber-300 text-amber-600 hover:bg-amber-50'
+                        : 'border-blue-200 text-blue-600 hover:bg-blue-50'
+                  }`}
+                >
+                  {isExploring ? `🔍 ${role}` : role}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* 서브 직군 */}
-        <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">
-            서브 직군{' '}
-            <span className="text-xs font-normal text-gray-400">(다중 선택 가능, 메인 직군 제외)</span>
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {ROLE_OPTIONS.filter((r) => r !== mainRole).map((role) => (
-              <button
-                key={role}
-                type="button"
-                onClick={() => toggleSubRole(role)}
-                className={`rounded-full border px-3 py-1.5 text-xs transition-all ${
-                  subRoles.includes(role)
-                    ? 'border-blue-600 bg-blue-600 text-white'
-                    : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                {role}
-              </button>
-            ))}
+        {/* 서브 직군 — 메인이 "탐색 중"이면 통째로 숨김 */}
+        {mainRole !== EXPLORING_ROLE && (
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">
+              서브 직군{' '}
+              <span className="text-xs font-normal text-gray-400">(다중 선택 가능, 메인 직군 제외)</span>
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {ROLE_OPTIONS.filter((r) => r !== mainRole).map((role) => (
+                <button
+                  key={role}
+                  type="button"
+                  onClick={() => toggleSubRole(role)}
+                  className={`rounded-full border px-3 py-1.5 text-xs transition-all ${
+                    subRoles.includes(role)
+                      ? 'border-blue-600 bg-blue-600 text-white'
+                      : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  {role}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* 기술 스택 */}
         <div>

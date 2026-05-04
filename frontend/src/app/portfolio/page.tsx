@@ -19,6 +19,7 @@ import {
 //       모달 내부에서 추가/수정/삭제 모두 처리).
 
 const LINKS_STORAGE_KEY = 'mock_profile_links'; // profile 페이지와 공유
+const ROLES_STORAGE_KEY = 'mock_profile_roles'; // profile 페이지와 공유 (mainRole + subRoles)
 const ITEMS_STORAGE_KEY = 'mock_portfolio_items';
 const INTRO_STORAGE_KEY = 'mock_portfolio_intro';
 const CAREERS_STORAGE_KEY = 'mock_portfolio_career_items';
@@ -42,7 +43,32 @@ export type PortfolioItem = {
   current: boolean;
   domain?: string;
   tags: string[];
+  /** 대표 프로젝트 (최대 4개). 정렬 시 맨 앞으로. */
+  featured?: boolean;
 };
+
+/** 대표 프로젝트 최대 개수 */
+export const MAX_FEATURED = 4;
+
+/** "2024.03 - 2024.06" / "2024.03.15 - 현재" 같은 문자열에서 시작일을
+ *  YYYYMMDD 정수로 변환 (정렬용). 일이 없으면 1일로 보정. 파싱 실패 시 0. */
+export function parseStartDateNum(period: string): number {
+  const m = period.match(/^\s*(\d{4})\.(\d{1,2})(?:\.(\d{1,2}))?/);
+  if (!m) return 0;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = m[3] ? Number(m[3]) : 1;
+  return y * 10000 + mo * 100 + d;
+}
+
+/** 대표 프로젝트 → 그 외, 각 그룹 내부에선 시작일 내림차순(최신이 위) */
+export function sortPortfolioItems(items: PortfolioItem[]): PortfolioItem[] {
+  const byStartDesc = (a: PortfolioItem, b: PortfolioItem) =>
+    parseStartDateNum(b.period) - parseStartDateNum(a.period) || b.id - a.id;
+  const featured = items.filter((it) => it.featured).sort(byStartDesc);
+  const others = items.filter((it) => !it.featured).sort(byStartDesc);
+  return [...featured, ...others];
+}
 
 export const TYPE_META: Record<
   PortfolioItemType,
@@ -272,6 +298,10 @@ export default function MyPortfolioPage() {
   const [experiences, setExperiences] = useState<Experience[]>(DEFAULT_EXPS);
   const [careers, setCareers] = useState<CareerItem[]>(DEFAULT_CAREERS);
 
+  // 직군 (profile/edit 에서 localStorage 에 저장)
+  const [mainRole, setMainRole] = useState('');
+  const [subRoles, setSubRoles] = useState<string[]>([]);
+
   // 자기소개 — draft / saved 분리 (저장 버튼 패턴)
   const [introSaved, setIntroSaved] = useState(DEFAULT_INTRO);
   const [introDraft, setIntroDraft] = useState(DEFAULT_INTRO);
@@ -316,6 +346,14 @@ export default function MyPortfolioPage() {
     setItems(load(ITEMS_STORAGE_KEY, DEFAULT_ITEMS));
     setExperiences(load(EXPS_STORAGE_KEY, DEFAULT_EXPS));
     setCareers(load(CAREERS_STORAGE_KEY, DEFAULT_CAREERS));
+    const roles = load<{ mainRole: string; subRoles: string[] } | null>(
+      ROLES_STORAGE_KEY,
+      null,
+    );
+    if (roles) {
+      setMainRole(roles.mainRole);
+      setSubRoles(roles.subRoles);
+    }
     try {
       const i = localStorage.getItem(INTRO_STORAGE_KEY);
       if (i !== null) {
@@ -516,8 +554,34 @@ export default function MyPortfolioPage() {
     return b.id - a.id;
   });
 
-  const portfolioItems = items.filter((it) => it.type !== 'study');
+  const portfolioItems = sortPortfolioItems(
+    items.filter((it) => it.type !== 'study'),
+  );
   const studyItems = items.filter((it) => it.type === 'study');
+  const featuredCount = portfolioItems.filter((it) => it.featured).length;
+
+  /** 대표 프로젝트 토글 — 최대 MAX_FEATURED 개 제한 */
+  const toggleFeatured = (id: number) => {
+    const target = items.find((it) => it.id === id);
+    if (!target) return;
+    const willBeFeatured = !target.featured;
+    if (willBeFeatured) {
+      const featuredCount = items.filter(
+        (it) => it.featured && it.type !== 'study',
+      ).length;
+      if (featuredCount >= MAX_FEATURED) {
+        alert(
+          `대표 프로젝트는 최대 ${MAX_FEATURED}개까지만 지정할 수 있어요.`,
+        );
+        return;
+      }
+    }
+    const next = items.map((it) =>
+      it.id === id ? { ...it, featured: willBeFeatured } : it,
+    );
+    setItems(next);
+    persist(ITEMS_STORAGE_KEY, next);
+  };
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
@@ -535,6 +599,25 @@ export default function MyPortfolioPage() {
             <p className="text-gray-600">
               {user.university} {user.department}
             </p>
+
+            {/* 직군 — /profile 페이지와 동일한 스타일 */}
+            {(mainRole || subRoles.length > 0) && (
+              <div className="mt-3 flex flex-wrap items-center gap-1">
+                {mainRole && (
+                  <span className="inline-flex items-center justify-center rounded-full bg-blue-600 px-3 py-1 text-xs leading-none text-white">
+                    {mainRole}
+                  </span>
+                )}
+                {subRoles.map((role) => (
+                  <span
+                    key={role}
+                    className="inline-flex items-center justify-center rounded-full border border-blue-200 px-3 py-1 text-xs leading-none text-blue-600"
+                  >
+                    {role}
+                  </span>
+                ))}
+              </div>
+            )}
 
             {links.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-1.5">
@@ -700,12 +783,22 @@ export default function MyPortfolioPage() {
 
       {/* ─────── 포트폴리오 — 보기 전용 카드, 편집은 관리 모달 ─────── */}
       <div className="mb-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">프로젝트</h2>
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">프로젝트</h2>
+            <p className="mt-1 text-xs leading-relaxed text-gray-500">
+              <span className="mr-0.5 text-amber-400">★</span>
+              표시로 대표 프로젝트를 최대 {MAX_FEATURED}개까지 지정할 수
+              있어요. 대표 프로젝트는 목록 맨 앞에 노출됩니다.{' '}
+              <span className="font-medium text-gray-700">
+                ({featuredCount}/{MAX_FEATURED})
+              </span>
+            </p>
+          </div>
           <button
             type="button"
             onClick={() => setPortfolioMgrOpen(true)}
-            className="btn-primary text-sm"
+            className="btn-primary shrink-0 text-sm"
           >
             + 추가 / 관리
           </button>
@@ -730,9 +823,14 @@ export default function MyPortfolioPage() {
                 <Link
                   key={item.id}
                   href={`/portfolio/${item.id}`}
-                  className="card block transition-all hover:shadow-md"
+                  className="card relative block transition-all hover:shadow-md"
                 >
-                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                  {/* 대표 프로젝트 즐겨찾기 (별) — Link 안이므로 navigate 방지 */}
+                  <FeaturedStar
+                    featured={!!item.featured}
+                    onToggle={() => toggleFeatured(item.id)}
+                  />
+                  <div className="mb-2 flex flex-wrap items-center gap-2 pr-8">
                     <span
                       className={`rounded px-2 py-0.5 text-xs ${meta.bg} ${meta.text}`}
                     >
@@ -840,7 +938,7 @@ export default function MyPortfolioPage() {
             onClick={(e) => e.stopPropagation()}
             className="flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
           >
-            <div className="flex items-center justify-between border-b border-gray-100 px-4 py-5">
+            <div className="flex items-center justify-between border-b border-gray-100 px-4 py-2">
               <h2 className="text-lg font-bold px-1 py-2 text-gray-900">
                 실무 경험 & 이력
               </h2>
@@ -854,10 +952,10 @@ export default function MyPortfolioPage() {
             </div>
 
             {/* 스크롤 영역 */}
-            <div className="flex-1 overflow-y-auto px-6 pb-8 pt-14">
+            <div className="flex-1 overflow-y-auto px-6 pb-2 pt-2">
               {/* 폼 섹션 */}
-              <section className="mb-14 pt-2">
-                <div className="mb-1 flex items-center justify-between py-5">
+              <section className="mb-1 pt-1">
+                <div className="mb-1 flex items-center justify-between py-1">
                   <h3 className="text-base font-bold text-gray-900">
                     {expEditId === null ? '새 항목 추가' : '항목 수정 중'}
                   </h3>
@@ -976,7 +1074,7 @@ export default function MyPortfolioPage() {
               </section>
 
               {/* 리스트 섹션 */}
-              <section className="border-t border-gray-200 pt-8">
+              <section className="border-t border-gray-200 pt-2">
                 <h3 className="px-1 py-3 flex items-center gap-2 text-base font-bold text-gray-900">
                   <span className="h-4 w-1 rounded-full bg-gray-400" />
                   등록된 항목
@@ -1065,8 +1163,10 @@ export default function MyPortfolioPage() {
             onClick={(e) => e.stopPropagation()}
             className="flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
           >
-            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
-              <h2 className="text-lg font-bold  px-1 py-3 text-gray-900">경력</h2>
+            <div className="flex items-center justify-between border-b border-gray-100 px-4 py-2">
+              <h2 className="text-lg font-bold px-1 py-2 text-gray-900">
+                경력
+              </h2>
               <button
                 onClick={() => setCareerModalOpen(false)}
                 aria-label="닫기"
@@ -1076,10 +1176,10 @@ export default function MyPortfolioPage() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-6 pb-8 pt-16">
+            <div className="flex-1 overflow-y-auto px-6 pb-2 pt-2">
               {/* 폼 섹션 */}
-              <section className="mb-14 pt-2">
-                <div className="mb-1 flex items-center justify-between py-5">
+              <section className="mb-1 pt-1">
+                <div className="mb-1 flex items-center justify-between py-1">
                   <h3 className="text-base font-bold text-gray-900">
                     {careerEditId === null ? '새 항목 추가' : '항목 수정 중'}
                   </h3>
@@ -1102,7 +1202,7 @@ export default function MyPortfolioPage() {
                     </button>
                   </div>
                 </div>
-                <p className="mb-5 mt-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2.5 text-xs text-gray-600">
+                <p className="mb-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-xs text-gray-600">
                   예시:{' '}
                   <span className="font-medium">
                     2024년 xxxx 해커톤 은상 수상
@@ -1111,9 +1211,9 @@ export default function MyPortfolioPage() {
                   <span className="font-medium">2023년 0000 부트캠프 참여</span>
                 </p>
 
-                <div className="space-y-5 rounded-xl bg-gray-50/70 p-5">
+                <div className="space-y-2 rounded-xl bg-gray-50/70 p-5">
                   <div>
-                    <label className="mb-2 mt-1 block text-sm font-medium text-gray-700">
+                    <label className="mb-2 block text-sm font-medium text-gray-700">
                       연도
                     </label>
                     <input
@@ -1135,44 +1235,41 @@ export default function MyPortfolioPage() {
                     />
                   </div>
 
-                    <div>
-                     <div className="mb-2 mt-1 flex items-center justify-between">
-                        <label className="text-sm font-medium text-gray-700">내용</label>
-                        <p className="text-xs text-gray-500">
-                          {careerForm.content.length} / {CAREER_CONTENT_MAX}
-                        </p>
-                      </div>
-                      <input
-                        type="text"
-                        value={careerForm.content}
-                        onChange={(e) => {
-                          setCareerForm((f) => ({
-                            ...f,
-                            content: e.target.value.slice(0, CAREER_CONTENT_MAX),
-                          }));
-                          if (careerError) setCareerError('');
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') saveCareer();
-                        }}
-                        placeholder="예: xxxx 해커톤 은상 수상"
-                        maxLength={CAREER_CONTENT_MAX}
-                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                      />
-
+                  <div>
+                    <div className="mb-2 flex items-center justify-between">
+                      <label className="text-sm font-medium text-gray-700">내용</label>
+                      <p className="text-xs text-gray-500">
+                        {careerForm.content.length} / {CAREER_CONTENT_MAX}
+                      </p>
                     </div>
+                    <input
+                      type="text"
+                      value={careerForm.content}
+                      onChange={(e) => {
+                        setCareerForm((f) => ({
+                          ...f,
+                          content: e.target.value.slice(0, CAREER_CONTENT_MAX),
+                        }));
+                        if (careerError) setCareerError('');
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') saveCareer();
+                      }}
+                      placeholder="예: xxxx 해커톤 은상 수상"
+                      maxLength={CAREER_CONTENT_MAX}
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                    />
+                  </div>
 
                   {careerError && (
                     <p className="text-xs text-red-500">{careerError}</p>
                   )}
                 </div>
-
-
               </section>
 
               {/* 리스트 섹션 */}
-              <section className="border-t border-gray-200 pt-8">
-                <h3 className=" px-1 py-3 flex items-center gap-2 text-base font-bold text-gray-900">
+              <section className="border-t border-gray-200 pt-2">
+                <h3 className="px-1 py-3 flex items-center gap-2 text-base font-bold text-gray-900">
                   <span className="h-4 w-1 rounded-full bg-gray-400" />
                   등록된 항목
                   <span className="text-xs font-normal text-gray-500">
@@ -1190,7 +1287,7 @@ export default function MyPortfolioPage() {
                       return (
                         <li
                           key={c.id}
-                          className={`flex items-start gap-3 rounded-lg border px-4 py-3 transition-all ${
+                          className={`flex items-start gap-3 rounded-lg border p-4 transition-all ${
                             editing
                               ? 'border-blue-300 bg-blue-50/40'
                               : 'border-gray-100 hover:bg-gray-50'
@@ -1266,6 +1363,40 @@ export default function MyPortfolioPage() {
         />
       )}
     </div>
+  );
+}
+
+// ─────── 대표 프로젝트 즐겨찾기(별) ───────
+/** 카드/헤더 우상단에 떠 있는 별 토글. 채워진 별 = 대표 프로젝트.
+ *  부모가 <Link> 일 수 있으므로 클릭 시 navigate 를 막는다. */
+export function FeaturedStar({
+  featured,
+  onToggle,
+  className,
+}: {
+  featured: boolean;
+  onToggle: () => void;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onToggle();
+      }}
+      aria-pressed={featured}
+      aria-label={featured ? '대표 프로젝트 해제' : '대표 프로젝트로 지정'}
+      title={featured ? '대표 프로젝트 해제' : '대표 프로젝트로 지정'}
+      className={`absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full text-lg leading-none transition-all ${
+        featured
+          ? 'text-amber-400 hover:bg-amber-50'
+          : 'text-gray-300 hover:bg-gray-100 hover:text-amber-400'
+      } ${className ?? ''}`}
+    >
+      {featured ? '★' : '☆'}
+    </button>
   );
 }
 

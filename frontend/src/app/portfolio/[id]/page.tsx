@@ -3,7 +3,12 @@
 import Link from 'next/link';
 import { use, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { TYPE_META, type PortfolioItem } from '../page';
+import {
+  FeaturedStar,
+  MAX_FEATURED,
+  TYPE_META,
+  type PortfolioItem,
+} from '../page';
 import type { Draft } from '../edit/_interview';
 
 // TODO: 백엔드 연동 — `GET /api/portfolios/:id` 로 교체
@@ -74,6 +79,34 @@ export default function PortfolioItemPage({
     );
   }
 
+  /** 별 토글 — items 전체를 다시 저장 (단일 항목 페이지여도 전체 상태 일관성 유지) */
+  const toggleFeatured = () => {
+    if (!item) return;
+    try {
+      const raw = localStorage.getItem(ITEMS_STORAGE_KEY);
+      const list: PortfolioItem[] = raw ? JSON.parse(raw) : [];
+      const willBeFeatured = !item.featured;
+      if (willBeFeatured) {
+        const featuredCount = list.filter(
+          (it) => it.featured && it.type !== 'study',
+        ).length;
+        if (featuredCount >= MAX_FEATURED) {
+          alert(
+            `대표 프로젝트는 최대 ${MAX_FEATURED}개까지만 지정할 수 있어요.`,
+          );
+          return;
+        }
+      }
+      const next = list.map((it) =>
+        it.id === itemId ? { ...it, featured: willBeFeatured } : it,
+      );
+      localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(next));
+      setItem({ ...item, featured: willBeFeatured });
+    } catch {
+      // 저장 실패 무시
+    }
+  };
+
   if (!item) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-8">
@@ -133,8 +166,12 @@ export default function PortfolioItemPage({
       </Link>
 
       {/* 헤더 카드 — 메타 + 제목 + 태그 */}
-      <div className="card mb-6">
-        <div className="mb-3 flex flex-wrap items-center gap-2">
+      <div className="card relative mb-6">
+        <FeaturedStar
+          featured={!!item.featured}
+          onToggle={toggleFeatured}
+        />
+        <div className="mb-3 flex flex-wrap items-center gap-2 pr-10">
           <span
             className={`rounded px-2 py-0.5 text-xs ${meta.bg} ${meta.text}`}
           >
@@ -190,7 +227,7 @@ export default function PortfolioItemPage({
 
       {/* 인터뷰 답변 카드 — 같은 Q/A 양식으로 표시 */}
       {details ? (
-        <div style={{ rowGap: '1.5rem' }} className="card flex flex-col">
+        <div style={{ rowGap: '0.5rem' }} className="card flex flex-col">
           <Section title="왜 만들었나요?">
             <Para>{renderInline(details.motivation)}</Para>
           </Section>
@@ -287,7 +324,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section>
       <h2
-        style={{ marginBottom: '1.5rem' }}
+        style={{ marginBottom: '0.5rem' }}
         className="text-base font-bold leading-snug text-gray-900"
       >
         {title}
