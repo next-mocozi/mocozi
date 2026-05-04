@@ -629,7 +629,7 @@ export default function ChatRoomPage({ params }: PageProps) {
                 ? '메시지를 입력하세요...'
                 : '연결 대기 중…'
           }
-          disabled={!isConnected || sending}
+          disabled={!isConnected}
           className="input-field flex-1 disabled:bg-gray-50"
         />
         <button
