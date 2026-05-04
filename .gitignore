@@ -2,6 +2,9 @@
 node_modules/
 .pnpm-store/
 
+# 검증 스크립트가 생성하는 토큰 (절대 commit 금지)
+scripts/verify/.tokens.json
+
 # 빌드 결과물
 dist/
 build/
