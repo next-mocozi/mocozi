@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, Dispatch, ReactNode, SetStateAction } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import type { PortfolioItem } from '../page';
 
 // ─────── Storage keys ───────
@@ -11,19 +11,20 @@ const DRAFT_STORAGE_KEY = 'mock_portfolio_draft';
 const DETAILS_STORAGE_KEY = 'mock_portfolio_details';
 
 // ─────── Types ───────
-type Asset = {
+export type Asset = {
   id: string;
   alias: string;
   filename: string;
   dataUrl: string;
 };
 
-type Block = { text: string; assetIds: string[] };
+export type Block = { text: string; assetIds: string[] };
 
-type Draft = {
+export type Draft = {
   name: string;
   activityTypes: string[];
   fieldTags: string[];
+  toolTags: string[];
   roles: string[];
   motivation: string;
   techChoice: string;
@@ -46,6 +47,7 @@ const EMPTY_DRAFT: Draft = {
   name: '',
   activityTypes: [],
   fieldTags: [],
+  toolTags: [],
   roles: [],
   motivation: '',
   techChoice: '',
@@ -76,24 +78,129 @@ const ACTIVITY_OPTIONS = [
 // /profile 의 MOCK_PROFILE 과 같은 값
 const PROFILE_MAIN_ROLE = '풀스택';
 const PROFILE_SUB_ROLES = ['프론트엔드', '백엔드'];
-const PROFILE_SKILLS = ['React', 'TypeScript', 'Node.js', 'Next.js'];
+const PROFILE_SKILLS = [
+  'Python','C','JavaScript', 'TypeScript', 'React', 'Next.js','FastAPI',
+  'Node.js', 'FastAPI', 'PyTorch', 'TensorFlow',
+  'HuggingFace', 'Docker', 'AWS', 'PostgreSQL',
+  'MongoDB', 'Git', 'Figma','Linux'
+];
 
-// "어떤 분야를 다뤘나요?" — 연구 영역 + 프로필 기술 스택을 함께 추천
-const FIELD_OPTIONS = Array.from(
-  new Set(['CV', 'NLP', 'RL', ...PROFILE_SKILLS, '기타']),
-);
-// "어떤 역할을 담당했나요?" — 프로필 직군(메인+서브) + 일반 역할 옵션
-const ROLE_OPTIONS = Array.from(
-  new Set([
-    PROFILE_MAIN_ROLE,
-    ...PROFILE_SUB_ROLES,
-    'PM',
-    'FE',
-    'BE',
-    '디자인',
-    '기타',
-  ]),
-);
+// "어떤 분야를 다뤘나요?" — 카테고리별 세부 영역
+const FIELD_TAGS: Record<string, readonly string[]> = {
+  'AI / ML 핵심': ['CV', 'NLP', 'RL', 'MLOps', 'LLM', 'GenAI', 'RecSys'],
+  데이터: ['Data Analysis', 'Data Engineering', 'Visualization'],
+  개발: [
+    'Frontend',
+    'Backend',
+    'Fullstack',
+    'Mobile',
+    'DevOps',
+    'System Design',
+  ],
+  기타: ['Research', 'Product', 'Design'],
+};
+// 한 카테고리당 노출 최대 개수
+const TAG_PREVIEW_PER_CATEGORY = 5;
+
+// "어떤 프로그램을 통해서 구현했나요?" — 카테고리별 기술 스택
+const TECH_STACK_TAGS: Record<string, readonly string[]> = {
+  언어: [
+    'Python',
+    'JavaScript',
+    'TypeScript',
+    'Java',
+    'C++',
+    'C#',
+    'Swift',
+    'Kotlin',
+    'Go',
+    'Rust',
+    'R',
+    'MATLAB',
+  ],
+  프론트엔드: [
+    'React',
+    'Next.js',
+    'Vue.js',
+    'Svelte',
+    'Flutter',
+    'React Native',
+    'Angular',
+    'Tailwind CSS',
+  ],
+  백엔드: [
+    'Node.js',
+    'FastAPI',
+    'Django',
+    'Flask',
+    'Spring Boot',
+    'Express',
+    'GraphQL',
+    'REST API',
+  ],
+  'AI / ML': [
+    'PyTorch',
+    'TensorFlow',
+    'Keras',
+    'Scikit-learn',
+    'HuggingFace',
+    'LangChain',
+    'OpenCV',
+    'YOLO',
+    'XGBoost',
+    'Stable Diffusion',
+  ],
+  데이터: [
+    'Pandas',
+    'NumPy',
+    'Spark',
+    'Airflow',
+    'SQL',
+    'MongoDB',
+    'PostgreSQL',
+    'Redis',
+    'Elasticsearch',
+    'Kafka',
+  ],
+  '인프라 / 클라우드': [
+    'AWS',
+    'GCP',
+    'Azure',
+    'Docker',
+    'Kubernetes',
+    'Vercel',
+    'Firebase',
+    'Terraform',
+    'Nginx',
+  ],
+  '협업 / 기타': [
+    'Git',
+    'GitHub',
+    'Figma',
+    'Notion',
+    'Jira',
+    'Slack',
+    'Linux',
+    'Arduino',
+    'Raspberry Pi',
+  ],
+};
+// "어떤 역할을 담당했나요?" — 직군 옵션
+const ROLE_OPTIONS = [
+  '프론트엔드',
+  '백엔드',
+  '풀스택',
+  '모바일',
+  'DevOps/인프라',
+  'AI/ML',
+  '데이터',
+  '보안',
+  'QA',
+  '게임',
+  '임베디드',
+  'UI/UX 디자이너',
+  'PM/PO',
+];
 const DOMAIN_OPTIONS = ['의료', '금융', '법률', '교육', '기타'];
 
 const FIRST_TEXTAREA_HINT =
@@ -133,6 +240,7 @@ const isDraftEmpty = (d: Draft) =>
   !d.name &&
   d.activityTypes.length === 0 &&
   d.fieldTags.length === 0 &&
+  d.toolTags.length === 0 &&
   d.roles.length === 0 &&
   !d.motivation &&
   !d.techChoice &&
@@ -149,6 +257,7 @@ type StepKey =
   | 'name'
   | 'activity'
   | 'field'
+  | 'tools'
   | 'roles'
   | 'motivation'
   | 'techChoice'
@@ -164,59 +273,90 @@ type StepKey =
   | 'deliverables'
   | 'summary';
 
-type StepCfg = { key: StepKey; title: string; subtitle?: string };
+type StepCfg = {
+  key: StepKey;
+  title: string;
+  subtitle?: string;
+  /** "2. Q1." 형식의 분류 번호 — 질문(부제) 앞에 붙음 */
+  label?: string;
+};
+
+// 필수 응답이 있어야 다음으로 넘어갈 수 있는 단계 (isStepValid 와 동기화)
+const isStepRequired = (k: StepKey): boolean =>
+  k !== 'deliverables' && k !== 'summary';
 
 const buildSteps = (hasDomain: boolean | null): StepCfg[] => {
   const arr: StepCfg[] = [
-    { key: 'name', title: '프로젝트명', subtitle: '어떤 프로젝트인가요?' },
+    {
+      key: 'name',
+      label: 'Q1.',
+      title: '1. 프로젝트명',
+      subtitle: '어떤 프로젝트인가요?',
+    },
     {
       key: 'activity',
-      title: '프로젝트 분야',
+      label: 'Q1.',
+      title: '2. 프로젝트 분야',
       subtitle: '어떤 활동을 하셨나요? (복수 선택)',
     },
     {
       key: 'field',
-      title: '프로젝트 분야',
+      label: 'Q2.',
+      title: '2. 프로젝트 분야',
       subtitle: '어떤 분야를 다루셨나요?',
     },
     {
+      key: 'tools',
+      label: 'Q3.',
+      title: '2. 프로젝트 분야',
+      subtitle: ' 주로 활용한 기술 스택을 선택해주세요.(복수 선택 가능)',
+    },
+    {
       key: 'roles',
-      title: '본인 역할',
+      label: 'Q1.',
+      title: '3. 본인 역할',
       subtitle: '어떤 역할을 담당하셨나요?',
     },
     {
       key: 'motivation',
-      title: '프로젝트 개요 1/5',
+      label: 'Q1.',
+      title: '4. 프로젝트 개요',
       subtitle: '왜 만들었나요? (문제 정의)',
     },
     {
       key: 'techChoice',
-      title: '프로젝트 개요 2/5',
+      label: 'Q2.',
+      title: '4. 프로젝트 개요',
       subtitle: '왜 이 기술 조합을 선택했나요?',
     },
     {
       key: 'architecture',
-      title: '프로젝트 개요 3/5',
+      label: 'Q3.',
+      title: '4. 프로젝트 개요',
       subtitle: '아키텍처 설계 및 과정 (문제·솔루션 각 3개 이하)',
     },
     {
       key: 'result',
-      title: '프로젝트 개요 4/5',
+      label: 'Q4.',
+      title: '4. 프로젝트 개요',
       subtitle: '결과물 (수치화 필수)',
     },
     {
       key: 'retro',
-      title: '프로젝트 개요 5/5',
+      label: 'Q5.',
+      title: '4. 프로젝트 개요',
       subtitle: '회고 (잘된 점 / 아쉬운 점 / 바꿀 점)',
     },
     {
       key: 'contribution',
-      title: '본인 참여 활동',
+      label: 'Q1.',
+      title: '5. 본인 참여 활동',
       subtitle: '주도한 핵심 파트',
     },
     {
       key: 'domainCheck',
-      title: '도메인',
+      label: 'Q1.',
+      title: '6. 도메인',
       subtitle: '이 프로젝트는 특정 도메인을 포함하나요?',
     },
   ];
@@ -224,22 +364,26 @@ const buildSteps = (hasDomain: boolean | null): StepCfg[] => {
     arr.push(
       {
         key: 'domainTags',
-        title: '도메인 1/4',
+        label: 'Q2.',
+        title: '6. 도메인',
         subtitle: '도메인을 선택해주세요.',
       },
       {
         key: 'domainExpertise',
-        title: '도메인 2/4',
+        label: 'Q3.',
+        title: '6. 도메인',
         subtitle: '도메인 전문성을 어떻게 확보했나요?',
       },
       {
         key: 'domainComm',
-        title: '도메인 3/4',
+        label: 'Q4.',
+        title: '6. 도메인',
         subtitle: '도메인 전문가와 어떻게 소통했나요?',
       },
       {
         key: 'domainLimits',
-        title: '도메인 4/4',
+        label: 'Q5.',
+        title: '6. 도메인',
         subtitle: '한계와 향후 개선 방향은?',
       },
     );
@@ -247,7 +391,8 @@ const buildSteps = (hasDomain: boolean | null): StepCfg[] => {
   arr.push(
     {
       key: 'deliverables',
-      title: '결과물 / 배포물 첨부',
+      label: 'Q1.',
+      title: '7. 결과물 / 배포물',
       subtitle: 'URL과 파일을 첨부해주세요. (선택)',
     },
     {
@@ -262,6 +407,14 @@ const buildSteps = (hasDomain: boolean | null): StepCfg[] => {
 // ─────── Main component ───────
 export default function ProjectInterview() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editIdParam = searchParams.get('id');
+  const editId =
+    editIdParam !== null && Number.isFinite(Number(editIdParam))
+      ? Number(editIdParam)
+      : null;
+  const isEdit = editId !== null;
+
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   const [phase, setPhase] = useState<'loading' | 'resume' | 'form'>('loading');
   const [toast, setToast] = useState<string | null>(null);
@@ -272,8 +425,41 @@ export default function ProjectInterview() {
   const isLast = stepCfg.key === 'summary';
   const isLastInput = stepIdx === steps.length - 2;
 
-  // 초기 로드 — 저장된 draft 가 있으면 resume 모달
+  // 초기 로드 — 수정 모드면 details 에서 답변 불러와 미리보기, 아니면 draft resume
   useEffect(() => {
+    // 1) 수정 모드: 저장된 인터뷰 답변 불러오기
+    if (isEdit) {
+      try {
+        const detailsRaw = localStorage.getItem(DETAILS_STORAGE_KEY);
+        const map: Record<string, Draft> = detailsRaw
+          ? JSON.parse(detailsRaw)
+          : {};
+        const saved = map[String(editId)];
+        if (saved) {
+          // 마지막 단계(미리보기)로 이동시켜 작성한 답변을 같은 양식으로 보여줌
+          const stepsForSaved = buildSteps(saved.hasDomain);
+          setDraft({
+            ...saved,
+            stepIdx: stepsForSaved.length - 1,
+          });
+          setPhase('form');
+          return;
+        }
+        // 인터뷰 details 가 없는 기존 항목 → 제목만 가져와서 처음부터
+        const itemsRaw = localStorage.getItem(ITEMS_STORAGE_KEY);
+        const items: PortfolioItem[] = itemsRaw ? JSON.parse(itemsRaw) : [];
+        const found = items.find((it) => it.id === editId);
+        if (found) {
+          setDraft({ ...EMPTY_DRAFT, name: found.title });
+        }
+      } catch {
+        // 로드 실패 시 빈 폼
+      }
+      setPhase('form');
+      return;
+    }
+
+    // 2) 신규 작성: 저장된 draft 가 있으면 resume 모달
     try {
       const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
       if (raw) {
@@ -288,17 +474,26 @@ export default function ProjectInterview() {
       // 무시
     }
     setPhase('form');
-  }, []);
+  }, [isEdit, editId]);
 
   // 자동 저장
+  // - 신규: draft 키에 자동 저장 (다음 진입 시 resume 가능)
+  // - 수정: details 맵에 해당 id 자리를 직접 갱신 (즉시 반영)
   useEffect(() => {
     if (phase !== 'form') return;
     try {
-      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+      if (isEdit && editId !== null) {
+        const raw = localStorage.getItem(DETAILS_STORAGE_KEY);
+        const map: Record<string, Draft> = raw ? JSON.parse(raw) : {};
+        map[String(editId)] = draft;
+        localStorage.setItem(DETAILS_STORAGE_KEY, JSON.stringify(map));
+      } else {
+        localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+      }
     } catch {
       // 용량 초과 시 무시 — base64 이미지 누적 가능성
     }
-  }, [draft, phase]);
+  }, [draft, phase, isEdit, editId]);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -343,6 +538,8 @@ export default function ProjectInterview() {
         return draft.activityTypes.length > 0;
       case 'field':
         return draft.fieldTags.length > 0;
+      case 'tools':
+        return draft.toolTags.length > 0;
       case 'roles':
         return draft.roles.length > 0;
       case 'motivation':
@@ -377,9 +574,9 @@ export default function ProjectInterview() {
   }, [stepCfg.key, draft]);
 
   const handleSaveProject = () => {
-    const id = Date.now();
+    const targetId = isEdit && editId !== null ? editId : Date.now();
     const item: PortfolioItem = {
-      id,
+      id: targetId,
       type: 'project',
       title: draft.name.trim() || '(제목 없음)',
       description:
@@ -389,31 +586,47 @@ export default function ProjectInterview() {
         '',
       period: '',
       current: false,
-      domain: draft.hasDomain && draft.domainTags[0] ? draft.domainTags[0] : undefined,
+      domain:
+        draft.hasDomain && draft.domainTags[0] ? draft.domainTags[0] : undefined,
       tags: Array.from(
-        new Set([...draft.activityTypes, ...draft.fieldTags, ...draft.roles]),
+        new Set([
+          ...draft.activityTypes,
+          ...draft.fieldTags,
+          ...draft.toolTags,
+          ...draft.roles,
+        ]),
       ).filter(Boolean),
     };
     try {
       const itemsRaw = localStorage.getItem(ITEMS_STORAGE_KEY);
       const list: PortfolioItem[] = itemsRaw ? JSON.parse(itemsRaw) : [];
-      list.push(item);
-      localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(list));
+      const next = isEdit
+        ? list.map((it) => (it.id === targetId ? item : it))
+        : [...list, item];
+      // 수정인데 list 에 없는 경우(이상 케이스)도 안전하게 추가
+      const ensured =
+        isEdit && !list.some((it) => it.id === targetId) ? [...next, item] : next;
+      localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(ensured));
     } catch {
       // 무시
     }
     try {
       const detailsRaw = localStorage.getItem(DETAILS_STORAGE_KEY);
-      const map: Record<string, Draft> = detailsRaw ? JSON.parse(detailsRaw) : {};
-      map[String(id)] = draft;
+      const map: Record<string, Draft> = detailsRaw
+        ? JSON.parse(detailsRaw)
+        : {};
+      map[String(targetId)] = draft;
       localStorage.setItem(DETAILS_STORAGE_KEY, JSON.stringify(map));
     } catch {
       // 무시
     }
-    try {
-      localStorage.removeItem(DRAFT_STORAGE_KEY);
-    } catch {
-      // 무시
+    if (!isEdit) {
+      // 신규 저장 후엔 임시 draft 비우기 (수정은 draft 안 씀)
+      try {
+        localStorage.removeItem(DRAFT_STORAGE_KEY);
+      } catch {
+        // 무시
+      }
     }
     router.push('/portfolio');
   };
@@ -432,8 +645,30 @@ export default function ProjectInterview() {
       `}</style>
 
       <div className="mx-auto flex min-h-[calc(100vh-10rem)] max-w-2xl flex-col justify-center px-6 py-14 sm:px-10 sm:py-16">
-        {/* 상단: 진행률 + 닫기 */}
-        <div className="mb-9 flex items-center gap-4">
+        {/* 상단: 모드 배너 + 자동 저장 안내 */}
+        <div
+          style={{ marginTop: '2.5rem', marginBottom: '1rem' }}
+          className="flex flex-wrap items-center justify-between gap-3 text-xs leading-relaxed"
+        >
+          {isEdit ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 font-medium text-amber-700">
+              ✎ 수정 중
+            </span>
+          ) : (
+            <span className="text-gray-400">
+              입력하시는 내용은 자동으로 저장돼요.
+            </span>
+          )}
+          <span className="text-gray-400">
+            <span className="font-medium text-red-500">*</span> 표시는 필수
+            항목입니다.
+            {isEdit && ' · 변경 내용은 자동으로 저장됩니다.'}
+          </span>
+        </div>
+        <div
+          style={{ marginBottom: '1.25rem' }}
+          className="flex items-center gap-3"
+        >
           <div className="flex-1">
             <div className="mb-2 flex items-center justify-between text-xs text-gray-500">
               <span>
@@ -451,33 +686,63 @@ export default function ProjectInterview() {
           <button
             type="button"
             onClick={handleClose}
-            aria-label="저장하고 닫기"
-            title="저장하고 닫기"
-            className="ml-1 flex h-9 w-9 items-center justify-center rounded-full bg-white text-gray-500 shadow-sm hover:bg-gray-100 hover:text-gray-700"
+            aria-label="여기까지 저장하고 나가기"
+            title="여기까지 저장하고 나가기"
+            style={{ paddingLeft: '1.25rem', paddingRight: '1.25rem' }}
+            className="ml-2 inline-flex items-center gap-2 rounded-full bg-white py-2 text-xs leading-relaxed text-gray-600 shadow-sm hover:bg-gray-100 hover:text-gray-800"
           >
-            ✕
+            <span aria-hidden>✕</span>
+            <span className="whitespace-nowrap font-medium">
+              저장하고 나가기
+            </span>
           </button>
         </div>
 
-        {/* 단계 카드 */}
+        {/* 단계 카드 — min-h 로 모든 단계 카드 크기 통일 (이전/다음 버튼 위치 고정) */}
         <div
           key={stepIdx}
-          className="mocozi-step-in rounded-2xl bg-white p-8 shadow-sm sm:p-10"
+          style={{ minHeight: '44rem' }}
+          className="mocozi-step-in flex flex-col rounded-2xl bg-white p-8 shadow-sm sm:p-10"
         >
-          <h2 className="mb-3 text-xl font-bold leading-snug text-gray-900">
+          {/* 분류 (예: 프로젝트 분야) — 작게, 회색 */}
+          <h2
+            style={{ marginBottom: '1rem' }}
+            className="text-xs font-medium tracking-wide text-gray-500"
+          >
             {stepCfg.title}
           </h2>
+          {/* 실제 질문 — 크게, 검은색 볼드, 라벨 prefix + 필수 * */}
           {stepCfg.subtitle && (
-            <p className="mb-9 text-sm leading-7 text-gray-500">
+            <p
+              style={{ marginBottom: '1rem' }}
+              className="text-lg font-bold leading-snug text-gray-900"
+            >
+              {stepCfg.label && (
+                <span className="mr-2 text-gray-500">{stepCfg.label}</span>
+              )}
               {stepCfg.subtitle}
+              {isStepRequired(stepCfg.key) && (
+                <span
+                  className="ml-1.5 text-red-500"
+                  aria-label="필수 항목"
+                  title="필수 항목"
+                >
+                  *
+                </span>
+              )}
             </p>
           )}
-          <StepBody cfg={stepCfg} draft={draft} setDraft={setDraft} />
+          <div className="flex-1">
+            <StepBody cfg={stepCfg} draft={draft} setDraft={setDraft} />
+          </div>
         </div>
 
         {/* 하단 네비게이션 */}
         {!isLast ? (
-          <div className="mt-8 flex items-center justify-between gap-2">
+          <div
+            style={{ marginTop: '1.25rem', marginBottom: '1.25rem' }}
+            className="flex items-center justify-between gap-2"
+          >
             <button
               type="button"
               disabled={stepIdx === 0}
@@ -496,7 +761,10 @@ export default function ProjectInterview() {
             </button>
           </div>
         ) : (
-          <div className="mt-8 flex items-center justify-between gap-2">
+          <div
+            style={{ marginTop: '1.25rem', marginBottom: '2rem' }}
+            className="flex items-center justify-between gap-2"
+          >
             <button
               type="button"
               onClick={prev}
@@ -509,7 +777,7 @@ export default function ProjectInterview() {
               onClick={handleSaveProject}
               className="rounded-full bg-blue-600 px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
             >
-              포트폴리오에 저장
+              {isEdit ? '수정 완료' : '포트폴리오에 저장'}
             </button>
           </div>
         )}
@@ -587,14 +855,26 @@ function StepBody({
           options={ACTIVITY_OPTIONS}
           selected={draft.activityTypes}
           onChange={(v) => setDraft((d) => ({ ...d, activityTypes: v }))}
+          allowCustom
         />
       );
     case 'field':
       return (
-        <TagSelect
-          options={FIELD_OPTIONS}
+        <CategorizedTagSelect
+          categories={FIELD_TAGS}
           selected={draft.fieldTags}
           onChange={(v) => setDraft((d) => ({ ...d, fieldTags: v }))}
+          previewLimit={TAG_PREVIEW_PER_CATEGORY}
+          allowCustom
+        />
+      );
+    case 'tools':
+      return (
+        <CategorizedTagSelect
+          categories={TECH_STACK_TAGS}
+          selected={draft.toolTags}
+          onChange={(v) => setDraft((d) => ({ ...d, toolTags: v }))}
+          previewLimit={TAG_PREVIEW_PER_CATEGORY}
           allowCustom
         />
       );
@@ -767,11 +1047,18 @@ function TagSelect({
     onChange([...selected, v]);
     setCustom('');
   };
-  const customs = selected.filter((s) => !options.includes(s));
+  // 직접 입력 칸이 있을 땐 "기타" 옵션을 숨김 (사용자가 직접 입력하면 됨)
+  const visibleOptions = allowCustom
+    ? options.filter((o) => o !== '기타')
+    : options;
+  const customs = selected.filter((s) => !visibleOptions.includes(s));
   return (
     <div>
-      <div className="flex flex-wrap gap-x-2.5 gap-y-3">
-        {options.map((opt) => {
+      <div
+        style={{ rowGap: '1rem', columnGap: '0.625rem' }}
+        className="flex flex-wrap"
+      >
+        {visibleOptions.map((opt) => {
           const on = selected.includes(opt);
           return (
             <button
@@ -801,7 +1088,7 @@ function TagSelect({
         ))}
       </div>
       {allowCustom && (
-        <div className="mt-5 flex gap-2.5">
+        <div style={{ marginTop: '1rem' }} className="flex gap-2.5">
           <input
             type="text"
             value={custom}
@@ -812,7 +1099,142 @@ function TagSelect({
                 addCustom();
               }
             }}
-            placeholder="직접 입력 후 Enter"
+            placeholder="직접 입력 후 추가"
+            className="flex-1 rounded-lg border border-gray-200 px-4 py-2.5 text-sm leading-relaxed outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+          />
+          <button
+            type="button"
+            onClick={addCustom}
+            className="rounded-lg bg-gray-900 px-4 py-2.5 text-sm text-white hover:bg-gray-700"
+          >
+            추가
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** 카테고리(언어/프론트엔드/...)별로 묶어서 보여주는 태그 선택기.
+ *  카테고리당 previewLimit 개만 노출하고 나머지는 "더보기"로 펼침.
+ */
+function CategorizedTagSelect({
+  categories,
+  selected,
+  onChange,
+  allowCustom,
+  previewLimit = 5,
+}: {
+  categories: Record<string, readonly string[]>;
+  selected: string[];
+  onChange: (next: string[]) => void;
+  allowCustom?: boolean;
+  previewLimit?: number;
+}) {
+  const [custom, setCustom] = useState('');
+
+  const toggle = (v: string) =>
+    onChange(
+      selected.includes(v)
+        ? selected.filter((x) => x !== v)
+        : [...selected, v],
+    );
+
+  const addCustom = () => {
+    const v = custom.trim();
+    if (!v) return;
+    if (selected.includes(v)) {
+      setCustom('');
+      return;
+    }
+    onChange([...selected, v]);
+    setCustom('');
+  };
+
+  const knownTags = new Set(Object.values(categories).flat());
+  const customs = selected.filter((s) => !knownTags.has(s));
+
+  const chipBase =
+    'rounded-full border px-4 py-2.5 text-sm leading-relaxed transition-all';
+  const chipOn = 'border-blue-500 bg-blue-500 text-white';
+  const chipOff =
+    'border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50';
+
+  return (
+    <div className="flex flex-col" style={{ rowGap: '1rem' }}>
+      {Object.entries(categories).map(([cat, tags]) => {
+        // 더보기 없이 항상 previewLimit 개로 제한 (카드 높이 일정 유지)
+        const visible = tags.slice(0, previewLimit);
+        return (
+          <div key={cat}>
+            <h3
+              style={{ marginBottom: '0.5rem' }}
+              className="text-[10px] font-semibold uppercase tracking-wider text-gray-400"
+            >
+              {cat}
+            </h3>
+            <div
+              style={{ rowGap: '0.625rem', columnGap: '0.625rem' }}
+              className="flex flex-wrap items-center"
+            >
+              {visible.map((opt) => {
+                const on = selected.includes(opt);
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => toggle(opt)}
+                    className={`${chipBase} ${on ? chipOn : chipOff}`}
+                  >
+                    {opt}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+
+      {customs.length > 0 && (
+        <div>
+          <h3
+            style={{ marginBottom: '0.5rem' }}
+            className="text-[10px] font-semibold uppercase tracking-wider text-gray-400"
+          >
+            직접 추가
+          </h3>
+          <div
+            style={{ rowGap: '0.625rem', columnGap: '0.625rem' }}
+            className="flex flex-wrap items-center"
+          >
+            {customs.map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => toggle(s)}
+                className="inline-flex items-center gap-1 rounded-full border border-blue-500 bg-blue-500 px-3 py-2 text-sm text-white"
+              >
+                {s}
+                <span className="text-xs opacity-80">✕</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {allowCustom && (
+        <div style={{ marginTop: '0.25rem' }} className="flex gap-2.5">
+          <input
+            type="text"
+            value={custom}
+            onChange={(e) => setCustom(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                addCustom();
+              }
+            }}
+            placeholder="목록에 없으면 직접 입력 후 추가"
             className="flex-1 rounded-lg border border-gray-200 px-4 py-2.5 text-sm leading-relaxed outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
           />
           <button
@@ -842,7 +1264,10 @@ function SimpleTextarea({
   return (
     <div>
       {showHint && (
-        <p className="mb-4 rounded-lg bg-amber-50 px-4 py-3 text-xs leading-7 text-amber-700">
+        <p
+          style={{ marginBottom: '1rem' }}
+          className="rounded-lg bg-amber-50 px-4 py-3 text-xs leading-7 text-amber-700"
+        >
           ⭐ {FIRST_TEXTAREA_HINT}
         </p>
       )}
@@ -983,7 +1408,10 @@ function AssetTextarea({
         )}
       </div>
 
-      <div className="mt-5 flex flex-wrap items-center gap-x-2.5 gap-y-3">
+      <div
+        style={{ marginTop: '1rem', rowGap: '1rem', columnGap: '0.625rem' }}
+        className="flex flex-wrap items-center"
+      >
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
@@ -1024,7 +1452,10 @@ function AssetTextarea({
         ))}
       </div>
 
-      <p className="mt-4 text-xs leading-7 text-gray-400">
+      <p
+        style={{ marginTop: '1rem' }}
+        className="text-xs leading-7 text-gray-400"
+      >
         텍스트에서 <span className="font-mono">@</span> 를 입력하면 업로드한 자료를
         인용할 수 있어요. 예: <span className="font-mono">@[A]</span>
       </p>
@@ -1179,6 +1610,8 @@ function SummaryView({ draft }: { draft: Draft }) {
       lines.push(`**활동:** ${draft.activityTypes.join(', ')}`);
     if (draft.fieldTags.length)
       lines.push(`**분야:** ${draft.fieldTags.join(', ')}`);
+    if (draft.toolTags.length)
+      lines.push(`**프로그램:** ${draft.toolTags.join(', ')}`);
     if (draft.roles.length) lines.push(`**역할:** ${draft.roles.join(', ')}`);
     lines.push('');
     const pushSec = (h: string, body: string) => {
@@ -1220,7 +1653,12 @@ function SummaryView({ draft }: { draft: Draft }) {
     }
   };
 
-  const tags = [...draft.activityTypes, ...draft.fieldTags, ...draft.roles];
+  const tags = [
+    ...draft.activityTypes,
+    ...draft.fieldTags,
+    ...draft.toolTags,
+    ...draft.roles,
+  ];
 
   return (
     <div className="space-y-10">

@@ -3,10 +3,12 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useChatNotifications } from '@/providers/SocketProvider';
 
 /** 공통 헤더 - 네비게이션 바 */
 export default function Header() {
   const { isAuthenticated, loading, logout } = useAuth();
+  const { totalUnread } = useChatNotifications();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);  // 사이드바 열림/닫힘 상태 (true = 열림)
 
   // (A) ESC 키로 사이드바 닫기
@@ -65,9 +67,20 @@ export default function Header() {
           </Link>
           <Link
             href="/chat"
-            className="text-gray-600 transition-colors hover:text-primary-600"
+            className="relative text-gray-600 transition-colors hover:text-primary-600"
+            aria-label={
+              totalUnread > 0
+                ? `채팅 (안 읽은 메시지 ${totalUnread}개)`
+                : '채팅'
+            }
           >
             채팅
+            {totalUnread > 0 && (
+              <span
+                className="absolute -right-2 -top-1 h-2 w-2 rounded-full bg-red-500"
+                aria-hidden
+              />
+            )}
           </Link>
         </nav>
 

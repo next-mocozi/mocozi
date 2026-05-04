@@ -1,55 +1,235 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
+import type {
+  ClientToServerEvents,
+  EditMessagePayload,
+  ReactionPayload,
+  SendMessagePayload,
+  ServerToClientEvents,
+} from '@/types/chat';
 
-/** Socket.IO 연결 훅 - 실시간 채팅용 */
-export function useSocket(namespace = '/chat') {
-  const socketRef = useRef<Socket | null>(null);
+/**
+ * 모코지 채팅 Socket.IO 클라이언트 훅
+ *
+ * 변경점 (Day 8):
+ * - namespace 제거 (백엔드도 default namespace 사용)
+ * - handshake `auth: { token }` 적용 (WsJwtGuard 통과)
+ * - 이벤트 이름: conversation:* / message:* (서버 spec와 일치)
+ * - 메서드 시그니처에서 senderId 제거 (서버가 토큰에서 추출)
+ * - SocketEvents 타입 적용으로 emit/on 모두 컴파일 타임 체크
+ * - 'exception' 이벤트 자동 listen (디버그·UX용)
+ * - 토큰 만료 시 자동 logout 리다이렉트 (refresh는 인증 모듈 도입 후 도입 예정)
+ *
+ * 참고: docs/chat/05-api-spec.md §2
+ */
+
+export type ChatSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
+
+interface UseSocketOptions {
+  /**
+   * 인증 토큰. 미지정 시 localStorage('accessToken')에서 자동 로드.
+   * 토큰 없으면 connect 안 함.
+   */
+  token?: string;
+
+  /**
+   * 토큰 만료(connect_error 'Unauthorized') 시 호출. 기본은 logout 리다이렉트.
+   * 추후 refresh token 흐름이 추가되면 여기서 갈아끼우고 reconnect.
+   */
+  onAuthError?: () => void;
+
+  /**
+   * 자동 연결 끄고 싶을 때 false. 기본 true.
+   */
+  autoConnect?: boolean;
+
+  /**
+   * 매 connect 시점에 호출 (최초 + 재연결).
+   *
+   * 재연결 시 catch-up 패턴:
+   *  - re-emit 'conversation:join' for 현재 보고 있는 방 (서버 socket room은 disconnect 시 사라짐)
+   *  - fetch GET /api/chat/rooms (사이드바 unreadCount 재동기화)
+   *  - 옵션) GET /api/chat/rooms/:id/messages?cursor=... 로 누락 메시지 catch-up
+   *
+   * `info.reconnect`는 최초 연결이 아니라 재연결인지 구분. 콜러가 분기 처리 가능.
+   */
+  onConnect?: (info: { reconnect: boolean }) => void;
+}
+
+export function useSocket(options: UseSocketOptions = {}) {
+  const { onAuthError, onConnect, autoConnect = true } = options;
+
+  const socketRef = useRef<ChatSocket | null>(null);
+  /** 한 번이라도 connect된 적 있는지 추적 — 다음 connect는 reconnect로 분류 */
+  const hasConnectedOnceRef = useRef(false);
   const [isConnected, setIsConnected] = useState(false);
+  const [lastException, setLastException] = useState<{
+    code: string;
+    message: string;
+  } | null>(null);
 
+  // ---------------------------------------------------------
+  // 연결 / 해제
+  // ---------------------------------------------------------
   useEffect(() => {
+    if (!autoConnect) return;
+
+    const token =
+      options.token ??
+      (typeof window !== 'undefined'
+        ? localStorage.getItem('accessToken')
+        : null);
+    if (!token) {
+      // 토큰 없으면 연결 안 함. 로그인 화면 진입 등 비인증 상태에서 호출되는 케이스
+      return;
+    }
+
     const socketUrl =
       process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:8080';
 
-    socketRef.current = io(`${socketUrl}${namespace}`, {
+    const socket: ChatSocket = io(socketUrl, {
       transports: ['websocket'],
+      auth: { token },
       autoConnect: true,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
     });
 
-    socketRef.current.on('connect', () => {
+    socket.on('connect', () => {
       setIsConnected(true);
+      const isReconnect = hasConnectedOnceRef.current;
+      hasConnectedOnceRef.current = true;
+      // 콘솔 디버그 — 재연결 발생 시점 추적 용이
+      if (isReconnect) {
+        // eslint-disable-next-line no-console
+        console.info('[ws] reconnected');
+      }
+      if (onConnect) onConnect({ reconnect: isReconnect });
+    });
+    socket.on('disconnect', (reason) => {
+      setIsConnected(false);
+      // eslint-disable-next-line no-console
+      console.info('[ws] disconnected:', reason);
     });
 
-    socketRef.current.on('disconnect', () => {
+    socket.on('connect_error', (err) => {
+      // 토큰 거부 등 핸드셰이크 실패
       setIsConnected(false);
+      const message = err?.message ?? '';
+      if (message === 'Unauthorized' || message.toLowerCase().includes('unauthorized')) {
+        if (onAuthError) {
+          onAuthError();
+        } else {
+          // 기본 동작 — 토큰 정리 후 로그인 페이지로
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('accessToken');
+            window.location.href = '/login';
+          }
+        }
+      }
     });
+
+    socket.on('exception', (err) => {
+      setLastException({ code: err.code, message: err.message });
+      // 디버그 — 콘솔에도 출력
+      // eslint-disable-next-line no-console
+      console.warn('[ws exception]', err);
+    });
+
+    socketRef.current = socket;
 
     return () => {
-      socketRef.current?.disconnect();
+      socket.disconnect();
+      socketRef.current = null;
     };
-  }, [namespace]);
+    // options.token 변경 시 재연결, onAuthError는 의도적 제외 (콜백 정체성 변동에 휘둘리지 않게)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoConnect, options.token]);
 
-  /** 채팅방 입장 */
-  const joinRoom = (roomId: string) => {
-    socketRef.current?.emit('joinRoom', roomId);
-  };
+  // ---------------------------------------------------------
+  // 액션 — 모든 메서드는 socket이 없으면 no-op
+  // (refs로 잡아서 콜러 측 의존성 변동 회피)
+  // ---------------------------------------------------------
 
-  /** 채팅방 퇴장 */
-  const leaveRoom = (roomId: string) => {
-    socketRef.current?.emit('leaveRoom', roomId);
-  };
+  const joinConversation = useCallback((roomId: string) => {
+    return new Promise<{ ok: boolean; roomId: string; unreadCount: number }>(
+      (resolve) => {
+        if (!socketRef.current) return resolve({ ok: false, roomId, unreadCount: 0 });
+        socketRef.current.emit('conversation:join', { roomId }, (res) => {
+          resolve(res ?? { ok: false, roomId, unreadCount: 0 });
+        });
+      },
+    );
+  }, []);
 
-  /** 메시지 전송 */
-  const sendMessage = (roomId: string, senderId: string, content: string) => {
-    socketRef.current?.emit('sendMessage', { roomId, senderId, content });
-  };
+  const leaveConversation = useCallback((roomId: string) => {
+    socketRef.current?.emit('conversation:leave', { roomId });
+  }, []);
+
+  const sendMessage = useCallback((payload: SendMessagePayload) => {
+    return new Promise<unknown>((resolve) => {
+      if (!socketRef.current) return resolve(null);
+      socketRef.current.emit('message:send', payload, (msg) => resolve(msg));
+    });
+  }, []);
+
+  const editMessage = useCallback((payload: EditMessagePayload) => {
+    return new Promise<unknown>((resolve) => {
+      if (!socketRef.current) return resolve(null);
+      socketRef.current.emit('message:edit', payload, (msg) => resolve(msg));
+    });
+  }, []);
+
+  const deleteMessage = useCallback((messageId: string) => {
+    return new Promise<unknown>((resolve) => {
+      if (!socketRef.current) return resolve(null);
+      socketRef.current.emit('message:delete', { messageId }, (res) =>
+        resolve(res),
+      );
+    });
+  }, []);
+
+  const markAsRead = useCallback((roomId: string, messageId: string) => {
+    return new Promise<{ ok: boolean; unreadCount: number }>((resolve) => {
+      if (!socketRef.current) return resolve({ ok: false, unreadCount: 0 });
+      socketRef.current.emit('message:read', { roomId, messageId }, (res) =>
+        resolve(res ?? { ok: false, unreadCount: 0 }),
+      );
+    });
+  }, []);
+
+  const addReaction = useCallback((payload: ReactionPayload) => {
+    return new Promise<unknown>((resolve) => {
+      if (!socketRef.current) return resolve(null);
+      socketRef.current.emit('reaction:add', payload, (r) => resolve(r));
+    });
+  }, []);
+
+  const removeReaction = useCallback((payload: ReactionPayload) => {
+    return new Promise<unknown>((resolve) => {
+      if (!socketRef.current) return resolve(null);
+      socketRef.current.emit('reaction:remove', payload, (res) => resolve(res));
+    });
+  }, []);
 
   return {
+    /** 현재 socket 인스턴스 (이벤트 listen에 직접 활용 가능) */
     socket: socketRef.current,
     isConnected,
-    joinRoom,
-    leaveRoom,
+    /** 가장 최근에 받은 'exception' 이벤트 (디버그·UI 표시용). 새 발생 시 갱신 */
+    lastException,
+
+    // 액션
+    joinConversation,
+    leaveConversation,
     sendMessage,
+    editMessage,
+    deleteMessage,
+    markAsRead,
+    addReaction,
+    removeReaction,
   };
 }

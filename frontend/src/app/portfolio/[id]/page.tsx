@@ -2,12 +2,15 @@
 
 import Link from 'next/link';
 import { use, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import { TYPE_META, type PortfolioItem } from '../page';
+import type { Draft } from '../edit/_interview';
 
 // TODO: 백엔드 연동 — `GET /api/portfolios/:id` 로 교체
 //       (CLAUDE.md §11). 현재는 mock — localStorage 에서 로드.
 
 const ITEMS_STORAGE_KEY = 'mock_portfolio_items';
+const DETAILS_STORAGE_KEY = 'mock_portfolio_details';
 
 const DEFAULT_ITEMS: PortfolioItem[] = [
   {
@@ -32,7 +35,7 @@ const DEFAULT_ITEMS: PortfolioItem[] = [
   },
 ];
 
-/** 포트폴리오 항목 상세 페이지 */
+/** 포트폴리오 항목 상세 페이지 — 인터뷰로 작성한 모든 답변을 같은 양식으로 표시 */
 export default function PortfolioItemPage({
   params,
 }: {
@@ -41,6 +44,7 @@ export default function PortfolioItemPage({
   const { id } = use(params);
   const itemId = Number(id);
   const [item, setItem] = useState<PortfolioItem | null>(null);
+  const [details, setDetails] = useState<Draft | null>(null);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -50,6 +54,13 @@ export default function PortfolioItemPage({
       setItem(list.find((it) => it.id === itemId) ?? null);
     } catch {
       setItem(DEFAULT_ITEMS.find((it) => it.id === itemId) ?? null);
+    }
+    try {
+      const raw = localStorage.getItem(DETAILS_STORAGE_KEY);
+      const map: Record<string, Draft> = raw ? JSON.parse(raw) : {};
+      setDetails(map[String(itemId)] ?? null);
+    } catch {
+      setDetails(null);
     } finally {
       setLoaded(true);
     }
@@ -81,15 +92,47 @@ export default function PortfolioItemPage({
 
   const meta = TYPE_META[item.type];
 
+  // 인터뷰 답변(@[A] → 이미지) 인라인 렌더러
+  const renderInline = (text: string): ReactNode => {
+    if (!text) return null;
+    const parts = text.split(/(@\[[^\]]+\])/g);
+    return parts.map((part, i) => {
+      const m = part.match(/^@\[([^\]]+)\]$/);
+      if (m) {
+        const asset = details?.assets.find((a) => a.alias === m[1]);
+        if (asset) {
+          return (
+            <img
+              key={i}
+              src={asset.dataUrl}
+              alt={asset.filename}
+              className="my-3 max-w-full rounded-lg border border-gray-200"
+            />
+          );
+        }
+        return (
+          <span
+            key={i}
+            className="rounded bg-amber-50 px-1 font-mono text-xs text-amber-700"
+          >
+            @[{m[1]}]
+          </span>
+        );
+      }
+      return <span key={i}>{part}</span>;
+    });
+  };
+
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className="mx-auto max-w-3xl px-4 py-10">
       <Link
         href="/portfolio"
-        className="mb-4 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+        className="mb-6 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
       >
         ← 포트폴리오로
       </Link>
 
+      {/* 헤더 카드 — 메타 + 제목 + 태그 */}
       <div className="card mb-6">
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <span
@@ -97,7 +140,9 @@ export default function PortfolioItemPage({
           >
             {meta.label}
           </span>
-          <span className="text-xs text-gray-500">{item.period}</span>
+          {item.period && (
+            <span className="text-xs text-gray-500">{item.period}</span>
+          )}
           {item.current && (
             <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
               <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
@@ -106,26 +151,34 @@ export default function PortfolioItemPage({
           )}
         </div>
 
-        <h1 className="mb-2 text-2xl font-bold">{item.title}</h1>
-        {item.domain && (
-          <p className="mb-4 text-sm text-gray-500">도메인 · {item.domain}</p>
-        )}
-        <p className="whitespace-pre-wrap text-gray-700">{item.description}</p>
+        <h1 className="mb-3 text-2xl font-bold leading-snug">{item.title}</h1>
 
-        {item.tags.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-1">
-            {item.tags.map((tag) => (
-              <span
-                key={tag}
-                className="rounded bg-blue-50 px-2 py-1 text-xs text-blue-600"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
+        {/* 인터뷰로 작성된 경우: 활동/분야/역할/도메인 별로 그룹화해서 표시 */}
+        {details ? (
+          <TagGroups draft={details} />
+        ) : (
+          <>
+            {item.domain && (
+              <p className="mb-3 text-sm text-gray-500">
+                도메인 · {item.domain}
+              </p>
+            )}
+            {item.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {item.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="rounded bg-blue-50 px-2 py-1 text-xs text-blue-600"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </>
         )}
 
-        <div className="mt-6 flex justify-end gap-2">
+        <div className="mt-7 flex justify-end gap-2">
           <Link
             href={`/portfolio/edit?id=${item.id}`}
             className="btn-secondary text-sm"
@@ -134,6 +187,160 @@ export default function PortfolioItemPage({
           </Link>
         </div>
       </div>
+
+      {/* 인터뷰 답변 카드 — 같은 Q/A 양식으로 표시 */}
+      {details ? (
+        <div style={{ rowGap: '1.5rem' }} className="card flex flex-col">
+          <Section title="왜 만들었나요?">
+            <Para>{renderInline(details.motivation)}</Para>
+          </Section>
+          <Section title="왜 이 기술 조합을 선택했나요?">
+            <Para>{renderInline(details.techChoice)}</Para>
+          </Section>
+          <Section title="아키텍처 설계 및 과정">
+            <Para>{renderInline(details.architecture.text)}</Para>
+          </Section>
+          <Section title="결과물">
+            <Para>{renderInline(details.result.text)}</Para>
+          </Section>
+          <Section title="회고">
+            <Para>{renderInline(details.retro.text)}</Para>
+          </Section>
+          <Section title="본인 참여 활동">
+            <Para>{renderInline(details.contribution)}</Para>
+          </Section>
+
+          {details.hasDomain && (
+            <Section title="도메인">
+              <div className="space-y-3 text-sm leading-7 text-gray-700">
+                {details.domainTags.length > 0 && (
+                  <p>
+                    <span className="font-medium text-gray-900">영역:</span>{' '}
+                    {details.domainTags.join(', ')}
+                  </p>
+                )}
+                {details.domainExpertise && (
+                  <p>
+                    <span className="font-medium text-gray-900">전문성:</span>{' '}
+                    {details.domainExpertise}
+                  </p>
+                )}
+                {details.domainComm && (
+                  <p>
+                    <span className="font-medium text-gray-900">소통:</span>{' '}
+                    {details.domainComm}
+                  </p>
+                )}
+                {details.domainLimits && (
+                  <p>
+                    <span className="font-medium text-gray-900">한계:</span>{' '}
+                    {details.domainLimits}
+                  </p>
+                )}
+              </div>
+            </Section>
+          )}
+
+          {(details.deliverableUrl || details.deliverableFiles.length > 0) && (
+            <Section title="결과물 / 배포물">
+              <div className="space-y-2 text-sm leading-7">
+                {details.deliverableUrl && (
+                  <a
+                    href={details.deliverableUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block break-all text-blue-600 hover:underline"
+                  >
+                    {details.deliverableUrl}
+                  </a>
+                )}
+                {details.deliverableFiles.map((f) => (
+                  <a
+                    key={f.id}
+                    href={f.dataUrl}
+                    download={f.filename}
+                    className="block text-gray-700 hover:text-blue-600"
+                  >
+                    📎 {f.filename}
+                  </a>
+                ))}
+              </div>
+            </Section>
+          )}
+        </div>
+      ) : (
+        // 인터뷰 details 가 없는 legacy 항목 → 단순 description 표시
+        <div className="card">
+          <p className="whitespace-pre-wrap leading-7 text-gray-700">
+            {item.description}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────── 보조 컴포넌트 ───────
+
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  // 빈 섹션이면 헤딩까지 숨김 — children null 렌더 결과를 한번 검사
+  return (
+    <section>
+      <h2
+        style={{ marginBottom: '1.5rem' }}
+        className="text-base font-bold leading-snug text-gray-900"
+      >
+        {title}
+      </h2>
+      {children}
+    </section>
+  );
+}
+
+function Para({ children }: { children: ReactNode }) {
+  // 빈 문자열이면 아예 렌더하지 않음
+  // (renderInline 이 빈 input 에 null 반환)
+  if (!children) {
+    return <p className="text-sm text-gray-400">— 작성되지 않았습니다.</p>;
+  }
+  return (
+    <div className="whitespace-pre-wrap text-sm leading-8 text-gray-700">
+      {children}
+    </div>
+  );
+}
+
+function TagGroups({ draft }: { draft: Draft }) {
+  const groups: { label: string; tags: string[] }[] = [
+    { label: '활동', tags: draft.activityTypes },
+    { label: '분야', tags: draft.fieldTags },
+    { label: '프로그램', tags: draft.toolTags ?? [] },
+    { label: '역할', tags: draft.roles },
+  ];
+  if (draft.hasDomain && draft.domainTags.length > 0) {
+    groups.push({ label: '도메인', tags: draft.domainTags });
+  }
+  const visible = groups.filter((g) => g.tags.length > 0);
+  if (visible.length === 0) return null;
+  return (
+    <div className="space-y-3">
+      {visible.map((g) => (
+        <div key={g.label} className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold text-gray-500">
+            {g.label}
+          </span>
+          <div className="flex flex-wrap gap-1.5">
+            {g.tags.map((t) => (
+              <span
+                key={t}
+                className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs leading-relaxed text-blue-700"
+              >
+                {t}
+              </span>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

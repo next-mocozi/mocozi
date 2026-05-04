@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import {
   PlatformIcon,
   PLATFORM_META,
@@ -259,7 +260,7 @@ function YearMonthPicker({
 
 /** 내 포트폴리오 — 이력서형 페이지 (각 섹션 "+ 추가" 모달에서 통합 관리) */
 export default function MyPortfolioPage() {
-  const profile = MOCK_PROFILE;
+  const { user, loading } = useAuth();
   const [links, setLinks] = useState<ProfileLink[]>(DEFAULT_LINKS);
   const [items, setItems] = useState<PortfolioItem[]>(DEFAULT_ITEMS);
   const [experiences, setExperiences] = useState<Experience[]>(DEFAULT_EXPS);
@@ -319,6 +320,15 @@ export default function MyPortfolioPage() {
       // 기본값 유지
     }
   }, []);
+
+  // 로그인 가드 — 모든 훅 호출 이후에 위치
+  if (loading)
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        로딩 중...
+      </div>
+    );
+  if (!user) return null;
 
   const persist = (key: string, value: unknown) => {
     try {
@@ -514,10 +524,10 @@ export default function MyPortfolioPage() {
           </div>
           <div className="flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold">{profile.name}</h1>
+              <h1 className="text-2xl font-bold">{user.name}</h1>
             </div>
             <p className="text-gray-600">
-              {profile.university} {profile.department}
+              {user.university} {user.department}
             </p>
 
             {links.length > 0 && (
@@ -1272,14 +1282,16 @@ function ItemMgrModal({
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-6 py-10 sm:px-10"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-full w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
+        className="flex max-h-full w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
       >
-        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-          <h2 className="text-lg font-bold">{title}</h2>
+        <div className="flex items-center justify-between border-b border-gray-100 px-8 py-6 sm:px-10">
+          <h2 className="text-xl font-bold leading-snug text-gray-900">
+            {title}
+          </h2>
           <button
             onClick={onClose}
             aria-label="닫기"
@@ -1289,34 +1301,34 @@ function ItemMgrModal({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-5">
+        <div className="flex-1 overflow-y-auto px-8 py-6 sm:px-10 sm:py-7">
           {/* 새 항목 추가 — 페이지 이동 (상세 폼) */}
           <Link
             href={addHref}
-            className="mb-5 flex items-center justify-center rounded-xl border-2 border-dashed border-blue-200 bg-blue-50/50 px-4 py-4 text-sm font-medium text-blue-600 transition-all hover:border-blue-400 hover:bg-blue-50"
+            className="mb-6 flex items-center justify-center rounded-xl border-2 border-dashed border-blue-200 bg-blue-50/50 px-4 py-4 text-sm font-medium leading-relaxed text-blue-600 transition-all hover:border-blue-400 hover:bg-blue-50"
           >
             {addLabel}
           </Link>
 
-          <div className="border-t border-gray-100 pt-5">
-            <h3 className="px-1 py-3 text-sm font-semibold text-gray-700">
+          <div className="border-t border-gray-100 pt-6">
+            <h3 className="mb-6 px-1 text-sm font-semibold leading-relaxed text-gray-700">
               등록된 항목 ({items.length})
             </h3>
             {items.length === 0 ? (
-              <p className="text-sm text-gray-500">
+              <p className="px-1 text-sm leading-7 text-gray-500">
                 아직 등록된 항목이 없습니다.
               </p>
             ) : (
-              <ul className="space-y-2">
+              <ul className="space-y-4">
                 {items.map((item) => {
                   const meta = TYPE_META[item.type];
                   return (
                     <li
                       key={item.id}
-                      className="flex items-start gap-3 rounded-lg border border-gray-100 p-3 transition-all hover:bg-gray-50"
+                      className="flex items-center gap-4 rounded-lg border border-gray-100 px-5 py-4 transition-all hover:bg-gray-50"
                     >
-                      <div className="flex-1">
-                        <div className="mb-1 flex flex-wrap items-center gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="mb-3 flex flex-wrap items-center gap-2">
                           <span
                             className={`rounded px-2 py-0.5 text-[10px] ${meta.bg} ${meta.text}`}
                           >
@@ -1331,24 +1343,26 @@ function ItemMgrModal({
                             {item.period}
                           </span>
                         </div>
-                        <p className="text-sm font-semibold text-gray-800">
+                        <p className="break-words text-sm font-semibold leading-relaxed text-gray-800">
                           {item.title}
                         </p>
-                        <p className="mt-0.5 line-clamp-1 text-xs text-gray-500">
-                          {item.description}
-                        </p>
+                        {item.description && (
+                          <p className="mt-2 break-words text-xs leading-7 text-gray-500">
+                            {item.description}
+                          </p>
+                        )}
                       </div>
-                      <div className="flex shrink-0 gap-1">
+                      <div className="flex shrink-0 flex-row items-center gap-1.5">
                         <Link
                           href={`/portfolio/edit?id=${item.id}`}
-                          className="rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-white hover:text-blue-600"
+                          className="rounded-md px-2.5 py-1 text-xs text-gray-600 hover:bg-white hover:text-blue-600"
                         >
                           수정
                         </Link>
                         <button
                           type="button"
                           onClick={() => onDelete(item.id)}
-                          className="rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-white hover:text-red-500"
+                          className="rounded-md px-2.5 py-1 text-xs text-gray-600 hover:bg-white hover:text-red-500"
                         >
                           삭제
                         </button>
