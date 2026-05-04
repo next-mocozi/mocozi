@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import api from '@/lib/api';
 import { loginApi, logoutApi } from '@/lib/authApi';
+import { notifyAuthChanged } from '@/providers/SocketProvider';
 
 export interface AuthUser {
   id: string;
@@ -50,6 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { accessToken, refreshToken, user: userData } = await loginApi(email, password);
     localStorage.setItem('accessToken', accessToken);
     localStorage.setItem('refreshToken', refreshToken);
+    notifyAuthChanged(); // SocketProvider가 새 토큰으로 socket 재생성
     setUser(userData);
     return userData;
   };
@@ -67,6 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
+    notifyAuthChanged(); // SocketProvider가 socket 정리
     setUser(null);
     window.location.href = '/';
   };

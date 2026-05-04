@@ -1,83 +1,711 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { ChatRoomType, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
-/** 채팅 서비스 - 채팅방 및 메시지 관리 */
+const MESSAGE_PAGE_DEFAULT = 50;
+const MESSAGE_PAGE_MAX = 100;
+const ROOM_PAGE_DEFAULT = 20;
+const ROOM_PAGE_MAX = 50;
+
+interface CreateRoomInput {
+  type: 'DIRECT' | 'GROUP';
+  name?: string;
+  description?: string;
+  memberIds: string[];
+}
+
+/**
+ * Cursor 페이로드 — base64url로 직렬화되어 클라이언트에 opaque token으로 전달.
+ * 클라이언트는 내부 구조 파악 불필요. 서버만 인코딩/디코딩.
+ *
+ * timestamp 필드 + id 조합으로 tie-breaking. JS Date의 ms 정밀도 한계로
+ * 같은 ms에 INSERT된 두 row가 페이지 경계에 걸리는 누락 시나리오를 방어.
+ */
+interface MessageCursor {
+  /** ChatMessage.createdAt (ISO 8601) */
+  createdAt: string;
+  /** ChatMessage.id (UUID) */
+  id: string;
+}
+
+interface RoomCursor {
+  /** ChatRoom.lastMessageAt (ISO 8601). null 방은 cursor 미발급 */
+  lastMessageAt: string;
+  /** ChatRoom.id (UUID) */
+  id: string;
+}
+
+/** 인앱 알림 — 'notification:newMessage' 페이로드 (shared/types/chat.ts와 동기화) */
+export interface NewMessageNotificationPayload {
+  roomId: string;
+  roomName: string | null;
+  senderName: string;
+  preview: string;
+  unreadCount: number;
+}
+
+/** Gateway가 멤버별로 emit할 수 있게 묶어 반환 */
+export interface MemberNotification {
+  userId: string;
+  payload: NewMessageNotificationPayload;
+}
+
 @Injectable()
 export class ChatService {
   constructor(private prisma: PrismaService) {}
 
-  /** 채팅방 생성 또는 기존 채팅방 조회 */
-  async getOrCreateRoom(userIds: string[]) {
-    // 두 사용자 간 기존 채팅방 검색
-    const existingRoom = await this.prisma.chatRoom.findFirst({
-      where: {
-        users: {
-          every: { userId: { in: userIds } },
+  // ---------------------------------------------------------
+  // 채팅방 생성
+  // ---------------------------------------------------------
+
+  /**
+   * 채팅방 생성. DIRECT는 동일한 양자 조합이 이미 있으면 기존 방 반환.
+   * GROUP은 매번 새 방 생성.
+   * creator는 자동으로 멤버에 포함된다.
+   */
+  async createRoom(creatorId: string, input: CreateRoomInput) {
+    const { type, name, description, memberIds } = input;
+    const allMemberIds = Array.from(new Set([creatorId, ...memberIds]));
+
+    if (type === 'DIRECT') {
+      if (memberIds.length !== 1) {
+        throw new BadRequestException(
+          'DIRECT 채팅방은 상대방 한 명만 지정할 수 있습니다.',
+        );
+      }
+      const otherUserId = memberIds[0];
+      if (otherUserId === creatorId) {
+        throw new BadRequestException('자기 자신과는 DIRECT 방을 만들 수 없습니다.');
+      }
+
+      // 기존 양자 DIRECT 방 조회 (양쪽 모두 활성 멤버)
+      const existing = await this.findDirectRoomBetween(creatorId, otherUserId);
+      if (existing) return this.getRoom(existing.id, creatorId);
+    } else if (type === 'GROUP') {
+      if (!name || name.trim().length === 0) {
+        throw new BadRequestException('GROUP 채팅방은 이름이 필요합니다.');
+      }
+      if (allMemberIds.length < 2) {
+        throw new BadRequestException(
+          'GROUP 채팅방은 본인 외 1명 이상이 필요합니다.',
+        );
+      }
+    }
+
+    const room = await this.prisma.chatRoom.create({
+      data: {
+        type: type as ChatRoomType,
+        name: type === 'GROUP' ? name : null,
+        description: description ?? null,
+        creatorId,
+        members: {
+          create: allMemberIds.map((userId) => ({ userId })),
         },
       },
-      include: { users: true, messages: { orderBy: { createdAt: 'desc' }, take: 1 } },
+      include: this.roomInclude(),
     });
 
-    if (existingRoom) return existingRoom;
+    return this.shapeRoom(room, creatorId, 0);
+  }
 
-    // 새 채팅방 생성
-    return this.prisma.chatRoom.create({
-      data: {
-        users: {
-          create: userIds.map((userId) => ({ userId })),
-        },
+  /**
+   * 두 사용자 사이의 활성 DIRECT 방을 찾는다 (양쪽 모두 leftAt: null).
+   * 없으면 null.
+   */
+  private async findDirectRoomBetween(userA: string, userB: string) {
+    return this.prisma.chatRoom.findFirst({
+      where: {
+        type: 'DIRECT',
+        AND: [
+          { members: { some: { userId: userA, leftAt: null } } },
+          { members: { some: { userId: userB, leftAt: null } } },
+        ],
       },
-      include: { users: true },
     });
   }
 
-  /** 메시지 저장 */
-  async saveMessage(roomId: string, senderId: string, content: string) {
-    const message = await this.prisma.chatMessage.create({
-      data: {
-        roomId,
-        senderId,
-        content,
-        readBy: [senderId],
+  // ---------------------------------------------------------
+  // 채팅방 조회
+  // ---------------------------------------------------------
+
+  /**
+   * 사용자가 속한 채팅방 목록 (unreadCount 포함, 사이드바용)
+   *
+   * 정렬: lastMessageAt DESC nulls last → 메시지 있는 방이 먼저, id desc로 tie-break
+   * Cursor: base64url 인코딩된 (lastMessageAt, id) — opaque token
+   *
+   * null lastMessageAt(메시지 없는 방)은 cursor 영역 밖 (nulls last로 끝에 위치).
+   * 마지막 페이지가 null 방으로 끝나면 nextCursor=null로 종료.
+   */
+  async getUserRooms(
+    userId: string,
+    opts: { type?: ChatRoomType; limit?: number; cursor?: string } = {},
+  ) {
+    const limit = Math.min(opts.limit ?? ROOM_PAGE_DEFAULT, ROOM_PAGE_MAX);
+    const decoded = opts.cursor
+      ? this.decodeCursor<RoomCursor>(opts.cursor)
+      : null;
+
+    const rooms = await this.prisma.chatRoom.findMany({
+      where: {
+        members: { some: { userId, leftAt: null } },
+        ...(opts.type ? { type: opts.type } : {}),
+        ...(decoded
+          ? {
+              OR: [
+                // 명백히 이전 시각의 방
+                { lastMessageAt: { lt: new Date(decoded.lastMessageAt) } },
+                // 같은 시각이면 id로 tie-break
+                {
+                  AND: [
+                    { lastMessageAt: new Date(decoded.lastMessageAt) },
+                    { id: { lt: decoded.id } },
+                  ],
+                },
+              ],
+            }
+          : {}),
       },
+      orderBy: [
+        { lastMessageAt: { sort: 'desc', nulls: 'last' } },
+        { id: 'desc' },
+      ],
+      take: limit,
+      include: this.roomInclude(),
     });
 
-    // 채팅방 마지막 메시지 업데이트
-    await this.prisma.chatRoom.update({
+    const roomsWithUnread = await Promise.all(
+      rooms.map(async (room) => {
+        const unreadCount = await this.getUnreadCount(room.id, userId);
+        return this.shapeRoom(room, userId, unreadCount);
+      }),
+    );
+
+    const last = rooms[rooms.length - 1];
+    const nextCursor =
+      rooms.length === limit && last.lastMessageAt
+        ? this.encodeCursor<RoomCursor>({
+            lastMessageAt: last.lastMessageAt.toISOString(),
+            id: last.id,
+          })
+        : null;
+
+    return { rooms: roomsWithUnread, nextCursor };
+  }
+
+  /**
+   * 단일 채팅방 상세. 멤버가 아니면 ForbiddenException.
+   */
+  async getRoom(roomId: string, userId: string) {
+    const room = await this.prisma.chatRoom.findUnique({
       where: { id: roomId },
-      data: { lastMessage: content },
+      include: this.roomInclude(),
     });
+    if (!room) throw new NotFoundException('채팅방을 찾을 수 없습니다.');
+
+    const myMembership = room.members.find(
+      (m) => m.userId === userId && m.leftAt === null,
+    );
+    if (!myMembership) {
+      throw new ForbiddenException('해당 채팅방의 멤버가 아닙니다.');
+    }
+
+    const unreadCount = await this.getUnreadCount(roomId, userId);
+    return this.shapeRoom(room, userId, unreadCount);
+  }
+
+  // ---------------------------------------------------------
+  // 메시지 조회 (cursor-based 페이징)
+  // ---------------------------------------------------------
+
+  /**
+   * 채팅방 메시지 페이징 조회.
+   *
+   * 정렬: createdAt DESC (최신이 먼저), id desc로 tie-break
+   *   → 클라이언트가 화면 표시 시 reverse
+   * Cursor: base64url 인코딩된 (createdAt, id) — opaque token
+   *
+   * 같은 ms timestamp 두 메시지가 페이지 경계에 걸려 누락되는 시나리오 방어:
+   *   WHERE createdAt < cursor.createdAt
+   *      OR (createdAt = cursor.createdAt AND id < cursor.id)
+   *
+   * deletedAt 메시지도 포함됨 (클라이언트가 placeholder 렌더).
+   */
+  async getMessages(
+    roomId: string,
+    userId: string,
+    opts: { cursor?: string; limit?: number } = {},
+  ) {
+    await this.assertMembership(roomId, userId);
+
+    const limit = Math.min(opts.limit ?? MESSAGE_PAGE_DEFAULT, MESSAGE_PAGE_MAX);
+    const decoded = opts.cursor
+      ? this.decodeCursor<MessageCursor>(opts.cursor)
+      : null;
+
+    const messages = await this.prisma.chatMessage.findMany({
+      where: {
+        roomId,
+        ...(decoded
+          ? {
+              OR: [
+                { createdAt: { lt: new Date(decoded.createdAt) } },
+                {
+                  AND: [
+                    { createdAt: new Date(decoded.createdAt) },
+                    { id: { lt: decoded.id } },
+                  ],
+                },
+              ],
+            }
+          : {}),
+      },
+      orderBy: [
+        { createdAt: 'desc' },
+        { id: 'desc' },
+      ],
+      take: limit,
+      include: this.messageInclude(),
+    });
+
+    const last = messages[messages.length - 1];
+    const nextCursor =
+      messages.length === limit
+        ? this.encodeCursor<MessageCursor>({
+            createdAt: last.createdAt.toISOString(),
+            id: last.id,
+          })
+        : null;
+
+    return { messages, nextCursor };
+  }
+
+  // ---------------------------------------------------------
+  // 메시지 저장 (Socket 'message:send' 가 사용)
+  // ---------------------------------------------------------
+
+  /**
+   * 새 메시지 저장 + 채팅방의 lastMessage·lastMessageAt 갱신.
+   * Gateway 핸들러는 senderId를 client.data.user.id에서 가져와 호출 (위조 불가).
+   */
+  async saveMessage(
+    roomId: string,
+    senderId: string,
+    content: string,
+    parentId?: string,
+  ) {
+    await this.assertMembership(roomId, senderId);
+
+    if (!content || content.trim().length === 0) {
+      throw new BadRequestException('메시지 내용이 비어 있습니다.');
+    }
+    if (parentId) {
+      const parent = await this.prisma.chatMessage.findUnique({
+        where: { id: parentId },
+        select: { roomId: true },
+      });
+      if (!parent || parent.roomId !== roomId) {
+        throw new BadRequestException(
+          '답글 대상 메시지가 존재하지 않거나 다른 방의 메시지입니다.',
+        );
+      }
+    }
+
+    // 트랜잭션: 메시지 INSERT + 방 lastMessage 갱신을 원자 처리
+    const [message] = await this.prisma.$transaction([
+      this.prisma.chatMessage.create({
+        data: {
+          roomId,
+          senderId,
+          content,
+          parentId: parentId ?? null,
+        },
+        include: this.messageInclude(),
+      }),
+      this.prisma.chatRoom.update({
+        where: { id: roomId },
+        data: {
+          lastMessage: this.preview(content),
+          lastMessageAt: new Date(),
+        },
+      }),
+    ]);
 
     return message;
   }
 
-  /** 채팅방 메시지 목록 조회 */
-  async getMessages(roomId: string, take = 50) {
-    return this.prisma.chatMessage.findMany({
-      where: { roomId },
-      orderBy: { createdAt: 'asc' },
-      take,
-      include: {
-        sender: { select: { id: true, name: true, profileImage: true } },
+  // ---------------------------------------------------------
+  // 메시지 수정 / 삭제 (Day 6)
+  // ---------------------------------------------------------
+
+  /**
+   * 본인 메시지 내용 수정. editedAt 갱신.
+   *
+   * - 시간 제한 없음 (Phase A 정책 — 01-decisions.md §3)
+   * - 이미 deletedAt이 설정된 메시지는 수정 불가 (404)
+   * - senderId !== userId면 403
+   */
+  async editMessage(messageId: string, userId: string, newContent: string) {
+    const trimmed = newContent?.trim() ?? '';
+    if (trimmed.length === 0) {
+      throw new BadRequestException('메시지 내용이 비어 있습니다.');
+    }
+
+    const existing = await this.prisma.chatMessage.findUnique({
+      where: { id: messageId },
+      select: { id: true, senderId: true, deletedAt: true, roomId: true },
+    });
+    if (!existing) {
+      throw new NotFoundException('메시지를 찾을 수 없습니다.');
+    }
+    if (existing.deletedAt !== null) {
+      throw new NotFoundException('이미 삭제된 메시지입니다.');
+    }
+    if (existing.senderId !== userId) {
+      throw new ForbiddenException('본인 메시지만 수정할 수 있습니다.');
+    }
+
+    return this.prisma.chatMessage.update({
+      where: { id: messageId },
+      data: { content: trimmed, editedAt: new Date() },
+      include: this.messageInclude(),
+    });
+  }
+
+  /**
+   * 본인 메시지 소프트 삭제. deletedAt 설정만, row 보존.
+   *
+   * - 답글의 부모로 참조되는 경우에도 row 유지 (부모-자식 관계 무결성)
+   * - 이미 삭제된 메시지면 멱등 (재호출해도 ok)
+   * - senderId !== userId면 403
+   *
+   * 반환: { messageId, roomId } — gateway가 room broadcast 할 때 사용
+   */
+  async deleteMessage(messageId: string, userId: string) {
+    const existing = await this.prisma.chatMessage.findUnique({
+      where: { id: messageId },
+      select: { id: true, senderId: true, deletedAt: true, roomId: true },
+    });
+    if (!existing) {
+      throw new NotFoundException('메시지를 찾을 수 없습니다.');
+    }
+    if (existing.senderId !== userId) {
+      throw new ForbiddenException('본인 메시지만 삭제할 수 있습니다.');
+    }
+    if (existing.deletedAt !== null) {
+      // 이미 소프트 삭제된 경우 멱등 처리 (재호출 시 별도 update 없이 그대로 반환)
+      return { messageId, roomId: existing.roomId };
+    }
+
+    await this.prisma.chatMessage.update({
+      where: { id: messageId },
+      data: { deletedAt: new Date() },
+    });
+    return { messageId, roomId: existing.roomId };
+  }
+
+  // ---------------------------------------------------------
+  // 메시지 반응 (이모지) — Day 7 후반에서 Day 8 앞당김
+  // ---------------------------------------------------------
+
+  /**
+   * 본인이 메시지에 이모지 반응 추가.
+   * - 멤버십 검증 (해당 메시지 방의 활성 멤버여야 함)
+   * - 삭제된 메시지에는 반응 불가 (NotFound)
+   * - 같은 (messageId, userId, emoji) 중복 시 ConflictException (@@unique 제약 활용)
+   *
+   * 반환: MessageReaction + roomId (Gateway가 broadcast 시 사용)
+   */
+  async addReaction(messageId: string, userId: string, emoji: string) {
+    const message = await this.prisma.chatMessage.findUnique({
+      where: { id: messageId },
+      select: { id: true, roomId: true, deletedAt: true },
+    });
+    if (!message) {
+      throw new NotFoundException('메시지를 찾을 수 없습니다.');
+    }
+    if (message.deletedAt !== null) {
+      throw new NotFoundException('삭제된 메시지에는 반응할 수 없습니다.');
+    }
+
+    await this.assertMembership(message.roomId, userId);
+
+    try {
+      const reaction = await this.prisma.messageReaction.create({
+        data: { messageId, userId, emoji },
+      });
+      return { ...reaction, roomId: message.roomId };
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        throw new ConflictException('이미 같은 이모지 반응이 있습니다.');
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * 본인 반응 제거. 본인이 추가한 반응만 삭제됨 (where 조건에 userId 포함).
+   * 멱등 — 없는 반응 삭제 시도는 0건 삭제 후 정상 응답.
+   *
+   * 반환: { messageId, userId, emoji, roomId } (Gateway가 broadcast 시 사용)
+   */
+  async removeReaction(messageId: string, userId: string, emoji: string) {
+    const message = await this.prisma.chatMessage.findUnique({
+      where: { id: messageId },
+      select: { roomId: true },
+    });
+    if (!message) {
+      throw new NotFoundException('메시지를 찾을 수 없습니다.');
+    }
+
+    await this.prisma.messageReaction.deleteMany({
+      where: { messageId, userId, emoji },
+    });
+
+    return { messageId, userId, emoji, roomId: message.roomId };
+  }
+
+  // ---------------------------------------------------------
+  // 인앱 알림 페이로드 빌더 (Gateway가 user:<id> room으로 broadcast)
+  // ---------------------------------------------------------
+
+  /**
+   * 새 메시지 알림 페이로드를 멤버별로 생성한다.
+   * Gateway는 반환된 배열을 순회하며 server.to(`user:${userId}`).emit(...) 한다.
+   *
+   * 멤버별로 unreadCount가 다르므로 개별 계산 필요 (N+1 쿼리, Phase A 트래픽엔 OK).
+   * 송신자도 포함됨 — 본인의 다른 디바이스 사이드바 갱신 위해 (preview/lastMessageAt).
+   */
+  async buildNewMessageNotifications(
+    roomId: string,
+    senderName: string,
+    fullContent: string,
+  ): Promise<MemberNotification[]> {
+    const room = await this.prisma.chatRoom.findUnique({
+      where: { id: roomId },
+      select: {
+        name: true,
+        members: {
+          where: { leftAt: null },
+          select: { userId: true },
+        },
+      },
+    });
+    if (!room) return [];
+
+    const preview = this.preview(fullContent);
+
+    return Promise.all(
+      room.members.map(async ({ userId }) => ({
+        userId,
+        payload: {
+          roomId,
+          roomName: room.name,
+          senderName,
+          preview,
+          unreadCount: await this.getUnreadCount(roomId, userId),
+        },
+      })),
+    );
+  }
+
+  // ---------------------------------------------------------
+  // 읽음 처리 (모델 C: lastReadMessageId)
+  // ---------------------------------------------------------
+
+  /**
+   * 채팅방의 가장 최근 메시지로 lastReadMessageId 갱신.
+   * 방 진입(conversation:join) 시 자동 읽음 처리에 사용.
+   *
+   * 반환:
+   *  - 메시지가 있어 갱신했으면 갱신 후 unreadCount (보통 0)
+   *  - 메시지가 없는 방이면 null (아무것도 갱신 안 함)
+   */
+  async markRoomAsReadToLatest(
+    roomId: string,
+    userId: string,
+  ): Promise<number | null> {
+    await this.assertMembership(roomId, userId);
+
+    const lastMessage = await this.prisma.chatMessage.findFirst({
+      where: { roomId, deletedAt: null },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true },
+    });
+    if (!lastMessage) return null;
+
+    await this.prisma.chatRoomMember.update({
+      where: { roomId_userId: { roomId, userId } },
+      data: { lastReadMessageId: lastMessage.id },
+    });
+
+    return this.getUnreadCount(roomId, userId);
+  }
+
+  /**
+   * 사용자의 lastReadMessageId 갱신.
+   * messageId가 해당 방의 메시지인지 검증 후 갱신.
+   */
+  async markAsRead(roomId: string, userId: string, messageId: string) {
+    await this.assertMembership(roomId, userId);
+
+    const message = await this.prisma.chatMessage.findUnique({
+      where: { id: messageId },
+      select: { roomId: true },
+    });
+    if (!message || message.roomId !== roomId) {
+      throw new NotFoundException(
+        '해당 메시지가 존재하지 않거나 다른 방의 메시지입니다.',
+      );
+    }
+
+    await this.prisma.chatRoomMember.update({
+      where: { roomId_userId: { roomId, userId } },
+      data: { lastReadMessageId: messageId },
+    });
+  }
+
+  // ---------------------------------------------------------
+  // 내부 유틸
+  // ---------------------------------------------------------
+
+  /**
+   * 사용자가 활성 멤버인지 검증. 아니면 ForbiddenException.
+   * 방 자체가 없으면 NotFoundException.
+   *
+   * 외부(Gateway 등)에서도 호출 가능하도록 public.
+   * 비싼 fetch(getRoom)를 피하고 싶을 때 직접 사용.
+   */
+  async assertMembership(roomId: string, userId: string) {
+    const membership = await this.prisma.chatRoomMember.findUnique({
+      where: { roomId_userId: { roomId, userId } },
+      select: { leftAt: true, room: { select: { id: true } } },
+    });
+    if (!membership) {
+      // 방이 아예 없는지 / 내가 속하지 않은 건지 구분
+      const roomExists = await this.prisma.chatRoom.findUnique({
+        where: { id: roomId },
+        select: { id: true },
+      });
+      if (!roomExists) {
+        throw new NotFoundException('채팅방을 찾을 수 없습니다.');
+      }
+      throw new ForbiddenException('해당 채팅방의 멤버가 아닙니다.');
+    }
+    if (membership.leftAt !== null) {
+      throw new ForbiddenException('이미 나간 채팅방입니다.');
+    }
+  }
+
+  /**
+   * unreadCount 계산 — 모델 C 기반.
+   * lastReadMessageId 이후 메시지 중 deletedAt 없고 본인이 보낸 게 아닌 것 COUNT.
+   * 한 번도 안 읽은 경우(lastReadMessageId === null)는 모든 미삭제·타인 메시지 카운트.
+   *
+   * 외부(Gateway 등)에서 다중 디바이스 동기화 등에 사용 가능하도록 public.
+   *
+   * 쿼리 2회: membership(+lastReadMessage include) → count.
+   * 직전 구현은 membership / lastReadMessage / count 3회. include로 1회 절감.
+   */
+  async getUnreadCount(
+    roomId: string,
+    userId: string,
+  ): Promise<number> {
+    const member = await this.prisma.chatRoomMember.findUnique({
+      where: { roomId_userId: { roomId, userId } },
+      include: { lastReadMessage: { select: { createdAt: true } } },
+    });
+    if (!member) return 0;
+
+    return this.prisma.chatMessage.count({
+      where: {
+        roomId,
+        deletedAt: null,
+        senderId: { not: userId },
+        ...(member.lastReadMessage && {
+          createdAt: { gt: member.lastReadMessage.createdAt },
+        }),
       },
     });
   }
 
-  /** 사용자의 채팅방 목록 조회 */
-  async getUserRooms(userId: string) {
-    return this.prisma.chatRoom.findMany({
-      where: {
-        users: { some: { userId } },
-      },
-      include: {
-        users: {
-          include: {
-            user: { select: { id: true, name: true, profileImage: true } },
-          },
+  /**
+   * 사이드바용 메시지 미리보기 — 길면 잘라서 저장.
+   */
+  private preview(content: string, max = 100) {
+    const trimmed = content.trim();
+    return trimmed.length > max ? `${trimmed.slice(0, max)}…` : trimmed;
+  }
+
+  /**
+   * Cursor를 base64url로 직렬화 (URL-safe + 패딩 없음).
+   * 클라이언트는 내부 구조 파악 불필요 — opaque token으로 취급.
+   */
+  private encodeCursor<T>(payload: T): string {
+    return Buffer.from(JSON.stringify(payload), 'utf-8').toString('base64url');
+  }
+
+  /**
+   * Cursor 디코딩. 잘못된 형식이면 BadRequestException.
+   */
+  private decodeCursor<T>(token: string): T {
+    try {
+      return JSON.parse(
+        Buffer.from(token, 'base64url').toString('utf-8'),
+      ) as T;
+    } catch {
+      throw new BadRequestException('잘못된 cursor 형식입니다.');
+    }
+  }
+
+  // ---------------------------------------------------------
+  // include 헬퍼 (Prisma payload 반복 제거)
+  // ---------------------------------------------------------
+
+  private roomInclude() {
+    return {
+      members: {
+        where: { leftAt: null },
+        include: {
+          user: { select: { id: true, name: true, profileImage: true } },
         },
-        messages: { orderBy: { createdAt: 'desc' }, take: 1 },
       },
-      orderBy: { updatedAt: 'desc' },
-    });
+    } satisfies Prisma.ChatRoomInclude;
+  }
+
+  private messageInclude() {
+    return {
+      sender: { select: { id: true, name: true, profileImage: true } },
+      reactions: true,
+      parent: {
+        select: {
+          id: true,
+          content: true,
+          senderId: true,
+          deletedAt: true,
+        },
+      },
+    } satisfies Prisma.ChatMessageInclude;
+  }
+
+  /**
+   * Prisma 결과에 unreadCount를 더해 응답 형태로 가공.
+   * (확장 필드가 늘어나면 여기에 추가)
+   */
+  private shapeRoom<T extends object>(
+    room: T,
+    _userId: string,
+    unreadCount: number,
+  ): T & { unreadCount: number } {
+    return { ...room, unreadCount };
   }
 }
