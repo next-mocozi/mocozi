@@ -62,7 +62,7 @@ export default function RecruitListPage() {
     mainRole: '풀스택',
     subRoles: ['백엔드', '프론트엔드'],
     skills: ['Next.js', 'Spring Boot', 'PostgreSQL', 'Docker'],
-    bio: '처음부터 끝까지 혼자서도 만들 수 있는 풀스택 개발자를 목표로 합니다.',
+    bio: '처음부터 끝까지 혼자서도 만들 수 있는 풀스택 개발자를 목표로 합니다. 이거 완전 야르모띠 하죠? 그러니까 안녕하하',
     image: null,
   },
   {
@@ -444,34 +444,40 @@ export default function RecruitListPage() {
   {pageItems.map((person) => (
     <div key={person.id} className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-all hover:shadow-md">
 
-      {/* 상단 학교 배경 */}
+      {/* 상단 학교 컬러 배너 (식별용 — 텍스트는 body로 이동) */}
       <div
-  className="flex h-28 flex-col items-center justify-center"
-  style={{ backgroundColor: person.schoolColor }}
->
-        <p className="font-bold text-white">{person.university}</p>
-        <p className="text-xs text-white opacity-70">{person.department}</p>
-      </div>
+        className="h-20"
+        style={{ backgroundColor: person.schoolColor }}
+        aria-hidden="true"
+      />
 
-      {/* 프로필 사진 */}
-      <div className="flex justify-center -mt-8">
-<div className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-white bg-gray-200 text-2xl shadow">
+      {/* 프로필 사진(좌) + 프로필 보기 버튼(우, 트위터 팔로우 스타일) */}
+      <div className="-mt-10 flex items-end justify-between px-5">
+        <div className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-white bg-gray-200 text-2xl shadow">
           {person.image ? (
             <img src={person.image} className="rounded-full" />
           ) : (
             person.name[0]
           )}
         </div>
+        <button className="translate-y-[2px] rounded-full border border-blue-200 px-4 py-1.5 text-sm font-medium text-blue-600 transition-all hover:bg-blue-600 hover:text-white">
+          프로필 보기
+        </button>
       </div>
 
       {/* 카드 내용 */}
-      <div className="flex flex-1 flex-col px-5 pb-5 pt-2">
+      <div className="flex flex-1 flex-col px-5 pb-5 pt-3">
 
         {/* 이름 */}
-        <p className="mb-2 text-center text-lg font-bold">{person.name}</p>
+        <p className="text-lg font-bold">{person.name}</p>
+
+        {/* 학교 · 학과 */}
+        <p className="mb-3 text-sm text-gray-500">
+          {person.university} · {person.department}
+        </p>
 
         {/* 메인 직군 + 세부 직군 */}
-        <div className="mb-3 flex flex-wrap items-center justify-center gap-1">
+        <div className="mb-3 flex flex-wrap items-center gap-1">
           <span className="inline-flex items-center justify-center rounded-full bg-blue-600 px-3 py-1 text-xs leading-none text-white">
             {person.mainRole}
           </span>
@@ -485,11 +491,8 @@ export default function RecruitListPage() {
           ))}
         </div>
 
-        {/* 한줄 소개 */}
-        <p className="mb-3 text-center text-sm text-gray-500 line-clamp-2">{person.bio}</p>
-
         {/* 스킬 태그 */}
-        <div className="mb-4 flex flex-wrap justify-center gap-1">
+        <div className="mb-3 flex flex-wrap gap-1">
           {person.skills.slice(0, 3).map((skill) => (
             <span key={skill} className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
               {skill}
@@ -502,10 +505,8 @@ export default function RecruitListPage() {
           )}
         </div>
 
-        {/* 포트폴리오 버튼 - 카드 높이 다른 경우에도 항상 하단에 정렬됨 */}
-        <button className="mt-auto rounded-full border border-blue-200 py-2 text-sm text-blue-600 transition-all hover:bg-blue-600 hover:text-white">
-          프로필 보기
-        </button>
+        {/* 한줄 소개 */}
+        <p className="min-h-15 text-sm text-gray-500 line-clamp-3">{person.bio}</p>
 
       </div>
     </div>
