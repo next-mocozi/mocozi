@@ -21,9 +21,9 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "type-check": "tsc --noEmit",
-    "prisma:generate": "dotenv -e .env.local -- prisma generate",
-    "prisma:migrate": "dotenv -e .env.local -- prisma migrate dev",
-    "prisma:studio": "dotenv -e .env.local -- prisma studio"
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio"
   },
   "dependencies": {
     "@nestjs/common": "11.1.19",
