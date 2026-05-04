@@ -24,6 +24,7 @@ export type Draft = {
   name: string;
   activityTypes: string[];
   fieldTags: string[];
+  toolTags: string[];
   roles: string[];
   motivation: string;
   techChoice: string;
@@ -46,6 +47,7 @@ const EMPTY_DRAFT: Draft = {
   name: '',
   activityTypes: [],
   fieldTags: [],
+  toolTags: [],
   roles: [],
   motivation: '',
   techChoice: '',
@@ -76,24 +78,129 @@ const ACTIVITY_OPTIONS = [
 // /profile 의 MOCK_PROFILE 과 같은 값
 const PROFILE_MAIN_ROLE = '풀스택';
 const PROFILE_SUB_ROLES = ['프론트엔드', '백엔드'];
-const PROFILE_SKILLS = ['React', 'TypeScript', 'Node.js', 'Next.js'];
+const PROFILE_SKILLS = [
+  'Python','C','JavaScript', 'TypeScript', 'React', 'Next.js','FastAPI',
+  'Node.js', 'FastAPI', 'PyTorch', 'TensorFlow',
+  'HuggingFace', 'Docker', 'AWS', 'PostgreSQL',
+  'MongoDB', 'Git', 'Figma','Linux'
+];
 
-// "어떤 분야를 다뤘나요?" — 연구 영역 + 프로필 기술 스택을 함께 추천
-const FIELD_OPTIONS = Array.from(
-  new Set(['CV', 'NLP', 'RL', ...PROFILE_SKILLS, '기타']),
-);
-// "어떤 역할을 담당했나요?" — 프로필 직군(메인+서브) + 일반 역할 옵션
-const ROLE_OPTIONS = Array.from(
-  new Set([
-    PROFILE_MAIN_ROLE,
-    ...PROFILE_SUB_ROLES,
-    'PM',
-    'FE',
-    'BE',
-    '디자인',
-    '기타',
-  ]),
-);
+// "어떤 분야를 다뤘나요?" — 카테고리별 세부 영역
+const FIELD_TAGS: Record<string, readonly string[]> = {
+  'AI / ML 핵심': ['CV', 'NLP', 'RL', 'MLOps', 'LLM', 'GenAI', 'RecSys'],
+  데이터: ['Data Analysis', 'Data Engineering', 'Visualization'],
+  개발: [
+    'Frontend',
+    'Backend',
+    'Fullstack',
+    'Mobile',
+    'DevOps',
+    'System Design',
+  ],
+  기타: ['Research', 'Product', 'Design'],
+};
+// 한 카테고리당 노출 최대 개수
+const TAG_PREVIEW_PER_CATEGORY = 5;
+
+// "어떤 프로그램을 통해서 구현했나요?" — 카테고리별 기술 스택
+const TECH_STACK_TAGS: Record<string, readonly string[]> = {
+  언어: [
+    'Python',
+    'JavaScript',
+    'TypeScript',
+    'Java',
+    'C++',
+    'C#',
+    'Swift',
+    'Kotlin',
+    'Go',
+    'Rust',
+    'R',
+    'MATLAB',
+  ],
+  프론트엔드: [
+    'React',
+    'Next.js',
+    'Vue.js',
+    'Svelte',
+    'Flutter',
+    'React Native',
+    'Angular',
+    'Tailwind CSS',
+  ],
+  백엔드: [
+    'Node.js',
+    'FastAPI',
+    'Django',
+    'Flask',
+    'Spring Boot',
+    'Express',
+    'GraphQL',
+    'REST API',
+  ],
+  'AI / ML': [
+    'PyTorch',
+    'TensorFlow',
+    'Keras',
+    'Scikit-learn',
+    'HuggingFace',
+    'LangChain',
+    'OpenCV',
+    'YOLO',
+    'XGBoost',
+    'Stable Diffusion',
+  ],
+  데이터: [
+    'Pandas',
+    'NumPy',
+    'Spark',
+    'Airflow',
+    'SQL',
+    'MongoDB',
+    'PostgreSQL',
+    'Redis',
+    'Elasticsearch',
+    'Kafka',
+  ],
+  '인프라 / 클라우드': [
+    'AWS',
+    'GCP',
+    'Azure',
+    'Docker',
+    'Kubernetes',
+    'Vercel',
+    'Firebase',
+    'Terraform',
+    'Nginx',
+  ],
+  '협업 / 기타': [
+    'Git',
+    'GitHub',
+    'Figma',
+    'Notion',
+    'Jira',
+    'Slack',
+    'Linux',
+    'Arduino',
+    'Raspberry Pi',
+  ],
+};
+// "어떤 역할을 담당했나요?" — 직군 옵션
+const ROLE_OPTIONS = [
+  '프론트엔드',
+  '백엔드',
+  '풀스택',
+  '모바일',
+  'DevOps/인프라',
+  'AI/ML',
+  '데이터',
+  '보안',
+  'QA',
+  '게임',
+  '임베디드',
+  'UI/UX 디자이너',
+  'PM/PO',
+];
 const DOMAIN_OPTIONS = ['의료', '금융', '법률', '교육', '기타'];
 
 const FIRST_TEXTAREA_HINT =
@@ -133,6 +240,7 @@ const isDraftEmpty = (d: Draft) =>
   !d.name &&
   d.activityTypes.length === 0 &&
   d.fieldTags.length === 0 &&
+  d.toolTags.length === 0 &&
   d.roles.length === 0 &&
   !d.motivation &&
   !d.techChoice &&
@@ -149,6 +257,7 @@ type StepKey =
   | 'name'
   | 'activity'
   | 'field'
+  | 'tools'
   | 'roles'
   | 'motivation'
   | 'techChoice'
@@ -164,7 +273,13 @@ type StepKey =
   | 'deliverables'
   | 'summary';
 
-type StepCfg = { key: StepKey; title: string; subtitle?: string };
+type StepCfg = {
+  key: StepKey;
+  title: string;
+  subtitle?: string;
+  /** "2. Q1." 형식의 분류 번호 — 질문(부제) 앞에 붙음 */
+  label?: string;
+};
 
 // 필수 응답이 있어야 다음으로 넘어갈 수 있는 단계 (isStepValid 와 동기화)
 const isStepRequired = (k: StepKey): boolean =>
@@ -172,55 +287,76 @@ const isStepRequired = (k: StepKey): boolean =>
 
 const buildSteps = (hasDomain: boolean | null): StepCfg[] => {
   const arr: StepCfg[] = [
-    { key: 'name', title: '프로젝트명', subtitle: '어떤 프로젝트인가요?' },
+    {
+      key: 'name',
+      label: 'Q1.',
+      title: '1. 프로젝트명',
+      subtitle: '어떤 프로젝트인가요?',
+    },
     {
       key: 'activity',
-      title: '프로젝트 분야',
+      label: 'Q1.',
+      title: '2. 프로젝트 분야',
       subtitle: '어떤 활동을 하셨나요? (복수 선택)',
     },
     {
       key: 'field',
-      title: '프로젝트 분야',
+      label: 'Q2.',
+      title: '2. 프로젝트 분야',
       subtitle: '어떤 분야를 다루셨나요?',
     },
     {
+      key: 'tools',
+      label: 'Q3.',
+      title: '2. 프로젝트 분야',
+      subtitle: ' 주로 활용한 기술 스택을 선택해주세요.(복수 선택 가능)',
+    },
+    {
       key: 'roles',
-      title: '본인 역할',
+      label: 'Q1.',
+      title: '3. 본인 역할',
       subtitle: '어떤 역할을 담당하셨나요?',
     },
     {
       key: 'motivation',
-      title: '프로젝트 개요 1/5',
+      label: 'Q1.',
+      title: '4. 프로젝트 개요',
       subtitle: '왜 만들었나요? (문제 정의)',
     },
     {
       key: 'techChoice',
-      title: '프로젝트 개요 2/5',
+      label: 'Q2.',
+      title: '4. 프로젝트 개요',
       subtitle: '왜 이 기술 조합을 선택했나요?',
     },
     {
       key: 'architecture',
-      title: '프로젝트 개요 3/5',
+      label: 'Q3.',
+      title: '4. 프로젝트 개요',
       subtitle: '아키텍처 설계 및 과정 (문제·솔루션 각 3개 이하)',
     },
     {
       key: 'result',
-      title: '프로젝트 개요 4/5',
+      label: 'Q4.',
+      title: '4. 프로젝트 개요',
       subtitle: '결과물 (수치화 필수)',
     },
     {
       key: 'retro',
-      title: '프로젝트 개요 5/5',
+      label: 'Q5.',
+      title: '4. 프로젝트 개요',
       subtitle: '회고 (잘된 점 / 아쉬운 점 / 바꿀 점)',
     },
     {
       key: 'contribution',
-      title: '본인 참여 활동',
+      label: 'Q1.',
+      title: '5. 본인 참여 활동',
       subtitle: '주도한 핵심 파트',
     },
     {
       key: 'domainCheck',
-      title: '도메인',
+      label: 'Q1.',
+      title: '6. 도메인',
       subtitle: '이 프로젝트는 특정 도메인을 포함하나요?',
     },
   ];
@@ -228,22 +364,26 @@ const buildSteps = (hasDomain: boolean | null): StepCfg[] => {
     arr.push(
       {
         key: 'domainTags',
-        title: '도메인 1/4',
+        label: 'Q2.',
+        title: '6. 도메인',
         subtitle: '도메인을 선택해주세요.',
       },
       {
         key: 'domainExpertise',
-        title: '도메인 2/4',
+        label: 'Q3.',
+        title: '6. 도메인',
         subtitle: '도메인 전문성을 어떻게 확보했나요?',
       },
       {
         key: 'domainComm',
-        title: '도메인 3/4',
+        label: 'Q4.',
+        title: '6. 도메인',
         subtitle: '도메인 전문가와 어떻게 소통했나요?',
       },
       {
         key: 'domainLimits',
-        title: '도메인 4/4',
+        label: 'Q5.',
+        title: '6. 도메인',
         subtitle: '한계와 향후 개선 방향은?',
       },
     );
@@ -251,7 +391,8 @@ const buildSteps = (hasDomain: boolean | null): StepCfg[] => {
   arr.push(
     {
       key: 'deliverables',
-      title: '결과물 / 배포물 첨부',
+      label: 'Q1.',
+      title: '7. 결과물 / 배포물',
       subtitle: 'URL과 파일을 첨부해주세요. (선택)',
     },
     {
@@ -397,6 +538,8 @@ export default function ProjectInterview() {
         return draft.activityTypes.length > 0;
       case 'field':
         return draft.fieldTags.length > 0;
+      case 'tools':
+        return draft.toolTags.length > 0;
       case 'roles':
         return draft.roles.length > 0;
       case 'motivation':
@@ -446,7 +589,12 @@ export default function ProjectInterview() {
       domain:
         draft.hasDomain && draft.domainTags[0] ? draft.domainTags[0] : undefined,
       tags: Array.from(
-        new Set([...draft.activityTypes, ...draft.fieldTags, ...draft.roles]),
+        new Set([
+          ...draft.activityTypes,
+          ...draft.fieldTags,
+          ...draft.toolTags,
+          ...draft.roles,
+        ]),
       ).filter(Boolean),
     };
     try {
@@ -553,30 +701,35 @@ export default function ProjectInterview() {
         {/* 단계 카드 — min-h 로 모든 단계 카드 크기 통일 (이전/다음 버튼 위치 고정) */}
         <div
           key={stepIdx}
-          style={{ minHeight: '32rem' }}
+          style={{ minHeight: '44rem' }}
           className="mocozi-step-in flex flex-col rounded-2xl bg-white p-8 shadow-sm sm:p-10"
         >
+          {/* 분류 (예: 프로젝트 분야) — 작게, 회색 */}
           <h2
             style={{ marginBottom: '1rem' }}
-            className="text-xl font-bold leading-snug text-gray-900"
+            className="text-xs font-medium tracking-wide text-gray-500"
           >
             {stepCfg.title}
-            {isStepRequired(stepCfg.key) && (
-              <span
-                className="ml-1.5 text-red-500"
-                aria-label="필수 항목"
-                title="필수 항목"
-              >
-                *
-              </span>
-            )}
           </h2>
+          {/* 실제 질문 — 크게, 검은색 볼드, 라벨 prefix + 필수 * */}
           {stepCfg.subtitle && (
             <p
               style={{ marginBottom: '1rem' }}
-              className="text-sm leading-7 text-gray-500"
+              className="text-lg font-bold leading-snug text-gray-900"
             >
+              {stepCfg.label && (
+                <span className="mr-2 text-gray-500">{stepCfg.label}</span>
+              )}
               {stepCfg.subtitle}
+              {isStepRequired(stepCfg.key) && (
+                <span
+                  className="ml-1.5 text-red-500"
+                  aria-label="필수 항목"
+                  title="필수 항목"
+                >
+                  *
+                </span>
+              )}
             </p>
           )}
           <div className="flex-1">
@@ -707,10 +860,21 @@ function StepBody({
       );
     case 'field':
       return (
-        <TagSelect
-          options={FIELD_OPTIONS}
+        <CategorizedTagSelect
+          categories={FIELD_TAGS}
           selected={draft.fieldTags}
           onChange={(v) => setDraft((d) => ({ ...d, fieldTags: v }))}
+          previewLimit={TAG_PREVIEW_PER_CATEGORY}
+          allowCustom
+        />
+      );
+    case 'tools':
+      return (
+        <CategorizedTagSelect
+          categories={TECH_STACK_TAGS}
+          selected={draft.toolTags}
+          onChange={(v) => setDraft((d) => ({ ...d, toolTags: v }))}
+          previewLimit={TAG_PREVIEW_PER_CATEGORY}
           allowCustom
         />
       );
@@ -883,14 +1047,18 @@ function TagSelect({
     onChange([...selected, v]);
     setCustom('');
   };
-  const customs = selected.filter((s) => !options.includes(s));
+  // 직접 입력 칸이 있을 땐 "기타" 옵션을 숨김 (사용자가 직접 입력하면 됨)
+  const visibleOptions = allowCustom
+    ? options.filter((o) => o !== '기타')
+    : options;
+  const customs = selected.filter((s) => !visibleOptions.includes(s));
   return (
     <div>
       <div
         style={{ rowGap: '1rem', columnGap: '0.625rem' }}
         className="flex flex-wrap"
       >
-        {options.map((opt) => {
+        {visibleOptions.map((opt) => {
           const on = selected.includes(opt);
           return (
             <button
@@ -931,7 +1099,142 @@ function TagSelect({
                 addCustom();
               }
             }}
-            placeholder="직접 입력 후 Enter"
+            placeholder="직접 입력 후 추가"
+            className="flex-1 rounded-lg border border-gray-200 px-4 py-2.5 text-sm leading-relaxed outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+          />
+          <button
+            type="button"
+            onClick={addCustom}
+            className="rounded-lg bg-gray-900 px-4 py-2.5 text-sm text-white hover:bg-gray-700"
+          >
+            추가
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** 카테고리(언어/프론트엔드/...)별로 묶어서 보여주는 태그 선택기.
+ *  카테고리당 previewLimit 개만 노출하고 나머지는 "더보기"로 펼침.
+ */
+function CategorizedTagSelect({
+  categories,
+  selected,
+  onChange,
+  allowCustom,
+  previewLimit = 5,
+}: {
+  categories: Record<string, readonly string[]>;
+  selected: string[];
+  onChange: (next: string[]) => void;
+  allowCustom?: boolean;
+  previewLimit?: number;
+}) {
+  const [custom, setCustom] = useState('');
+
+  const toggle = (v: string) =>
+    onChange(
+      selected.includes(v)
+        ? selected.filter((x) => x !== v)
+        : [...selected, v],
+    );
+
+  const addCustom = () => {
+    const v = custom.trim();
+    if (!v) return;
+    if (selected.includes(v)) {
+      setCustom('');
+      return;
+    }
+    onChange([...selected, v]);
+    setCustom('');
+  };
+
+  const knownTags = new Set(Object.values(categories).flat());
+  const customs = selected.filter((s) => !knownTags.has(s));
+
+  const chipBase =
+    'rounded-full border px-4 py-2.5 text-sm leading-relaxed transition-all';
+  const chipOn = 'border-blue-500 bg-blue-500 text-white';
+  const chipOff =
+    'border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50';
+
+  return (
+    <div className="flex flex-col" style={{ rowGap: '1rem' }}>
+      {Object.entries(categories).map(([cat, tags]) => {
+        // 더보기 없이 항상 previewLimit 개로 제한 (카드 높이 일정 유지)
+        const visible = tags.slice(0, previewLimit);
+        return (
+          <div key={cat}>
+            <h3
+              style={{ marginBottom: '0.5rem' }}
+              className="text-[10px] font-semibold uppercase tracking-wider text-gray-400"
+            >
+              {cat}
+            </h3>
+            <div
+              style={{ rowGap: '0.625rem', columnGap: '0.625rem' }}
+              className="flex flex-wrap items-center"
+            >
+              {visible.map((opt) => {
+                const on = selected.includes(opt);
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => toggle(opt)}
+                    className={`${chipBase} ${on ? chipOn : chipOff}`}
+                  >
+                    {opt}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+
+      {customs.length > 0 && (
+        <div>
+          <h3
+            style={{ marginBottom: '0.5rem' }}
+            className="text-[10px] font-semibold uppercase tracking-wider text-gray-400"
+          >
+            직접 추가
+          </h3>
+          <div
+            style={{ rowGap: '0.625rem', columnGap: '0.625rem' }}
+            className="flex flex-wrap items-center"
+          >
+            {customs.map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => toggle(s)}
+                className="inline-flex items-center gap-1 rounded-full border border-blue-500 bg-blue-500 px-3 py-2 text-sm text-white"
+              >
+                {s}
+                <span className="text-xs opacity-80">✕</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {allowCustom && (
+        <div style={{ marginTop: '0.25rem' }} className="flex gap-2.5">
+          <input
+            type="text"
+            value={custom}
+            onChange={(e) => setCustom(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                addCustom();
+              }
+            }}
+            placeholder="목록에 없으면 직접 입력 후 추가"
             className="flex-1 rounded-lg border border-gray-200 px-4 py-2.5 text-sm leading-relaxed outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
           />
           <button
@@ -1307,6 +1610,8 @@ function SummaryView({ draft }: { draft: Draft }) {
       lines.push(`**활동:** ${draft.activityTypes.join(', ')}`);
     if (draft.fieldTags.length)
       lines.push(`**분야:** ${draft.fieldTags.join(', ')}`);
+    if (draft.toolTags.length)
+      lines.push(`**프로그램:** ${draft.toolTags.join(', ')}`);
     if (draft.roles.length) lines.push(`**역할:** ${draft.roles.join(', ')}`);
     lines.push('');
     const pushSec = (h: string, body: string) => {
@@ -1348,7 +1653,12 @@ function SummaryView({ draft }: { draft: Draft }) {
     }
   };
 
-  const tags = [...draft.activityTypes, ...draft.fieldTags, ...draft.roles];
+  const tags = [
+    ...draft.activityTypes,
+    ...draft.fieldTags,
+    ...draft.toolTags,
+    ...draft.roles,
+  ];
 
   return (
     <div className="space-y-10">

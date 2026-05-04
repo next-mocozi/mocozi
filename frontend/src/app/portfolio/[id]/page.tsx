@@ -314,6 +314,7 @@ function TagGroups({ draft }: { draft: Draft }) {
   const groups: { label: string; tags: string[] }[] = [
     { label: '활동', tags: draft.activityTypes },
     { label: '분야', tags: draft.fieldTags },
+    { label: '프로그램', tags: draft.toolTags ?? [] },
     { label: '역할', tags: draft.roles },
   ];
   if (draft.hasDomain && draft.domainTags.length > 0) {
