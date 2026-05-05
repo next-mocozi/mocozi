@@ -1,15 +1,20 @@
 'use client';
 
 import Link from 'next/link';
-import { use, useEffect, useState } from 'react';
+import { Fragment, use, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
   FeaturedStar,
   MAX_FEATURED,
-  TYPE_META,
   type PortfolioItem,
 } from '../page';
-import { renderMarkdown, type Draft } from '../edit/_interview';
+import {
+  renderMarkdown,
+  DEFAULT_BODY_ORDER,
+  BODY_SECTION_LABEL,
+  type BodySectionKey,
+  type Draft,
+} from '../edit/_interview';
 
 // TODO: 백엔드 연동 — `GET /api/portfolios/:id` 로 교체
 //       (CLAUDE.md §11). 현재는 mock — localStorage 에서 로드.
@@ -40,7 +45,7 @@ const DEFAULT_ITEMS: PortfolioItem[] = [
   },
 ];
 
-/** 포트폴리오 항목 상세 페이지 — 인터뷰로 작성한 모든 답변을 같은 양식으로 표시 */
+/** 포트폴리오 항목 상세 페이지 — 인터뷰 미리보기(SummaryView)와 동일한 양식으로 표시 */
 export default function PortfolioItemPage({
   params,
 }: {
@@ -123,11 +128,12 @@ export default function PortfolioItemPage({
     );
   }
 
-  const meta = TYPE_META[item.type];
-
   /** 본문 답변을 마크다운으로 렌더 (#·##·**·![](src)·[text](url)·- 목록 지원).
    *  레거시 @[alias] 토큰은 details.assets 풀에서 이미지로 치환 후 마크다운으로 넘김. */
-  const renderBody = (text: string, pool?: { alias: string; dataUrl: string; filename: string }[]): ReactNode => {
+  const renderBody = (
+    text: string,
+    pool?: { alias: string; dataUrl: string; filename: string }[],
+  ): ReactNode => {
     if (!text) return null;
     const expanded = pool
       ? text.replace(/@\[([^\]]+)\]/g, (_, alias) => {
@@ -136,6 +142,70 @@ export default function PortfolioItemPage({
         })
       : text;
     return <>{renderMarkdown(expanded)}</>;
+  };
+
+  // ─── 미리보기와 동일한 헤더 데이터 ───
+  const periodText = item.period?.trim() ?? '';
+  const thumbnail = details?.thumbnail || item.thumbnail || '';
+  const tagGroups: { label: string; values: string[] }[] = details
+    ? [
+        { label: '활동', values: details.activityTypes },
+        { label: '분야', values: details.fieldTags },
+        { label: '프로그램', values: details.toolTags ?? [] },
+        { label: '역할', values: details.roles },
+      ]
+    : [
+        ...(item.domain ? [{ label: '도메인', values: [item.domain] }] : []),
+        { label: '태그', values: item.tags },
+      ];
+  const visibleTagGroups = tagGroups.filter((g) => g.values.length > 0);
+
+  // ─── 본문 섹션 순서 (저장된 순서 우선, 누락된 키는 기본 순서로 보충) ───
+  // 도메인이 있을 땐 회고를 항상 마지막으로 이동시키고, 도메인을 회고 바로 위에 노출.
+  const sectionOrder: BodySectionKey[] = details
+    ? (() => {
+        const ordered = (
+          details.bodySectionOrder ?? DEFAULT_BODY_ORDER
+        ).filter((k): k is BodySectionKey => k in BODY_SECTION_LABEL);
+        for (const k of DEFAULT_BODY_ORDER) {
+          if (!ordered.includes(k)) ordered.push(k);
+        }
+        if (details.hasDomain) {
+          const ri = ordered.indexOf('retro');
+          if (ri >= 0) {
+            ordered.splice(ri, 1);
+            ordered.push('retro');
+          }
+        }
+        return ordered;
+      })()
+    : [];
+
+  const renderSectionFor = (k: BodySectionKey): ReactNode => {
+    if (!details) return null;
+    switch (k) {
+      case 'motivation':
+        return renderBody(details.motivation);
+      case 'techChoice':
+        return renderBody(details.techChoice);
+      case 'architecture':
+        return renderBody(
+          details.architecture.text,
+          details.assets?.filter((a) => a.stepKey === 'architecture'),
+        );
+      case 'result':
+        return renderBody(
+          details.result.text,
+          details.assets?.filter((a) => a.stepKey === 'result'),
+        );
+      case 'retro':
+        return renderBody(
+          details.retro.text,
+          details.assets?.filter((a) => a.stepKey === 'retro'),
+        );
+      case 'contribution':
+        return renderBody(details.contribution);
+    }
   };
 
   return (
@@ -147,234 +217,196 @@ export default function PortfolioItemPage({
         ← 포트폴리오로
       </Link>
 
-      {/* 헤더 카드 — 메타 + 제목 + 태그 */}
-      <div className="card relative mb-6">
-        <FeaturedStar
-          featured={!!item.featured}
-          onToggle={toggleFeatured}
-        />
-        <div className="mb-3 flex flex-wrap items-center gap-2 pr-10">
-          <span
-            className={`rounded px-2 py-0.5 text-xs ${meta.bg} ${meta.text}`}
-          >
-            {meta.label}
-          </span>
-          {item.period && (
-            <span className="text-xs text-gray-500">{item.period}</span>
-          )}
-          {item.current && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-              <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-              진행중
-            </span>
-          )}
-        </div>
+      {/* 미리보기(SummaryView)와 동일한 카드 레이아웃 */}
+      <div className="card relative">
+        <FeaturedStar featured={!!item.featured} onToggle={toggleFeatured} />
 
-        <h1 className="mb-3 text-2xl font-bold leading-snug">{item.title}</h1>
-
-        {/* 인터뷰로 작성된 경우: 활동/분야/역할/도메인 별로 그룹화해서 표시 */}
-        {details ? (
-          <TagGroups draft={details} />
-        ) : (
-          <>
-            {item.domain && (
-              <p className="mb-3 text-sm text-gray-500">
-                도메인 · {item.domain}
-              </p>
-            )}
-            {item.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {item.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="rounded bg-blue-50 px-2 py-1 text-xs text-blue-600"
-                  >
-                    {tag}
-                  </span>
-                ))}
+        <div className="space-y-4">
+          {/* ── 헤더: 좌측 제목/기간/태그 + 우측 썸네일 ── */}
+          <header className="flex items-start gap-5">
+            <div className="min-w-0 flex-1 pr-10">
+              {(periodText || item.current) && (
+                <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                  {periodText && <span>{periodText}</span>}
+                  {item.current && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                      <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                      진행중
+                    </span>
+                  )}
+                </div>
+              )}
+              <h1 className="text-2xl font-bold leading-snug text-gray-900">
+                {item.title || '(제목 없음)'}
+              </h1>
+              {visibleTagGroups.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  {visibleTagGroups.map((g) => (
+                    <div
+                      key={g.label}
+                      className="flex flex-wrap items-center gap-2"
+                    >
+                      <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                        {g.label}
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {g.values.map((t) => (
+                          <span
+                            key={t}
+                            className="rounded-full bg-blue-50 px-3 py-1 text-xs leading-relaxed text-blue-700"
+                          >
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            {thumbnail && (
+              <div className="shrink-0">
+                <div
+                  className="overflow-hidden rounded-xl border border-gray-200 bg-gray-50"
+                  style={{ width: '11rem', height: '11rem' }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={thumbnail}
+                    alt="대표 이미지"
+                    className="h-full w-full object-cover"
+                  />
+                </div>
               </div>
             )}
-          </>
-        )}
+          </header>
 
-        <div className="mt-2 flex justify-end gap-1">
-          <Link
-            href={`/portfolio/edit?id=${item.id}`}
-            className="btn-secondary text-sm"
-          >
-            수정
-          </Link>
-        </div>
-      </div>
+          {/* ── 본문 섹션 — 미리보기와 동일한 순서/타이틀 ── */}
+          {details ? (
+            <>
+              {(() => {
+                const domainNode = details.hasDomain ? (
+                  <section>
+                    <h2
+                      style={{ marginBottom: '0.5rem' }}
+                      className="text-sm font-bold text-gray-800"
+                    >
+                      도메인
+                    </h2>
+                    <div className="space-y-3 text-sm leading-7 text-gray-700">
+                      {details.domainTags.length > 0 && (
+                        <p>
+                          <span className="font-medium">영역:</span>{' '}
+                          {details.domainTags.join(', ')}
+                        </p>
+                      )}
+                      {details.domainExpertise && (
+                        <p>
+                          <span className="font-medium">전문성:</span>{' '}
+                          {details.domainExpertise}
+                        </p>
+                      )}
+                      {details.domainComm && (
+                        <p>
+                          <span className="font-medium">소통:</span>{' '}
+                          {details.domainComm}
+                        </p>
+                      )}
+                      {details.domainLimits && (
+                        <p>
+                          <span className="font-medium">한계:</span>{' '}
+                          {details.domainLimits}
+                        </p>
+                      )}
+                    </div>
+                  </section>
+                ) : null;
+                const hasRetro = sectionOrder.includes('retro');
+                return (
+                  <>
+                    {sectionOrder.map((k) => {
+                      const body = renderSectionFor(k);
+                      const sectionNode = body ? (
+                        <section>
+                          <h2
+                            style={{ marginBottom: '0.5rem' }}
+                            className="text-sm font-bold text-gray-800"
+                          >
+                            {BODY_SECTION_LABEL[k]}
+                          </h2>
+                          <div className="whitespace-pre-wrap text-sm leading-7 text-gray-700">
+                            {body}
+                          </div>
+                        </section>
+                      ) : null;
+                      const before =
+                        domainNode && k === 'retro' ? domainNode : null;
+                      if (!before && !sectionNode) return null;
+                      return (
+                        <Fragment key={k}>
+                          {before}
+                          {sectionNode}
+                        </Fragment>
+                      );
+                    })}
+                    {/* 회고 섹션이 아예 없을 경우의 폴백 — 도메인은 그래도 노출 */}
+                    {domainNode && !hasRetro && domainNode}
+                  </>
+                );
+              })()}
 
-      {/* 인터뷰 답변 카드 — 같은 Q/A 양식으로 표시 */}
-      {details ? (
-        <div style={{ rowGap: '0.5rem' }} className="card flex flex-col">
-          <Section title="문제 정의">
-            <Para>{renderBody(details.motivation)}</Para>
-          </Section>
-          <Section title="기술 스택 선정 배경">
-            <Para>{renderBody(details.techChoice)}</Para>
-          </Section>
-          <Section title="아키텍처 설계 및 과정">
-            <Para>
-              {renderBody(
-                details.architecture.text,
-                details.assets?.filter((a) => a.stepKey === 'architecture'),
+              {(details.deliverableUrl ||
+                details.deliverableFiles.length > 0) && (
+                <section>
+                  <h2
+                    style={{ marginBottom: '0.5rem' }}
+                    className="text-sm font-bold text-gray-800"
+                  >
+                    결과물 / 배포물
+                  </h2>
+                  <div className="space-y-2 text-sm leading-7">
+                    {details.deliverableUrl && (
+                      <a
+                        href={details.deliverableUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block break-all text-blue-600 hover:underline"
+                      >
+                        {details.deliverableUrl}
+                      </a>
+                    )}
+                    {details.deliverableFiles.map((f) => (
+                      <a
+                        key={f.id}
+                        href={f.dataUrl}
+                        download={f.filename}
+                        className="block text-gray-700 hover:text-blue-600"
+                      >
+                        📎 {f.filename}
+                      </a>
+                    ))}
+                  </div>
+                </section>
               )}
-            </Para>
-          </Section>
-          <Section title="결과물">
-            <Para>
-              {renderBody(
-                details.result.text,
-                details.assets?.filter((a) => a.stepKey === 'result'),
-              )}
-            </Para>
-          </Section>
-          <Section title="회고">
-            <Para>
-              {renderBody(
-                details.retro.text,
-                details.assets?.filter((a) => a.stepKey === 'retro'),
-              )}
-            </Para>
-          </Section>
-          <Section title="본인 참여 활동">
-            <Para>{renderBody(details.contribution)}</Para>
-          </Section>
-
-          {details.hasDomain && (
-            <Section title="도메인">
-              <div className="space-y-3 text-sm leading-7 text-gray-700">
-                {details.domainTags.length > 0 && (
-                  <p>
-                    <span className="font-medium text-gray-900">영역:</span>{' '}
-                    {details.domainTags.join(', ')}
-                  </p>
-                )}
-                {details.domainExpertise && (
-                  <p>
-                    <span className="font-medium text-gray-900">전문성:</span>{' '}
-                    {details.domainExpertise}
-                  </p>
-                )}
-                {details.domainComm && (
-                  <p>
-                    <span className="font-medium text-gray-900">소통:</span>{' '}
-                    {details.domainComm}
-                  </p>
-                )}
-                {details.domainLimits && (
-                  <p>
-                    <span className="font-medium text-gray-900">한계:</span>{' '}
-                    {details.domainLimits}
-                  </p>
-                )}
-              </div>
-            </Section>
+            </>
+          ) : (
+            // 인터뷰 details 가 없는 legacy 항목 → 단순 description 표시
+            <p className="whitespace-pre-wrap text-sm leading-7 text-gray-700">
+              {item.description}
+            </p>
           )}
 
-          {(details.deliverableUrl || details.deliverableFiles.length > 0) && (
-            <Section title="결과물 / 배포물">
-              <div className="space-y-2 text-sm leading-7">
-                {details.deliverableUrl && (
-                  <a
-                    href={details.deliverableUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block break-all text-blue-600 hover:underline"
-                  >
-                    {details.deliverableUrl}
-                  </a>
-                )}
-                {details.deliverableFiles.map((f) => (
-                  <a
-                    key={f.id}
-                    href={f.dataUrl}
-                    download={f.filename}
-                    className="block text-gray-700 hover:text-blue-600"
-                  >
-                    📎 {f.filename}
-                  </a>
-                ))}
-              </div>
-            </Section>
-          )}
-        </div>
-      ) : (
-        // 인터뷰 details 가 없는 legacy 항목 → 단순 description 표시
-        <div className="card">
-          <p className="whitespace-pre-wrap leading-7 text-gray-700">
-            {item.description}
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─────── 보조 컴포넌트 ───────
-
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  // 빈 섹션이면 헤딩까지 숨김 — children null 렌더 결과를 한번 검사
-  return (
-    <section>
-      <h2
-        style={{ marginBottom: '0.5rem' }}
-        className="text-base font-bold leading-snug text-gray-900"
-      >
-        {title}
-      </h2>
-      {children}
-    </section>
-  );
-}
-
-function Para({ children }: { children: ReactNode }) {
-  // 빈 문자열이면 아예 렌더하지 않음
-  // (renderInline 이 빈 input 에 null 반환)
-  if (!children) {
-    return <p className="text-sm text-gray-400">— 작성되지 않았습니다.</p>;
-  }
-  return (
-    <div className="whitespace-pre-wrap text-sm leading-8 text-gray-700">
-      {children}
-    </div>
-  );
-}
-
-function TagGroups({ draft }: { draft: Draft }) {
-  const groups: { label: string; tags: string[] }[] = [
-    { label: '활동', tags: draft.activityTypes },
-    { label: '분야', tags: draft.fieldTags },
-    { label: '프로그램', tags: draft.toolTags ?? [] },
-    { label: '역할', tags: draft.roles },
-  ];
-  if (draft.hasDomain && draft.domainTags.length > 0) {
-    groups.push({ label: '도메인', tags: draft.domainTags });
-  }
-  const visible = groups.filter((g) => g.tags.length > 0);
-  if (visible.length === 0) return null;
-  return (
-    <div className="space-y-3">
-      {visible.map((g) => (
-        <div key={g.label} className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold text-gray-500">
-            {g.label}
-          </span>
-          <div className="flex flex-wrap gap-1.5">
-            {g.tags.map((t) => (
-              <span
-                key={t}
-                className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs leading-relaxed text-blue-700"
-              >
-                {t}
-              </span>
-            ))}
+          {/* 수정 버튼 — 미리보기의 "복사하기" 자리 */}
+          <div className="flex justify-end">
+            <Link
+              href={`/portfolio/edit?id=${item.id}`}
+              className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50"
+            >
+              수정
+            </Link>
           </div>
         </div>
-      ))}
+      </div>
     </div>
   );
 }

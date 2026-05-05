@@ -43,10 +43,39 @@ const EMPTY_PERIOD: ProjectPeriod = {
   current: false,
 };
 
+/** 본문 섹션 키 — 미리보기에서 위/아래로 순서 변경 가능 */
+export type BodySectionKey =
+  | 'motivation'
+  | 'techChoice'
+  | 'architecture'
+  | 'result'
+  | 'retro'
+  | 'contribution';
+
+export const DEFAULT_BODY_ORDER: BodySectionKey[] = [
+  'motivation',
+  'techChoice',
+  'architecture',
+  'result',
+  'retro',
+  'contribution',
+];
+
+export const BODY_SECTION_LABEL: Record<BodySectionKey, string> = {
+  motivation: '문제 정의',
+  techChoice: '기술 스택 선정 배경',
+  architecture: '아키텍처 설계 및 과정',
+  result: '결과물',
+  retro: '회고',
+  contribution: '본인 참여 활동',
+};
+
 export type Draft = {
   name: string;
   /** 카드/미리보기에 표시할 대표 이미지 (data URL). 없으면 빈 문자열 */
   thumbnail: string;
+  /** 본문 섹션의 표시 순서. 사용자가 위/아래로 옮긴 결과를 저장. */
+  bodySectionOrder?: BodySectionKey[];
   period: ProjectPeriod;
   activityTypes: string[];
   fieldTags: string[];
@@ -501,7 +530,7 @@ export function renderInlineMd(text: string): ReactNode {
   if (!text) return null;
   const tokens: ReactNode[] = [];
   const re =
-    /(!\[[^\]]*\]\([^)]+\)|\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|`[^`]+`)/g;
+    /(!\[[^\]]*\]\([^)]+\)|\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|`[^`]+`|https?:\/\/[^\s)]+)/g;
   let last = 0;
   let key = 0;
   let m: RegExpExecArray | null;
@@ -557,6 +586,25 @@ export function renderInlineMd(text: string): ReactNode {
             {cm[1]}
           </code>,
         );
+    } else if (/^https?:\/\//.test(t)) {
+      // 평문 URL — 끝의 흔한 문장부호는 링크에 포함하지 않고 뒤로 흘려보낸다
+      const trail = t.match(/[.,;:!?\]]+$/);
+      const trailLen = trail ? trail[0].length : 0;
+      const url = trailLen ? t.slice(0, -trailLen) : t;
+      tokens.push(
+        <a
+          key={key++}
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 hover:underline"
+        >
+          {url}
+        </a>,
+      );
+      if (trailLen) {
+        tokens.push(<span key={key++}>{t.slice(-trailLen)}</span>);
+      }
     }
     last = m.index + t.length;
   }
@@ -568,7 +616,10 @@ export function renderInlineMd(text: string): ReactNode {
 
 export function renderMarkdown(text: string): ReactNode[] {
   if (!text) return [];
-  const lines = text.split('\n');
+  // 앞/뒤 빈 줄로 인해 spacer div(.h-2) 가 섹션 양 끝에 남는 것을 방지
+  const trimmed = text.replace(/^[\s\n]+/, '').replace(/[\s\n]+$/, '');
+  if (!trimmed) return [];
+  const lines = trimmed.split('\n');
   const out: ReactNode[] = [];
   let listBuf: string[] = [];
   const flushList = () => {
@@ -625,6 +676,77 @@ export function renderMarkdown(text: string): ReactNode[] {
   return out;
 }
 
+// ─────── 블록 기반 본문 모델 ───────
+// 노션처럼 각 줄/문단/이미지를 블록 단위로 관리. 저장은 기존 string 필드를 그대로 사용
+// (parseBlocks ↔ serializeBlocks 로 라운드트립)
+export type BlockText =
+  | { id: string; type: 'p' | 'h2' | 'h3' | 'li'; text: string };
+export type BlockImg = {
+  id: string;
+  type: 'img';
+  src: string;
+  alt: string;
+};
+export type BlockFile = {
+  id: string;
+  type: 'file';
+  src: string;
+  filename: string;
+};
+export type ContentBlock = BlockText | BlockImg | BlockFile;
+
+const genBlockId = () =>
+  `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+
+export function parseBlocks(text: string): ContentBlock[] {
+  if (!text || !text.trim()) return [];
+  const lines = text.split('\n');
+  const blocks: ContentBlock[] = [];
+  for (const raw of lines) {
+    const line = raw.replace(/\s+$/, '');
+    if (line.trim() === '') continue;
+    if (line.startsWith('## ')) {
+      blocks.push({ id: genBlockId(), type: 'h3', text: line.slice(3) });
+    } else if (line.startsWith('# ')) {
+      blocks.push({ id: genBlockId(), type: 'h2', text: line.slice(2) });
+    } else if (line.startsWith('- ')) {
+      blocks.push({ id: genBlockId(), type: 'li', text: line.slice(2) });
+    } else {
+      const im = line.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+      const fi = line.match(/^📎\[([^\]]+)\]\(([^)]+)\)$/);
+      if (im) {
+        blocks.push({ id: genBlockId(), type: 'img', src: im[2], alt: im[1] });
+      } else if (fi) {
+        blocks.push({ id: genBlockId(), type: 'file', filename: fi[1], src: fi[2] });
+      } else {
+        blocks.push({ id: genBlockId(), type: 'p', text: line });
+      }
+    }
+  }
+  return blocks;
+}
+
+export function serializeBlocks(blocks: ContentBlock[]): string {
+  return blocks
+    .map((b) => {
+      switch (b.type) {
+        case 'p':
+          return b.text;
+        case 'h2':
+          return `# ${b.text}`;
+        case 'h3':
+          return `## ${b.text}`;
+        case 'li':
+          return `- ${b.text}`;
+        case 'img':
+          return `![${b.alt}](${b.src})`;
+        case 'file':
+          return `📎[${b.filename}](${b.src})`;
+      }
+    })
+    .join('\n\n');
+}
+
 // ─────── Main component ───────
 export default function ProjectInterview() {
   const router = useRouter();
@@ -641,6 +763,11 @@ export default function ProjectInterview() {
   const [toast, setToast] = useState<string | null>(null);
   /** 신규/수정 양쪽에서 단일 ID로 ITEMS·DETAILS 저장. 신규는 진입 시 1회 발급. */
   const [projectId, setProjectId] = useState<number | null>(null);
+  /** 진입 시점의 초기 스냅샷 — "저장하지 않고 나가기" 시 복원에 사용.
+   *  편집 모드: 저장된 detail; 신규 모드: null (해당 ID 데이터 자체를 제거). */
+  const initialDetailRef = useRef<Draft | null>(null);
+  /** 자동 저장 차단 플래그 — discard 진행 중에는 저장 effect 가 다시 덮어쓰지 못하게. */
+  const discardingRef = useRef(false);
   /** 임시저장 목록 팝업 */
   const [draftsModalOpen, setDraftsModalOpen] = useState(false);
   const [draftsList, setDraftsList] = useState<PortfolioItem[]>([]);
@@ -686,6 +813,8 @@ export default function ProjectInterview() {
           : {};
         const saved = map[String(editId)];
         if (saved) {
+          // 원본 스냅샷 보관 — "저장하지 않고 나가기" 시 복원
+          initialDetailRef.current = JSON.parse(JSON.stringify(saved)) as Draft;
           const stepsForSaved = buildSteps(saved.hasDomain);
           setDraft({
             ...EMPTY_DRAFT,
@@ -727,6 +856,7 @@ export default function ProjectInterview() {
   // 기간이 잘못된 경우(종료<시작) ITEMS 갱신은 건너뜀 — 잘못된 기간이 카드에 노출되는 것 방지
   useEffect(() => {
     if (phase !== 'form' || projectId === null) return;
+    if (discardingRef.current) return;
     if (isDraftEmpty(draft)) return;
     try {
       // DETAILS 는 입력 보존을 위해 항상 저장
@@ -790,6 +920,47 @@ export default function ProjectInterview() {
     // 자동 저장이 이미 ITEMS+DETAILS 를 갱신했으므로 그대로 나가면 됨
     showToast(isEdit ? '수정 내용이 저장되었습니다.' : '저장되었습니다.');
     setTimeout(() => router.push('/portfolio'), 700);
+  };
+
+  /** 저장하지 않고 나가기 — 자동 저장으로 덮어써진 내용을 진입 시점 스냅샷으로
+   *  복원(편집)하거나 통째로 제거(신규)한 뒤 목록으로 이동. */
+  const handleDiscardAndExit = () => {
+    const msg = isEdit
+      ? '수정 내용을 저장하지 않고 나갑니다. 변경사항은 사라져요.\n계속할까요?'
+      : '작성한 내용을 저장하지 않고 나갑니다. 작성 중인 항목은 사라져요.\n계속할까요?';
+    if (!confirm(msg)) return;
+
+    discardingRef.current = true;
+    try {
+      if (projectId !== null) {
+        const detailsRaw = localStorage.getItem(DETAILS_STORAGE_KEY);
+        const detailMap: Record<string, Draft> = detailsRaw
+          ? JSON.parse(detailsRaw)
+          : {};
+        const itemsRaw = localStorage.getItem(ITEMS_STORAGE_KEY);
+        const itemList: PortfolioItem[] = itemsRaw ? JSON.parse(itemsRaw) : [];
+
+        if (isEdit && initialDetailRef.current) {
+          // 편집 모드: details 는 원본 스냅샷으로 되돌리고, items 는 그 스냅샷으로 다시 빌드
+          detailMap[String(projectId)] = initialDetailRef.current;
+          const restoredItem = buildItem(projectId, initialDetailRef.current);
+          const nextItems = itemList.map((it) =>
+            it.id === projectId ? { ...it, ...restoredItem } : it,
+          );
+          localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(nextItems));
+          localStorage.setItem(DETAILS_STORAGE_KEY, JSON.stringify(detailMap));
+        } else {
+          // 신규 모드: 진입 후 만들어졌을 수 있는 항목/상세를 통째로 제거
+          delete detailMap[String(projectId)];
+          const nextItems = itemList.filter((it) => it.id !== projectId);
+          localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(nextItems));
+          localStorage.setItem(DETAILS_STORAGE_KEY, JSON.stringify(detailMap));
+        }
+      }
+    } catch {
+      // 저장 실패는 무시 — 어차피 페이지를 떠남
+    }
+    router.push('/portfolio');
   };
 
   /** 임시저장 목록 모달 열기 — 현재 작업 중인 항목은 제외 */
@@ -986,6 +1157,19 @@ export default function ProjectInterview() {
           </button>
           <button
             type="button"
+            onClick={handleDiscardAndExit}
+            aria-label="저장하지 않고 나가기"
+            title="저장하지 않고 나가기 — 변경사항이 사라집니다"
+            style={{ paddingLeft: '1.25rem', paddingRight: '1.25rem' }}
+            className="ml-2 inline-flex items-center gap-2 rounded-full bg-white py-2 text-xs leading-relaxed text-red-600 shadow-sm hover:bg-red-50 hover:text-red-700"
+          >
+            <span aria-hidden>↩</span>
+            <span className="whitespace-nowrap font-medium">
+              저장하지 않고 나가기
+            </span>
+          </button>
+          <button
+            type="button"
             onClick={handleClose}
             aria-label={isEdit ? '편집 완료' : '여기까지 저장하고 나가기'}
             title={isEdit ? '편집 완료' : '여기까지 저장하고 나가기'}
@@ -1026,26 +1210,39 @@ export default function ProjectInterview() {
           >
             {stepCfg.title}
           </h2>
-          {/* 실제 질문 — 크게, 검은색 볼드, 라벨 prefix + 필수 * */}
+          {/* 실제 질문 — 크게, 검은색 볼드, 라벨 prefix + 필수 *.
+              미리보기 단계에서는 우측에 메타 수정 버튼을 함께 표시 */}
           {stepCfg.subtitle && (
-            <p
-              style={{ marginBottom: '1rem' }}
-              className="text-lg font-bold leading-snug text-gray-900"
+            <div
+              style={{
+                marginBottom: '1rem',
+                display: 'flex',
+                flexDirection: 'row',
+                flexWrap: 'nowrap',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '0.75rem',
+              }}
             >
-              {stepCfg.label && (
-                <span className="mr-2 text-gray-500">{stepCfg.label}</span>
-              )}
-              {stepCfg.subtitle}
-              {isStepRequired(stepCfg.key) && (
-                <span
-                  className="ml-1.5 text-red-500"
-                  aria-label="필수 항목"
-                  title="필수 항목"
-                >
-                  *
-                </span>
-              )}
-            </p>
+              <p
+                style={{ minWidth: 0, flex: '1 1 auto', margin: 0 }}
+                className="text-lg font-bold leading-snug text-gray-900"
+              >
+                {stepCfg.label && (
+                  <span className="mr-2 text-gray-500">{stepCfg.label}</span>
+                )}
+                {stepCfg.subtitle}
+                {isStepRequired(stepCfg.key) && (
+                  <span
+                    className="ml-1.5 text-red-500"
+                    aria-label="필수 항목"
+                    title="필수 항목"
+                  >
+                    *
+                  </span>
+                )}
+              </p>
+            </div>
           )}
           <div className="flex-1">
             <StepBody
@@ -1438,13 +1635,7 @@ function StepBody({
     case 'deliverables':
       return <DeliverablesStep draft={draft} setDraft={setDraft} />;
     case 'summary':
-      return (
-        <SummaryView
-          draft={draft}
-          setDraft={setDraft}
-          onJumpTo={jumpToStep}
-        />
-      );
+      return <SummaryView draft={draft} setDraft={setDraft} />;
     default:
       return null;
   }
@@ -2334,7 +2525,739 @@ function DeliverablesStep({
   );
 }
 
-// ─────── 인라인 마크다운 섹션 — 본문 영역을 노션처럼 인라인 편집 ───────
+// ─────── 블록 기반 본문 에디터 (포인터 드래그) ───────
+// - 좌측 핸들(⋮⋮): pointerdown 으로 드래그 시작 → 다른 줄 위에 놓으면 그 자리에 들어감
+// - ✕ 버튼: 블록 삭제
+// - 글은 textarea 에 자유롭게 입력 (문단/제목/목록 별도 추가 버튼 없음)
+// - 이미지 추가: 클립보드 붙여넣기(Ctrl+V), 끌어 놓기, 또는 "이미지" 버튼
+// - 파일 첨부: "파일" 버튼 또는 끌어 놓기
+
+const ensureNonEmpty = (list: ContentBlock[]): ContentBlock[] =>
+  list.length > 0 ? list : [{ id: genBlockId(), type: 'p', text: '' }];
+
+function BlockEditor({
+  value,
+  onChange,
+  assets,
+  onAssetsChange,
+  stepKey,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  /** 자료 풀 — 제공되면 이미지 업로드를 @[A] 자료 참조로 처리한다 */
+  assets?: Asset[];
+  onAssetsChange?: (a: Asset[]) => void;
+  stepKey?: AssetStepKey;
+}) {
+  const [blocks, setBlocks] = useState<ContentBlock[]>(() =>
+    ensureNonEmpty(parseBlocks(value)),
+  );
+  const lastSerializedRef = useRef<string>(serializeBlocks(blocks));
+  const blocksRef = useRef<ContentBlock[]>(blocks);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dropIdx, setDropIdx] = useState<number | null>(null);
+  const dropIdxRef = useRef<number | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [fileDropActive, setFileDropActive] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const useAssets = !!(stepKey && assets && onAssetsChange);
+  const myAssets = useAssets
+    ? (assets as Asset[]).filter((a) => a.stepKey === stepKey)
+    : [];
+
+  // 활성 textarea 의 @멘션 드롭다운 상태
+  const [mention, setMention] = useState<{
+    blockId: string;
+    query: string;
+  } | null>(null);
+  const textareaRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
+  const setTextareaRef = (id: string) => (el: HTMLTextAreaElement | null) => {
+    if (el) textareaRefs.current.set(id, el);
+    else textareaRefs.current.delete(id);
+  };
+
+  // blocks 의 최신 값을 ref 로 유지 (전역 pointermove 핸들러 클로저 안전)
+  useEffect(() => {
+    blocksRef.current = blocks;
+  }, [blocks]);
+
+  // 외부에서 value 가 갈아끼워진 경우만 다시 파싱
+  useEffect(() => {
+    if (value !== lastSerializedRef.current) {
+      const parsed = ensureNonEmpty(parseBlocks(value));
+      setBlocks(parsed);
+      blocksRef.current = parsed;
+      lastSerializedRef.current = value;
+    }
+  }, [value]);
+
+  const commit = (next: ContentBlock[]) => {
+    const safe = ensureNonEmpty(next);
+    setBlocks(safe);
+    blocksRef.current = safe;
+    const ser = serializeBlocks(safe);
+    lastSerializedRef.current = ser;
+    onChange(ser);
+  };
+
+  const updateAt = (i: number, patch: Partial<ContentBlock>) => {
+    const next = blocks.slice();
+    next[i] = { ...next[i], ...patch } as ContentBlock;
+    commit(next);
+  };
+
+  const removeAt = (i: number) => {
+    const next = blocks.slice();
+    next.splice(i, 1);
+    commit(next);
+  };
+
+  const moveTo = (from: number, to: number) => {
+    if (from === to) return;
+    const next = blocksRef.current.slice();
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    commit(next);
+  };
+
+  const addBlock = (block: ContentBlock) => commit([...blocksRef.current, block]);
+
+  const addImageFile = async (file: File | null) => {
+    if (!file || !file.type.startsWith('image/')) return;
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      if (useAssets && stepKey && assets && onAssetsChange) {
+        // 자료 풀에 등록 → 본문에는 @[alias] 만 남겨 텍스트 길이를 짧게 유지
+        const myCurrent = assets.filter((a) => a.stepKey === stepKey);
+        const alias = findNextAlias(myCurrent);
+        const newAsset: Asset = {
+          id: `${Date.now()}-${stepKey}-${alias}-${Math.random()
+            .toString(36)
+            .slice(2, 6)}`,
+          alias,
+          filename: file.name,
+          dataUrl,
+          stepKey,
+        };
+        onAssetsChange([...assets, newAsset]);
+        const cur = blocksRef.current;
+        let target = -1;
+        for (let i = cur.length - 1; i >= 0; i--) {
+          const b = cur[i];
+          if (b.type === 'p' || b.type === 'li') {
+            target = i;
+            break;
+          }
+        }
+        if (target >= 0) {
+          const lb = cur[target] as BlockText;
+          const sep =
+            lb.text && !/\s$/.test(lb.text) ? ' ' : '';
+          const next = cur.slice();
+          next[target] = {
+            ...lb,
+            text: `${lb.text}${sep}@[${alias}] `,
+          } as ContentBlock;
+          commit(next);
+        } else {
+          addBlock({ id: genBlockId(), type: 'p', text: `@[${alias}] ` });
+        }
+      } else {
+        addBlock({ id: genBlockId(), type: 'img', src: dataUrl, alt: file.name });
+      }
+    } catch {
+      // 무시
+    }
+  };
+
+  // ─── @ 멘션 ───
+  const handleTextareaChange = (
+    i: number,
+    blockId: string,
+    e: ChangeEvent<HTMLTextAreaElement>,
+  ) => {
+    const text = e.target.value;
+    updateAt(i, { text });
+    if (!useAssets) return;
+    const cursor = e.target.selectionStart;
+    const before = text.slice(0, cursor);
+    const m = before.match(/@([^\s@\]]*)$/);
+    if (m) setMention({ blockId, query: m[1] });
+    else setMention(null);
+  };
+
+  const insertMention = (asset: Asset) => {
+    if (!mention) return;
+    const ta = textareaRefs.current.get(mention.blockId);
+    if (!ta) return;
+    const idx = blocksRef.current.findIndex((b) => b.id === mention.blockId);
+    if (idx < 0) return;
+    const cur = blocksRef.current[idx];
+    if (cur.type !== 'p' && cur.type !== 'li') return;
+    const cursor = ta.selectionStart;
+    const before = cur.text.slice(0, cursor);
+    const after = cur.text.slice(cursor);
+    const newBefore = before.replace(/@[^\s@\]]*$/, `@[${asset.alias}] `);
+    const newText = newBefore + after;
+    updateAt(idx, { text: newText });
+    setMention(null);
+    requestAnimationFrame(() => {
+      const pos = newBefore.length;
+      ta.focus();
+      ta.setSelectionRange(pos, pos);
+    });
+  };
+
+  const filteredMentionAssets = mention
+    ? myAssets.filter((a) =>
+        `${a.alias} ${a.filename}`
+          .toLowerCase()
+          .includes(mention.query.toLowerCase()),
+      )
+    : [];
+
+  const removeAsset = (id: string) => {
+    if (!useAssets || !assets || !onAssetsChange) return;
+    onAssetsChange(assets.filter((x) => x.id !== id));
+  };
+
+  const renderMentionDropdown = (blockId: string, posClass: string) => {
+    if (
+      !useAssets ||
+      mention?.blockId !== blockId ||
+      filteredMentionAssets.length === 0
+    )
+      return null;
+    return (
+      <div
+        className={`absolute ${posClass} top-full z-10 mt-1 max-h-48 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg`}
+      >
+        {filteredMentionAssets.map((a) => (
+          <button
+            key={a.id}
+            type="button"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              insertMention(a);
+            }}
+            className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-blue-50"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={a.dataUrl}
+              alt=""
+              className="h-8 w-8 shrink-0 rounded object-cover"
+            />
+            <div className="flex-1 truncate">
+              <span className="font-medium text-gray-700">@{a.filename}</span>
+              <span className="ml-2 font-mono text-xs text-gray-400">
+                [{a.alias}]
+              </span>
+            </div>
+          </button>
+        ))}
+      </div>
+    );
+  };
+
+  const addAttachmentFile = async (file: File | null) => {
+    if (!file) return;
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      addBlock({
+        id: genBlockId(),
+        type: 'file',
+        src: dataUrl,
+        filename: file.name,
+      });
+    } catch {
+      // 무시
+    }
+  };
+
+  // ─── 포인터 기반 드래그 ───
+  const startDrag = (id: string, e: React.PointerEvent) => {
+    e.preventDefault();
+    const fromIdx = blocksRef.current.findIndex((b) => b.id === id);
+    if (fromIdx < 0) return;
+    setDragId(id);
+    dropIdxRef.current = fromIdx;
+    setDropIdx(fromIdx);
+
+    const onMove = (ev: PointerEvent) => {
+      const root = containerRef.current;
+      if (!root) return;
+      const rows = root.querySelectorAll<HTMLElement>('[data-block-row]');
+      let target = -1;
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i].getBoundingClientRect();
+        if (ev.clientY >= r.top && ev.clientY <= r.bottom) {
+          target = i;
+          break;
+        }
+      }
+      if (target >= 0) {
+        dropIdxRef.current = target;
+        setDropIdx(target);
+      }
+    };
+
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+      const finalDrop = dropIdxRef.current;
+      const cur = blocksRef.current.findIndex((b) => b.id === id);
+      if (cur >= 0 && finalDrop !== null && finalDrop !== cur) {
+        moveTo(cur, finalDrop);
+      }
+      dropIdxRef.current = null;
+      setDragId(null);
+      setDropIdx(null);
+    };
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+  };
+
+  // ─── 클립보드/파일 드롭으로 이미지 추가 ───
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const it of Array.from(items)) {
+      if (it.type.startsWith('image/')) {
+        const f = it.getAsFile();
+        if (f) {
+          e.preventDefault();
+          addImageFile(f);
+          return;
+        }
+      }
+    }
+  };
+
+  const handleFileDragOver = (e: React.DragEvent) => {
+    if (!e.dataTransfer.types.includes('Files')) return;
+    e.preventDefault();
+    setFileDropActive(true);
+  };
+
+  const handleFileDragLeave = (e: React.DragEvent) => {
+    if (e.currentTarget === e.target) setFileDropActive(false);
+  };
+
+  const handleFileDrop = (e: React.DragEvent) => {
+    if (!e.dataTransfer.types.includes('Files')) return;
+    e.preventDefault();
+    setFileDropActive(false);
+    const f = e.dataTransfer.files?.[0];
+    if (!f) return;
+    if (f.type.startsWith('image/')) addImageFile(f);
+    else addAttachmentFile(f);
+  };
+
+  return (
+    <div
+      ref={containerRef}
+      onDragOver={handleFileDragOver}
+      onDragLeave={handleFileDragLeave}
+      onDrop={handleFileDrop}
+      onPaste={handlePaste}
+      className={`space-y-0.5 rounded-md p-1 transition-colors ${
+        fileDropActive ? 'bg-blue-50 ring-2 ring-blue-300' : ''
+      }`}
+    >
+      {blocks.map((b, i) => (
+        <div
+          key={b.id}
+          data-block-row
+          className={`group flex items-start gap-2 rounded-md px-1 py-0.5 transition-colors ${
+            dragId === b.id
+              ? 'opacity-50'
+              : dropIdx === i && dragId !== null
+                ? 'bg-blue-50 ring-1 ring-blue-300'
+                : 'hover:bg-gray-50'
+          }`}
+        >
+          {/* 좌측 드래그 핸들 + 삭제 */}
+          <div className="flex shrink-0 items-center gap-0.5 pt-1 opacity-0 transition-opacity group-hover:opacity-100">
+            <div
+              role="button"
+              tabIndex={0}
+              aria-label="드래그해서 순서 변경"
+              title="드래그해서 순서 변경"
+              onPointerDown={(e) => startDrag(b.id, e)}
+              className="cursor-grab select-none rounded px-1 text-gray-400 hover:bg-white hover:text-gray-700 active:cursor-grabbing"
+              style={{ touchAction: 'none' }}
+            >
+              ⋮⋮
+            </div>
+            <button
+              type="button"
+              onClick={() => removeAt(i)}
+              aria-label="삭제"
+              title="삭제"
+              className="rounded px-1 text-xs text-gray-400 hover:bg-red-50 hover:text-red-500"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* 본문 */}
+          <div className="min-w-0 flex-1">
+            {b.type === 'img' ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={b.src}
+                alt={b.alt}
+                className="max-w-full rounded-lg border border-gray-200"
+              />
+            ) : b.type === 'file' ? (
+              <a
+                href={b.src}
+                download={b.filename}
+                className="inline-flex max-w-full items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                <span>📎</span>
+                <span className="truncate">{b.filename}</span>
+              </a>
+            ) : b.type === 'h2' || b.type === 'h3' ? (
+              <input
+                type="text"
+                value={b.text}
+                onChange={(e) => updateAt(i, { text: e.target.value })}
+                placeholder={b.type === 'h2' ? '큰 제목' : '소제목'}
+                className={`w-full border-0 bg-transparent px-0 outline-none ${
+                  b.type === 'h2'
+                    ? 'text-xl font-bold text-gray-900'
+                    : 'text-lg font-bold text-gray-900'
+                }`}
+              />
+            ) : b.type === 'li' ? (
+              <div className="relative flex items-start gap-2">
+                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-gray-400" />
+                <textarea
+                  ref={setTextareaRef(b.id)}
+                  value={b.text}
+                  onChange={(e) => handleTextareaChange(i, b.id, e)}
+                  onBlur={() => setTimeout(() => setMention(null), 150)}
+                  rows={Math.max(1, b.text.split('\n').length)}
+                  className="w-full resize-none border-0 bg-transparent px-0 text-sm leading-7 text-gray-700 outline-none"
+                />
+                {renderMentionDropdown(b.id, 'left-4 right-0')}
+              </div>
+            ) : (
+              <div className="relative">
+                <textarea
+                  ref={setTextareaRef(b.id)}
+                  value={b.text}
+                  onChange={(e) => handleTextareaChange(i, b.id, e)}
+                  onBlur={() => setTimeout(() => setMention(null), 150)}
+                  rows={Math.max(1, b.text.split('\n').length)}
+                  placeholder={
+                    useAssets
+                      ? '여기에 입력하거나 이미지를 붙여넣어 주세요. @ 로 자료 인용'
+                      : '여기에 입력하거나 이미지를 붙여넣어 주세요.'
+                  }
+                  className="w-full resize-none border-0 bg-transparent px-0 text-sm leading-7 text-gray-700 outline-none"
+                />
+                {renderMentionDropdown(b.id, 'left-0 right-0')}
+              </div>
+            )}
+          </div>
+        </div>
+      ))}
+
+      {/* 첨부 추가 — 글은 자유 입력, 이미지/파일만 버튼으로 추가 */}
+      <div className="mt-2 flex flex-wrap items-center gap-1.5 pl-1 text-[11px] text-gray-500">
+        <button
+          type="button"
+          onClick={() => imageInputRef.current?.click()}
+          className="rounded border border-gray-200 bg-white px-2 py-0.5 text-gray-600 hover:bg-gray-50"
+        >
+          + 이미지
+        </button>
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="rounded border border-gray-200 bg-white px-2 py-0.5 text-gray-600 hover:bg-gray-50"
+        >
+          + 파일 첨부
+        </button>
+        <span className="ml-1 text-gray-400">
+          또는 Ctrl+V로 붙여넣기 / 파일을 여기로 끌어다 놓기
+        </span>
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            addImageFile(e.target.files?.[0] ?? null);
+            e.target.value = '';
+          }}
+        />
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          onChange={(e) => {
+            addAttachmentFile(e.target.files?.[0] ?? null);
+            e.target.value = '';
+          }}
+        />
+      </div>
+
+      {useAssets && myAssets.length > 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5 pl-1">
+          {myAssets.map((a) => (
+            <span
+              key={a.id}
+              className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-700"
+              title={a.filename}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={a.dataUrl}
+                alt=""
+                className="h-4 w-4 rounded-sm object-cover"
+              />
+              <span className="max-w-[140px] truncate">{a.filename}</span>
+              <span className="font-mono text-gray-400">→ [{a.alias}]</span>
+              <button
+                type="button"
+                onClick={() => removeAsset(a.id)}
+                className="text-gray-400 hover:text-red-500"
+                aria-label={`${a.filename} 제거`}
+              >
+                ✕
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      {useAssets && (
+        <p className="mt-1 pl-1 text-[11px] leading-6 text-gray-400">
+          텍스트에서 <span className="font-mono">@</span> 를 입력하면 업로드한
+          자료를 인용할 수 있어요. 예{' '}
+          <span className="font-mono">@[A]</span>
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ─────── 본문 섹션 — 제목 + 포인터 드래그 핸들 + 블록 에디터 ───────
+function BodySection({
+  title,
+  value,
+  onChange,
+  isDragging,
+  isDropTarget,
+  onPointerDownHandle,
+  assets,
+  onAssetsChange,
+  stepKey,
+}: {
+  title: string;
+  value: string;
+  onChange: (next: string) => void;
+  isDragging: boolean;
+  isDropTarget: boolean;
+  onPointerDownHandle: (e: React.PointerEvent) => void;
+  assets?: Asset[];
+  onAssetsChange?: (a: Asset[]) => void;
+  stepKey?: AssetStepKey;
+}) {
+  return (
+    <section
+      data-section-row
+      className={`group/sec rounded-lg p-1 transition-colors ${
+        isDragging
+          ? 'opacity-50'
+          : isDropTarget
+            ? 'bg-blue-50 ring-2 ring-blue-300'
+            : ''
+      }`}
+    >
+      <div
+        style={{ marginBottom: '0.5rem' }}
+        className="flex items-center gap-2"
+      >
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label="섹션 드래그하여 이동"
+          title="드래그해서 섹션 순서 변경"
+          onPointerDown={onPointerDownHandle}
+          className="cursor-grab select-none rounded px-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 active:cursor-grabbing"
+          style={{ touchAction: 'none' }}
+        >
+          ⋮⋮
+        </div>
+        <h4 className="text-sm font-bold text-gray-800">{title}</h4>
+        <span className="text-[11px] text-gray-400">드래그해서 순서 변경</span>
+      </div>
+      <BlockEditor
+        value={value}
+        onChange={onChange}
+        assets={assets}
+        onAssetsChange={onAssetsChange}
+        stepKey={stepKey}
+      />
+    </section>
+  );
+}
+
+// ─────── 본문 섹션 리스트 — 섹션 단위 드래그·드롭 관리 ───────
+function BodySectionsList({
+  draft,
+  setDraft,
+}: {
+  draft: Draft;
+  setDraft: Dispatch<SetStateAction<Draft>>;
+}) {
+  const order = ((draft.bodySectionOrder ?? DEFAULT_BODY_ORDER).filter(
+    (k): k is BodySectionKey => k in BODY_SECTION_LABEL,
+  ));
+  // 누락된 키 자동 보충
+  for (const k of DEFAULT_BODY_ORDER) {
+    if (!order.includes(k)) order.push(k);
+  }
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const orderRef = useRef<BodySectionKey[]>(order);
+  const [draggingKey, setDraggingKey] = useState<BodySectionKey | null>(null);
+  const [dropIdx, setDropIdx] = useState<number | null>(null);
+  const dropIdxRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    orderRef.current = order;
+  });
+
+  const moveTo = (from: number, to: number) => {
+    if (from === to) return;
+    const next = orderRef.current.slice();
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    orderRef.current = next;
+    setDraft((d) => ({ ...d, bodySectionOrder: next }));
+  };
+
+  const startSectionDrag = (key: BodySectionKey, e: React.PointerEvent) => {
+    e.preventDefault();
+    setDraggingKey(key);
+    const fromIdx = orderRef.current.indexOf(key);
+    dropIdxRef.current = fromIdx;
+    setDropIdx(fromIdx);
+
+    const onMove = (ev: PointerEvent) => {
+      const root = containerRef.current;
+      if (!root) return;
+      const rows = root.querySelectorAll<HTMLElement>('[data-section-row]');
+      let target = -1;
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i].getBoundingClientRect();
+        if (ev.clientY >= r.top && ev.clientY <= r.bottom) {
+          target = i;
+          break;
+        }
+      }
+      if (target >= 0) {
+        dropIdxRef.current = target;
+        setDropIdx(target);
+      }
+    };
+
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+      const finalDrop = dropIdxRef.current;
+      const cur = orderRef.current.indexOf(key);
+      if (cur >= 0 && finalDrop !== null && finalDrop !== cur) {
+        moveTo(cur, finalDrop);
+      }
+      dropIdxRef.current = null;
+      setDraggingKey(null);
+      setDropIdx(null);
+    };
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+  };
+
+  const sectionValue = (k: BodySectionKey): string => {
+    switch (k) {
+      case 'motivation':
+        return draft.motivation;
+      case 'techChoice':
+        return draft.techChoice;
+      case 'architecture':
+        return draft.architecture.text;
+      case 'result':
+        return draft.result.text;
+      case 'retro':
+        return draft.retro.text;
+      case 'contribution':
+        return draft.contribution;
+    }
+  };
+
+  const setSectionValue = (k: BodySectionKey, v: string) => {
+    setDraft((d) => {
+      switch (k) {
+        case 'motivation':
+          return { ...d, motivation: v };
+        case 'techChoice':
+          return { ...d, techChoice: v };
+        case 'architecture':
+          return { ...d, architecture: { ...d.architecture, text: v } };
+        case 'result':
+          return { ...d, result: { ...d.result, text: v } };
+        case 'retro':
+          return { ...d, retro: { ...d.retro, text: v } };
+        case 'contribution':
+          return { ...d, contribution: v };
+      }
+    });
+  };
+
+  return (
+    <div ref={containerRef} className="space-y-4">
+      {order.map((k, i) => {
+        const hasAssets =
+          k === 'architecture' || k === 'result' || k === 'retro';
+        return (
+          <BodySection
+            key={k}
+            title={BODY_SECTION_LABEL[k]}
+            value={sectionValue(k)}
+            onChange={(v) => setSectionValue(k, v)}
+            isDragging={draggingKey === k}
+            isDropTarget={
+              draggingKey !== null && draggingKey !== k && dropIdx === i
+            }
+            onPointerDownHandle={(e) => startSectionDrag(k, e)}
+            assets={hasAssets ? draft.assets : undefined}
+            onAssetsChange={
+              hasAssets
+                ? (a) => setDraft((d) => ({ ...d, assets: a }))
+                : undefined
+            }
+            stepKey={hasAssets ? (k as AssetStepKey) : undefined}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+// ─────── (구) 인라인 마크다운 섹션 ───────
 function EditableMarkdownSection({
   title,
   value,
@@ -2454,14 +3377,251 @@ function EditableMarkdownSection({
 }
 
 // ─────── Summary view ───────
-function SummaryView({
+/** 도메인 섹션 — hasDomain 토글과 4개의 sub-question 을 미리보기에서 인라인 편집.
+ *  하위 질문은 "수정" 토글 없이 항상 텍스트 영역으로 노출 (질문이 명확하므로). */
+function DomainEditableSection({
   draft,
   setDraft,
-  onJumpTo,
 }: {
   draft: Draft;
   setDraft: Dispatch<SetStateAction<Draft>>;
-  onJumpTo: (key: StepKey) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const hasAny =
+    draft.hasDomain === true ||
+    draft.domainTags.length > 0 ||
+    !!draft.domainExpertise.trim() ||
+    !!draft.domainComm.trim() ||
+    !!draft.domainLimits.trim();
+
+  const labelClass =
+    'mb-1 block text-[11px] font-semibold uppercase tracking-wider text-gray-400';
+  const inputClass =
+    'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm leading-relaxed outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100';
+
+  return (
+    <div
+      className={`rounded-lg p-1 transition-colors ${
+        editing ? 'bg-blue-50/40 ring-1 ring-blue-100' : ''
+      }`}
+    >
+      <div
+        style={{ marginBottom: '0.5rem' }}
+        className="flex items-center justify-between gap-2"
+      >
+        <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+          도메인
+        </span>
+        <button
+          type="button"
+          onClick={() => setEditing((v) => !v)}
+          className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-all ${
+            editing
+              ? 'bg-blue-600 text-white shadow-sm hover:bg-blue-700'
+              : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:text-blue-600'
+          }`}
+        >
+          {editing ? '✓ 완료' : '✎ 수정'}
+        </button>
+      </div>
+
+      {editing ? (
+        <div className="space-y-3 px-1 pb-1">
+          {/* 도메인 포함 여부 */}
+          <div>
+            <span className={labelClass}>도메인 포함 여부</span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setDraft((d) => ({ ...d, hasDomain: true }))}
+                className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
+                  draft.hasDomain === true
+                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                    : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                예
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setDraft((d) => ({
+                    ...d,
+                    hasDomain: false,
+                    domainTags: [],
+                    domainExpertise: '',
+                    domainComm: '',
+                    domainLimits: '',
+                  }))
+                }
+                className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
+                  draft.hasDomain === false
+                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                    : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                아니오
+              </button>
+            </div>
+          </div>
+
+          {/* hasDomain === true 일 때만 하위 질문 노출 */}
+          {draft.hasDomain === true && (
+            <>
+              <div>
+                <span className={labelClass}>도메인 영역 (드래그·태그 선택)</span>
+                <TagSelect
+                  options={DOMAIN_OPTIONS}
+                  selected={draft.domainTags}
+                  onChange={(v) => setDraft((d) => ({ ...d, domainTags: v }))}
+                  allowCustom
+                />
+              </div>
+              <div>
+                <span className={labelClass}>전문성 확보 방법</span>
+                <textarea
+                  value={draft.domainExpertise}
+                  onChange={(e) =>
+                    setDraft((d) => ({
+                      ...d,
+                      domainExpertise: e.target.value,
+                    }))
+                  }
+                  rows={3}
+                  placeholder="공부한 자료, 정보 출처, 학습 방법 등."
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <span className={labelClass}>전문가와의 소통</span>
+                <textarea
+                  value={draft.domainComm}
+                  onChange={(e) =>
+                    setDraft((d) => ({ ...d, domainComm: e.target.value }))
+                  }
+                  rows={3}
+                  placeholder="전문가 인터뷰, 협업 방식 등."
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <span className={labelClass}>한계와 향후 개선 방향</span>
+                <textarea
+                  value={draft.domainLimits}
+                  onChange={(e) =>
+                    setDraft((d) => ({ ...d, domainLimits: e.target.value }))
+                  }
+                  rows={3}
+                  placeholder="현재 결과물의 한계, 향후 보완 방향."
+                  className={inputClass}
+                />
+              </div>
+            </>
+          )}
+        </div>
+      ) : hasAny ? (
+        draft.hasDomain === true ? (
+          <div className="space-y-2 px-1 text-sm leading-7 text-gray-700">
+            {draft.domainTags.length > 0 && (
+              <p>
+                <span className="font-medium">영역:</span>{' '}
+                {draft.domainTags.join(', ')}
+              </p>
+            )}
+            {draft.domainExpertise && (
+              <p>
+                <span className="font-medium">전문성:</span>{' '}
+                {draft.domainExpertise}
+              </p>
+            )}
+            {draft.domainComm && (
+              <p>
+                <span className="font-medium">소통:</span> {draft.domainComm}
+              </p>
+            )}
+            {draft.domainLimits && (
+              <p>
+                <span className="font-medium">한계:</span> {draft.domainLimits}
+              </p>
+            )}
+          </div>
+        ) : (
+          <p className="px-1 text-xs text-gray-400">
+            특정 도메인 없음으로 설정됨
+          </p>
+        )
+      ) : (
+        <p className="px-1 text-xs text-gray-400">
+          (도메인 정보 미입력 — &ldquo;✎ 수정&rdquo; 으로 추가)
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** 미리보기 안에서 한 메타 섹션을 "읽기 ↔ 인라인 편집" 으로 토글하는 래퍼 */
+function InlineEditSection({
+  label,
+  hasValue,
+  emptyText,
+  children,
+  preview,
+  defaultEditing = false,
+}: {
+  label: string;
+  hasValue: boolean;
+  emptyText: string;
+  children: ReactNode; // editor body
+  preview: ReactNode; // read-only body
+  defaultEditing?: boolean;
+}) {
+  const [editing, setEditing] = useState(defaultEditing);
+  return (
+    <div
+      className={`rounded-lg p-1 transition-colors ${
+        editing ? 'bg-blue-50/40 ring-1 ring-blue-100' : ''
+      }`}
+    >
+      <div
+        style={{ marginBottom: '0.5rem' }}
+        className="flex items-center justify-between gap-2"
+      >
+        <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+          {label}
+        </span>
+        <button
+          type="button"
+          onClick={() => setEditing((v) => !v)}
+          className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-all ${
+            editing
+              ? 'bg-blue-600 text-white shadow-sm hover:bg-blue-700'
+              : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:text-blue-600'
+          }`}
+        >
+          {editing ? '✓ 완료' : '✎ 수정'}
+        </button>
+      </div>
+      {editing ? (
+        <div className="px-1 pb-1">{children}</div>
+      ) : (
+        <div className="px-1">
+          {hasValue ? (
+            preview
+          ) : (
+            <p className="text-xs text-gray-400">{emptyText}</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SummaryView({
+  draft,
+  setDraft,
+}: {
+  draft: Draft;
+  setDraft: Dispatch<SetStateAction<Draft>>;
 }) {
   const [copied, setCopied] = useState(false);
   const thumbInputRef = useRef<HTMLInputElement>(null);
@@ -2480,47 +3640,11 @@ function SummaryView({
   const assetsByStep = (key: AssetStepKey) =>
     draft.assets.filter((a) => a.stepKey === key);
 
-  /** 주어진 자료 풀 안에서만 @[alias] 를 해석 */
-  const renderInlineFor =
-    (pool: Asset[]) =>
-    (text: string): ReactNode => {
-      if (!text) return null;
-      const parts = text.split(/(@\[[^\]]+\])/g);
-      return parts.map((part, i) => {
-        const m = part.match(/^@\[([^\]]+)\]$/);
-        if (m) {
-          const asset = pool.find((a) => a.alias === m[1]);
-          if (asset) {
-            return (
-              <img
-                key={i}
-                src={asset.dataUrl}
-                alt={asset.filename}
-                className="my-2 max-w-full rounded-lg border border-gray-200"
-              />
-            );
-          }
-          return (
-            <span
-              key={i}
-              className="rounded bg-amber-50 px-1 font-mono text-xs text-amber-700"
-            >
-              @[{m[1]}]
-            </span>
-          );
-        }
-        return <span key={i}>{part}</span>;
-      });
-    };
-
   const replaceMentionsMdFor = (pool: Asset[]) => (t: string) =>
     t.replace(/@\[([^\]]+)\]/g, (_, alias) => {
       const a = pool.find((x) => x.alias === alias);
       return a ? `\n\n![${a.filename}](${a.dataUrl})\n\n` : `@[${alias}]`;
     });
-
-  /** 자료 풀이 없는 텍스트(@ 멘션 없음)용 — 그냥 문자열만 출력 */
-  const renderPlain = (text: string): ReactNode => text;
 
   const toMarkdown = () => {
     const lines: string[] = [];
@@ -2581,73 +3705,124 @@ function SummaryView({
     }
   };
 
-  const tagGroups: { label: string; values: string[]; step: StepKey }[] = [
-    { label: '활동', values: draft.activityTypes, step: 'activity' },
-    { label: '분야', values: draft.fieldTags, step: 'field' },
-    { label: '프로그램', values: draft.toolTags, step: 'tools' },
-    { label: '역할', values: draft.roles, step: 'roles' },
-  ];
-  const hasAnyTag = tagGroups.some((g) => g.values.length > 0);
-
-  // 메타 영역(이름·기간·활동·분야·프로그램·역할) 수정은 질문 폼으로 진입
-  const editMeta = () => onJumpTo('name');
   const periodText = formatPeriod(draft.period);
+
+  const tagChips = (values: string[]) => (
+    <div className="flex flex-wrap gap-1.5">
+      {values.map((t) => (
+        <span
+          key={t}
+          className="rounded-full bg-blue-50 px-3 py-1 text-xs leading-relaxed text-blue-700"
+        >
+          {t}
+        </span>
+      ))}
+    </div>
+  );
 
   return (
     <div className="space-y-4">
-      {/* 상단: 수정 버튼 (메타 정보를 질문 폼으로 수정) */}
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={editMeta}
-          aria-label="제목·기간·활동·분야·프로그램·역할 수정"
-          className="inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-4 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700"
-        >
-          <span aria-hidden>✎</span>
-          <span>수정</span>
-        </button>
-      </div>
-
       <header className="flex items-start gap-5">
-        <div className="min-w-0 flex-1">
-          {/* 기간 + 진행중 — 표시만 */}
-          {(periodText || draft.period.current) && (
-            <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-              {periodText && <span>{periodText}</span>}
-              {draft.period.current && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                  <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                  진행중
-                </span>
-              )}
-            </div>
-          )}
-          <h3 className="text-2xl font-bold leading-snug text-gray-900">
-            {draft.name || '(제목 없음)'}
-          </h3>
-          {hasAnyTag && (
-            <div className="mt-4 space-y-2">
-              {tagGroups.map((g) =>
-                g.values.length === 0 ? null : (
-                  <div key={g.label} className="flex flex-wrap items-center gap-2">
-                    <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                      {g.label}
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {g.values.map((t) => (
-                        <span
-                          key={t}
-                          className="rounded-full bg-blue-50 px-3 py-1 text-xs leading-relaxed text-blue-700"
-                        >
-                          {t}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ),
-              )}
-            </div>
-          )}
+        <div className="min-w-0 flex-1 space-y-3">
+          {/* 제목 — 항상 인라인 편집 가능 */}
+          <div>
+            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+              제목
+            </label>
+            <input
+              type="text"
+              value={draft.name}
+              onChange={(e) =>
+                setDraft((d) => ({ ...d, name: e.target.value }))
+              }
+              placeholder="(제목 없음)"
+              className="w-full rounded-lg border border-transparent bg-transparent px-2 py-1 text-2xl font-bold leading-snug text-gray-900 outline-none hover:border-gray-200 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
+            />
+          </div>
+
+          {/* 기간 — 토글로 PeriodPicker 인라인 노출 */}
+          <InlineEditSection
+            label="기간"
+            hasValue={!!periodText || draft.period.current}
+            emptyText="(미입력)"
+            preview={
+              <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                {periodText && <span>{periodText}</span>}
+                {draft.period.current && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                    <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                    진행중
+                  </span>
+                )}
+              </div>
+            }
+          >
+            <PeriodPicker
+              period={draft.period}
+              onChange={(p) => setDraft((d) => ({ ...d, period: p }))}
+            />
+          </InlineEditSection>
+
+          {/* 활동 */}
+          <InlineEditSection
+            label="활동"
+            hasValue={draft.activityTypes.length > 0}
+            emptyText="(선택된 활동이 없습니다)"
+            preview={tagChips(draft.activityTypes)}
+          >
+            <TagSelect
+              options={ACTIVITY_OPTIONS}
+              selected={draft.activityTypes}
+              onChange={(v) => setDraft((d) => ({ ...d, activityTypes: v }))}
+              allowCustom
+            />
+          </InlineEditSection>
+
+          {/* 분야 */}
+          <InlineEditSection
+            label="분야"
+            hasValue={draft.fieldTags.length > 0}
+            emptyText="(선택된 분야가 없습니다)"
+            preview={tagChips(draft.fieldTags)}
+          >
+            <CategorizedTagSelect
+              categories={FIELD_TAGS}
+              selected={draft.fieldTags}
+              onChange={(v) => setDraft((d) => ({ ...d, fieldTags: v }))}
+              previewLimit={TAG_PREVIEW_PER_CATEGORY}
+              allowCustom
+            />
+          </InlineEditSection>
+
+          {/* 프로그램 */}
+          <InlineEditSection
+            label="프로그램"
+            hasValue={draft.toolTags.length > 0}
+            emptyText="(선택된 프로그램이 없습니다)"
+            preview={tagChips(draft.toolTags)}
+          >
+            <CategorizedTagSelect
+              categories={TECH_STACK_TAGS}
+              selected={draft.toolTags}
+              onChange={(v) => setDraft((d) => ({ ...d, toolTags: v }))}
+              allowCustom
+              scrollable
+            />
+          </InlineEditSection>
+
+          {/* 역할 */}
+          <InlineEditSection
+            label="역할"
+            hasValue={draft.roles.length > 0}
+            emptyText="(선택된 역할이 없습니다)"
+            preview={tagChips(draft.roles)}
+          >
+            <TagSelect
+              options={ROLE_OPTIONS}
+              selected={draft.roles}
+              onChange={(v) => setDraft((d) => ({ ...d, roles: v }))}
+            />
+          </InlineEditSection>
         </div>
         {/* 우측 썸네일 — 클릭하면 직접 업로드. 없으면 백지(점선 박스)로 표시. */}
         <div className="shrink-0">
@@ -2697,100 +3872,27 @@ function SummaryView({
         </div>
       </header>
 
-      <EditableMarkdownSection
-        title="문제 정의"
-        value={draft.motivation}
-        onChange={(v) => setDraft((d) => ({ ...d, motivation: v }))}
-      />
-      <EditableMarkdownSection
-        title="기술 스택 선정 배경"
-        value={draft.techChoice}
-        onChange={(v) => setDraft((d) => ({ ...d, techChoice: v }))}
-      />
-      <EditableMarkdownSection
-        title="아키텍처 설계 및 과정"
-        value={draft.architecture.text}
-        onChange={(v) =>
-          setDraft((d) => ({
-            ...d,
-            architecture: { ...d.architecture, text: v },
-          }))
-        }
-      />
-      <EditableMarkdownSection
-        title="결과물"
-        value={draft.result.text}
-        onChange={(v) =>
-          setDraft((d) => ({ ...d, result: { ...d.result, text: v } }))
-        }
-      />
-      <EditableMarkdownSection
-        title="회고"
-        value={draft.retro.text}
-        onChange={(v) =>
-          setDraft((d) => ({ ...d, retro: { ...d.retro, text: v } }))
-        }
-      />
-      <EditableMarkdownSection
-        title="본인 참여 활동"
-        value={draft.contribution}
-        onChange={(v) => setDraft((d) => ({ ...d, contribution: v }))}
-      />
+      {/* 본문 섹션 — 드래그로 순서 변경 */}
+      <BodySectionsList draft={draft} setDraft={setDraft} />
 
-      {draft.hasDomain && (
-        <section>
-          <button
-            type="button"
-            onClick={() => onJumpTo('domainCheck')}
-            style={{ marginBottom: '1rem' }}
-            className="block text-left text-sm font-bold text-gray-800 hover:text-blue-600 hover:underline"
-          >
-            도메인
-          </button>
-          <div className="space-y-3 text-sm leading-7 text-gray-700">
-            {draft.domainTags.length > 0 && (
-              <p>
-                <span className="font-medium">영역:</span>{' '}
-                {draft.domainTags.join(', ')}
-              </p>
-            )}
-            {draft.domainExpertise && (
-              <p>
-                <span className="font-medium">전문성:</span>{' '}
-                {draft.domainExpertise}
-              </p>
-            )}
-            {draft.domainComm && (
-              <p>
-                <span className="font-medium">소통:</span> {draft.domainComm}
-              </p>
-            )}
-            {draft.domainLimits && (
-              <p>
-                <span className="font-medium">한계:</span> {draft.domainLimits}
-              </p>
-            )}
-          </div>
-        </section>
-      )}
+      {/* 도메인 — 항상 노출, 인라인 편집 */}
+      <DomainEditableSection draft={draft} setDraft={setDraft} />
 
-      {(draft.deliverableUrl || draft.deliverableFiles.length > 0) && (
-        <section>
-          <button
-            type="button"
-            onClick={() => onJumpTo('deliverables')}
-            style={{ marginBottom: '1rem' }}
-            className="block text-left text-sm font-bold text-gray-800 hover:text-blue-600 hover:underline"
-          >
-            결과물 / 배포물
-          </button>
-          <div className="space-y-3 text-sm leading-7">
+      {/* 결과물 / 배포물 — 항상 노출, 인라인 편집 */}
+      <InlineEditSection
+        label="결과물 / 배포물"
+        hasValue={
+          !!draft.deliverableUrl || draft.deliverableFiles.length > 0
+        }
+        emptyText="(등록된 결과물·배포물이 없습니다)"
+        preview={
+          <div className="space-y-2 text-sm leading-7">
             {draft.deliverableUrl && (
               <a
                 href={draft.deliverableUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block text-blue-600 hover:underline"
+                className="block break-all text-blue-600 hover:underline"
               >
                 {draft.deliverableUrl}
               </a>
@@ -2806,8 +3908,10 @@ function SummaryView({
               </a>
             ))}
           </div>
-        </section>
-      )}
+        }
+      >
+        <DeliverablesStep draft={draft} setDraft={setDraft} />
+      </InlineEditSection>
 
       <div className="flex justify-end">
         <button
@@ -2822,38 +3926,3 @@ function SummaryView({
   );
 }
 
-function SummarySection({
-  title,
-  text,
-  renderInline,
-  onJump,
-}: {
-  title: string;
-  text: string;
-  renderInline: (t: string) => ReactNode;
-  onJump?: () => void;
-}) {
-  if (!text || !text.trim()) return null;
-  return (
-    <section>
-      {onJump ? (
-        <button
-          type="button"
-          onClick={onJump}
-          style={{ marginBottom: '1rem' }}
-          className="block text-left text-sm font-bold text-gray-800 hover:text-blue-600 hover:underline"
-          aria-label={`${title} 수정`}
-        >
-          {title}
-        </button>
-      ) : (
-        <h4 style={{ marginBottom: '1rem' }} className="text-sm font-bold text-gray-800">
-          {title}
-        </h4>
-      )}
-      <div className="whitespace-pre-wrap text-sm leading-8 text-gray-700">
-        {renderInline(text)}
-      </div>
-    </section>
-  );
-}

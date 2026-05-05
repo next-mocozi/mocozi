@@ -609,37 +609,58 @@ function SectionCardList({
                 href="/portfolio"
                 className="block rounded-xl border border-gray-100 p-3 transition-all hover:border-blue-200 hover:shadow-sm"
               >
-                <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <span
-                    className={`rounded px-2 py-0.5 text-xs ${meta.bg} ${meta.text}`}
-                  >
-                    {meta.label}
-                  </span>
-                  {item.domain && (
-                    <span className="rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-600">
-                      {item.domain}
-                    </span>
-                  )}
-                  <span className="text-xs text-gray-500">{item.period}</span>
-                </div>
-                <h4 className="mb-1 text-sm font-semibold text-gray-900">
-                  {item.title}
-                </h4>
-                <p className="line-clamp-2 text-xs text-gray-600">
-                  {item.description}
-                </p>
-                {item.tags.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {item.tags.map((tag) => (
+                <div className="flex items-start gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
                       <span
-                        key={tag}
-                        className="rounded bg-gray-100 px-2 py-0.5 text-[10px] text-gray-600"
+                        className={`rounded px-2 py-0.5 text-xs ${meta.bg} ${meta.text}`}
                       >
-                        {tag}
+                        {meta.label}
                       </span>
-                    ))}
+                      {item.domain && (
+                        <span className="rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-600">
+                          {item.domain}
+                        </span>
+                      )}
+                      <span className="text-xs text-gray-500">
+                        {item.period}
+                      </span>
+                    </div>
+                    <h4 className="mb-1 text-sm font-semibold text-gray-900">
+                      {item.title}
+                    </h4>
+                    {item.tags.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {item.tags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="rounded bg-gray-100 px-2 py-0.5 text-[10px] text-gray-600"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
+                  <div
+                    className={`shrink-0 overflow-hidden rounded-lg border ${
+                      item.thumbnail
+                        ? 'border-gray-200'
+                        : 'border-dashed border-gray-200 bg-gray-50'
+                    }`}
+                    style={{ width: '4rem', height: '4rem' }}
+                    aria-hidden
+                  >
+                    {item.thumbnail && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={item.thumbnail}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    )}
+                  </div>
+                </div>
               </Link>
             );
           })}
