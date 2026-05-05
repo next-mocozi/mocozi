@@ -594,11 +594,10 @@ export default function MyPortfolioPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
-      {/* ─────── 기본 정보 + 자기소개 (한 카드로 통합) ─────── */}
+      {/* ─────── 기본 정보 — /profile 페이지와 동일 (수정 버튼 없음) ─────── */}
       <div className="card mb-6">
-        {/* 기본 정보 (프로필에서 가져옴 — 읽기 전용) */}
-        <div className="flex items-start gap-6 mb-6">
-          <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-primary-100 text-3xl text-primary-600">
+        <div className="flex items-start gap-6">
+          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-primary-100 text-3xl text-primary-600">
             👤
           </div>
           <div className="flex-1">
@@ -607,9 +606,17 @@ export default function MyPortfolioPage() {
             </div>
             <p className="text-gray-600">
               {user.university} {user.department}
+              {user.grade && (
+                <span className="ml-1 text-sm text-gray-400">
+                  · {/^\d+$/.test(user.grade) ? `${user.grade}학년` : user.grade}
+                </span>
+              )}
             </p>
+            {user.bio && (
+              <p className="mt-2 text-sm text-gray-500">{user.bio}</p>
+            )}
 
-            {/* 직군 — /profile 페이지와 동일한 스타일 */}
+            {/* 직군 */}
             {(mainRole || subRoles.length > 0) && (
               <div className="mt-3 flex flex-wrap items-center gap-1">
                 {mainRole && (
@@ -628,48 +635,72 @@ export default function MyPortfolioPage() {
               </div>
             )}
 
-            {links.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {links.map((link) => {
-                  const key = detectPlatform(link.url);
-                  const meta = PLATFORM_META[key];
-                  return (
-                    <a
-                      key={link.id}
-                      href={link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs shadow-sm transition-all hover:shadow-md ${meta.bg} ${meta.text}`}
-                    >
-                      <PlatformIcon k={key} className="h-3.5 w-3.5" />
-                      <span className="font-medium">
-                        {getDisplayLabel(link, key)}
-                      </span>
-                    </a>
-                  );
-                })}
-              </div>
-            )}
+            {/* 기술 스택 */}
+            <div className="mt-2 flex flex-wrap gap-1">
+              {(user.skills ?? []).map((skill) => (
+                <span
+                  key={skill}
+                  className="rounded bg-blue-50 px-2 py-1 text-xs text-blue-600"
+                >
+                  {skill}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* 구분선 */}
-        <div className="my-5 border-t border-gray-100" />
-        {/* 자기소개 (저장 버튼 패턴) */}
+      {/* ─────── 링크 — /profile 페이지와 동일 ─────── */}
+      <div className="card mb-6">
+        <h2 className="mb-4 text-lg font-semibold">링크</h2>
+        {links.length === 0 ? (
+          <p className="text-sm text-gray-500">
+            아직 등록된 링크가 없습니다.{' '}
+            <Link href="/profile/edit" className="text-blue-600 hover:underline">
+              프로필 수정
+            </Link>
+            에서 추가할 수 있어요.
+          </p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {links.map((link) => {
+              const key = detectPlatform(link.url);
+              const meta = PLATFORM_META[key];
+              return (
+                <a
+                  key={link.id}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm shadow-sm transition-all hover:shadow-md ${meta.bg} ${meta.text}`}
+                >
+                  <PlatformIcon k={key} className="h-4 w-4" />
+                  <span className="font-medium">
+                    {getDisplayLabel(link, key)}
+                  </span>
+                </a>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ─────── 자기소개 (저장 버튼 패턴) ─────── */}
+      <div className="card mb-6">
         <div className="px-1 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-          <h2 className="text-lg font-semibold">자기소개</h2>
-          <span
-            className={`text-xs ${
-              introDraft.length >= INTRO_MAX
-                ? 'text-red-500'
-                : introDraft.length >= INTRO_MAX * 0.9
-                  ? 'text-amber-500'
-                  : 'text-gray-400'
-            }`}
-          >
-            {introDraft.length} / {INTRO_MAX}
-          </span>
+            <h2 className="text-lg font-semibold">자기소개</h2>
+            <span
+              className={`text-xs ${
+                introDraft.length >= INTRO_MAX
+                  ? 'text-red-500'
+                  : introDraft.length >= INTRO_MAX * 0.9
+                    ? 'text-amber-500'
+                    : 'text-gray-400'
+              }`}
+            >
+              {introDraft.length} / {INTRO_MAX}
+            </span>
           </div>
           <button
             type="button"

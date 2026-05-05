@@ -9,7 +9,7 @@ import {
   TYPE_META,
   type PortfolioItem,
 } from '../page';
-import type { Draft } from '../edit/_interview';
+import { renderMarkdown, type Draft } from '../edit/_interview';
 
 // TODO: 백엔드 연동 — `GET /api/portfolios/:id` 로 교체
 //       (CLAUDE.md §11). 현재는 mock — localStorage 에서 로드.
@@ -125,35 +125,17 @@ export default function PortfolioItemPage({
 
   const meta = TYPE_META[item.type];
 
-  // 인터뷰 답변(@[A] → 이미지) 인라인 렌더러
-  const renderInline = (text: string): ReactNode => {
+  /** 본문 답변을 마크다운으로 렌더 (#·##·**·![](src)·[text](url)·- 목록 지원).
+   *  레거시 @[alias] 토큰은 details.assets 풀에서 이미지로 치환 후 마크다운으로 넘김. */
+  const renderBody = (text: string, pool?: { alias: string; dataUrl: string; filename: string }[]): ReactNode => {
     if (!text) return null;
-    const parts = text.split(/(@\[[^\]]+\])/g);
-    return parts.map((part, i) => {
-      const m = part.match(/^@\[([^\]]+)\]$/);
-      if (m) {
-        const asset = details?.assets.find((a) => a.alias === m[1]);
-        if (asset) {
-          return (
-            <img
-              key={i}
-              src={asset.dataUrl}
-              alt={asset.filename}
-              className="my-3 max-w-full rounded-lg border border-gray-200"
-            />
-          );
-        }
-        return (
-          <span
-            key={i}
-            className="rounded bg-amber-50 px-1 font-mono text-xs text-amber-700"
-          >
-            @[{m[1]}]
-          </span>
-        );
-      }
-      return <span key={i}>{part}</span>;
-    });
+    const expanded = pool
+      ? text.replace(/@\[([^\]]+)\]/g, (_, alias) => {
+          const a = pool.find((x) => x.alias === alias);
+          return a ? `\n\n![${a.filename}](${a.dataUrl})\n\n` : `@[${alias}]`;
+        })
+      : text;
+    return <>{renderMarkdown(expanded)}</>;
   };
 
   return (
@@ -229,22 +211,37 @@ export default function PortfolioItemPage({
       {details ? (
         <div style={{ rowGap: '0.5rem' }} className="card flex flex-col">
           <Section title="문제 정의">
-            <Para>{renderInline(details.motivation)}</Para>
+            <Para>{renderBody(details.motivation)}</Para>
           </Section>
           <Section title="기술 스택 선정 배경">
-            <Para>{renderInline(details.techChoice)}</Para>
+            <Para>{renderBody(details.techChoice)}</Para>
           </Section>
           <Section title="아키텍처 설계 및 과정">
-            <Para>{renderInline(details.architecture.text)}</Para>
+            <Para>
+              {renderBody(
+                details.architecture.text,
+                details.assets?.filter((a) => a.stepKey === 'architecture'),
+              )}
+            </Para>
           </Section>
           <Section title="결과물">
-            <Para>{renderInline(details.result.text)}</Para>
+            <Para>
+              {renderBody(
+                details.result.text,
+                details.assets?.filter((a) => a.stepKey === 'result'),
+              )}
+            </Para>
           </Section>
           <Section title="회고">
-            <Para>{renderInline(details.retro.text)}</Para>
+            <Para>
+              {renderBody(
+                details.retro.text,
+                details.assets?.filter((a) => a.stepKey === 'retro'),
+              )}
+            </Para>
           </Section>
-          <Section title="본인 참여 활동">  
-            <Para>{renderInline(details.contribution)}</Para>
+          <Section title="본인 참여 활동">
+            <Para>{renderBody(details.contribution)}</Para>
           </Section>
 
           {details.hasDomain && (

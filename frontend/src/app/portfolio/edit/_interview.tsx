@@ -494,6 +494,137 @@ const buildSteps = (hasDomain: boolean | null): StepCfg[] => {
   return arr;
 };
 
+// ─────── Markdown 렌더러 (간단한 인라인/블록 파서) ───────
+// 지원: ## h3, # h2, **bold**, `code`, ![alt](src) 이미지, [text](url) 링크,
+//       "- " bullet, 빈 줄 = 문단 구분
+export function renderInlineMd(text: string): ReactNode {
+  if (!text) return null;
+  const tokens: ReactNode[] = [];
+  const re =
+    /(!\[[^\]]*\]\([^)]+\)|\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|`[^`]+`)/g;
+  let last = 0;
+  let key = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) {
+      tokens.push(<span key={key++}>{text.slice(last, m.index)}</span>);
+    }
+    const t = m[0];
+    if (t.startsWith('![')) {
+      const im = t.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+      if (im) {
+        tokens.push(
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            key={key++}
+            src={im[2]}
+            alt={im[1]}
+            className="my-2 max-w-full rounded-lg border border-gray-200"
+          />,
+        );
+      }
+    } else if (t.startsWith('[')) {
+      const lm = t.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+      if (lm) {
+        tokens.push(
+          <a
+            key={key++}
+            href={lm[2]}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:underline"
+          >
+            {lm[1]}
+          </a>,
+        );
+      }
+    } else if (t.startsWith('**')) {
+      const bm = t.match(/^\*\*([^*]+)\*\*$/);
+      if (bm)
+        tokens.push(
+          <strong key={key++} className="font-semibold">
+            {bm[1]}
+          </strong>,
+        );
+    } else if (t.startsWith('`')) {
+      const cm = t.match(/^`([^`]+)`$/);
+      if (cm)
+        tokens.push(
+          <code
+            key={key++}
+            className="rounded bg-gray-100 px-1 font-mono text-[0.9em] text-gray-800"
+          >
+            {cm[1]}
+          </code>,
+        );
+    }
+    last = m.index + t.length;
+  }
+  if (last < text.length) {
+    tokens.push(<span key={key++}>{text.slice(last)}</span>);
+  }
+  return tokens;
+}
+
+export function renderMarkdown(text: string): ReactNode[] {
+  if (!text) return [];
+  const lines = text.split('\n');
+  const out: ReactNode[] = [];
+  let listBuf: string[] = [];
+  const flushList = () => {
+    if (listBuf.length === 0) return;
+    out.push(
+      <ul
+        key={`list-${out.length}`}
+        className="my-1 list-disc space-y-1 pl-5"
+      >
+        {listBuf.map((item, i) => (
+          <li key={i}>{renderInlineMd(item)}</li>
+        ))}
+      </ul>,
+    );
+    listBuf = [];
+  };
+  lines.forEach((raw, i) => {
+    const line = raw.replace(/\s+$/, '');
+    if (line.startsWith('## ')) {
+      flushList();
+      out.push(
+        <h3
+          key={`h3-${i}`}
+          className="mt-3 mb-1 text-lg font-bold text-gray-900"
+        >
+          {renderInlineMd(line.slice(3))}
+        </h3>,
+      );
+    } else if (line.startsWith('# ')) {
+      flushList();
+      out.push(
+        <h2
+          key={`h2-${i}`}
+          className="mt-3 mb-1 text-xl font-bold text-gray-900"
+        >
+          {renderInlineMd(line.slice(2))}
+        </h2>,
+      );
+    } else if (line.startsWith('- ')) {
+      listBuf.push(line.slice(2));
+    } else if (line.trim() === '') {
+      flushList();
+      out.push(<div key={`sp-${i}`} className="h-2" />);
+    } else {
+      flushList();
+      out.push(
+        <p key={`p-${i}`} className="my-1 leading-7">
+          {renderInlineMd(line)}
+        </p>,
+      );
+    }
+  });
+  flushList();
+  return out;
+}
+
 // ─────── Main component ───────
 export default function ProjectInterview() {
   const router = useRouter();
@@ -2203,6 +2334,125 @@ function DeliverablesStep({
   );
 }
 
+// ─────── 인라인 마크다운 섹션 — 본문 영역을 노션처럼 인라인 편집 ───────
+function EditableMarkdownSection({
+  title,
+  value,
+  onChange,
+}: {
+  title: string;
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  const taRef = useRef<HTMLTextAreaElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const insertAtCursor = (text: string) => {
+    const ta = taRef.current;
+    if (!ta) {
+      onChange(value + text);
+      return;
+    }
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const next = value.slice(0, start) + text + value.slice(end);
+    onChange(next);
+    setTimeout(() => {
+      ta.focus();
+      ta.selectionStart = ta.selectionEnd = start + text.length;
+    }, 0);
+  };
+
+  const handleImageUpload = async (file: File | null) => {
+    if (!file || !file.type.startsWith('image/')) return;
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      insertAtCursor(`\n\n![${file.name}](${dataUrl})\n\n`);
+    } catch {
+      // 무시
+    }
+  };
+
+  const toolBtnClass =
+    'rounded border border-gray-200 bg-white px-2 py-0.5 text-[11px] text-gray-600 hover:bg-gray-50';
+
+  return (
+    <section>
+      <div
+        style={{ marginBottom: '0.5rem' }}
+        className="flex flex-wrap items-center justify-between gap-2"
+      >
+        <h4 className="text-sm font-bold text-gray-800">{title}</h4>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => insertAtCursor('## 제목\n')}
+            className={toolBtnClass}
+            title="제목 (##)"
+          >
+            ## 제목
+          </button>
+          <button
+            type="button"
+            onClick={() => insertAtCursor('**굵게**')}
+            className={toolBtnClass}
+            title="굵게 (**)"
+          >
+            <strong>B</strong>
+          </button>
+          <button
+            type="button"
+            onClick={() => insertAtCursor('\n- 항목\n')}
+            className={toolBtnClass}
+            title="목록"
+          >
+            • 목록
+          </button>
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            className={toolBtnClass}
+            title="이미지 추가"
+          >
+            🖼 이미지
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              handleImageUpload(e.target.files?.[0] ?? null);
+              e.target.value = '';
+            }}
+          />
+        </div>
+      </div>
+      <textarea
+        ref={taRef}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        rows={Math.max(4, value.split('\n').length)}
+        placeholder="자유롭게 작성하세요. ## 제목, **굵게**, 이미지를 사용할 수 있어요."
+        className="w-full resize-y rounded-lg border border-gray-200 px-4 py-3 text-sm leading-7 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+      />
+      {value.trim() && (
+        <div
+          style={{ marginTop: '0.5rem' }}
+          className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3"
+        >
+          <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+            미리보기
+          </div>
+          <div className="text-sm leading-7 text-gray-700">
+            {renderMarkdown(value)}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
 // ─────── Summary view ───────
 function SummaryView({
   draft,
@@ -2339,33 +2589,50 @@ function SummaryView({
   ];
   const hasAnyTag = tagGroups.some((g) => g.values.length > 0);
 
+  // 메타 영역(이름·기간·활동·분야·프로그램·역할) 수정은 질문 폼으로 진입
+  const editMeta = () => onJumpTo('name');
+  const periodText = formatPeriod(draft.period);
+
   return (
     <div className="space-y-4">
+      {/* 상단: 수정 버튼 (메타 정보를 질문 폼으로 수정) */}
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={editMeta}
+          aria-label="제목·기간·활동·분야·프로그램·역할 수정"
+          className="inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-4 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700"
+        >
+          <span aria-hidden>✎</span>
+          <span>수정</span>
+        </button>
+      </div>
+
       <header className="flex items-start gap-5">
         <div className="min-w-0 flex-1">
-          <button
-            type="button"
-            onClick={() => onJumpTo('name')}
-            className="group block w-full text-left"
-            aria-label="제목 수정"
-          >
-            <h3 className="text-2xl font-bold leading-snug text-gray-900 group-hover:text-blue-600 group-hover:underline">
-              {draft.name || '(제목 없음)'}
-            </h3>
-          </button>
+          {/* 기간 + 진행중 — 표시만 */}
+          {(periodText || draft.period.current) && (
+            <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+              {periodText && <span>{periodText}</span>}
+              {draft.period.current && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                  <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                  진행중
+                </span>
+              )}
+            </div>
+          )}
+          <h3 className="text-2xl font-bold leading-snug text-gray-900">
+            {draft.name || '(제목 없음)'}
+          </h3>
           {hasAnyTag && (
             <div className="mt-4 space-y-2">
               {tagGroups.map((g) =>
                 g.values.length === 0 ? null : (
                   <div key={g.label} className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => onJumpTo(g.step)}
-                      aria-label={`${g.label} 수정`}
-                      className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-gray-400 hover:text-blue-600 hover:underline"
-                    >
+                    <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
                       {g.label}
-                    </button>
+                    </span>
                     <div className="flex flex-wrap gap-1.5">
                       {g.values.map((t) => (
                         <span
@@ -2430,41 +2697,44 @@ function SummaryView({
         </div>
       </header>
 
-      <SummarySection
+      <EditableMarkdownSection
         title="문제 정의"
-        text={draft.motivation}
-        renderInline={renderPlain}
-        onJump={() => onJumpTo('motivation')}
+        value={draft.motivation}
+        onChange={(v) => setDraft((d) => ({ ...d, motivation: v }))}
       />
-      <SummarySection
+      <EditableMarkdownSection
         title="기술 스택 선정 배경"
-        text={draft.techChoice}
-        renderInline={renderPlain}
-        onJump={() => onJumpTo('techChoice')}
+        value={draft.techChoice}
+        onChange={(v) => setDraft((d) => ({ ...d, techChoice: v }))}
       />
-      <SummarySection
+      <EditableMarkdownSection
         title="아키텍처 설계 및 과정"
-        text={draft.architecture.text}
-        renderInline={renderInlineFor(assetsByStep('architecture'))}
-        onJump={() => onJumpTo('architecture')}
+        value={draft.architecture.text}
+        onChange={(v) =>
+          setDraft((d) => ({
+            ...d,
+            architecture: { ...d.architecture, text: v },
+          }))
+        }
       />
-      <SummarySection
+      <EditableMarkdownSection
         title="결과물"
-        text={draft.result.text}
-        renderInline={renderInlineFor(assetsByStep('result'))}
-        onJump={() => onJumpTo('result')}
+        value={draft.result.text}
+        onChange={(v) =>
+          setDraft((d) => ({ ...d, result: { ...d.result, text: v } }))
+        }
       />
-      <SummarySection
+      <EditableMarkdownSection
         title="회고"
-        text={draft.retro.text}
-        renderInline={renderInlineFor(assetsByStep('retro'))}
-        onJump={() => onJumpTo('retro')}
+        value={draft.retro.text}
+        onChange={(v) =>
+          setDraft((d) => ({ ...d, retro: { ...d.retro, text: v } }))
+        }
       />
-      <SummarySection
+      <EditableMarkdownSection
         title="본인 참여 활동"
-        text={draft.contribution}
-        renderInline={renderPlain}
-        onJump={() => onJumpTo('contribution')}
+        value={draft.contribution}
+        onChange={(v) => setDraft((d) => ({ ...d, contribution: v }))}
       />
 
       {draft.hasDomain && (
