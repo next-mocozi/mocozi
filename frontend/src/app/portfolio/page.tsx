@@ -744,7 +744,7 @@ export default function MyPortfolioPage() {
         {/* 경력 — 보기 전용 불렛 리스트, 편집은 모달 */}
         <div className="card">
           <div className=" mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">경력</h2>
+            <h2 className="text-lg font-semibold">대외 경험</h2>
             <button
               type="button"
               onClick={openCareerModal}
@@ -812,7 +812,7 @@ export default function MyPortfolioPage() {
           >
             <div>
               <div className="mb-2 text-3xl">+</div>
-              <p className="text-sm">새 포트폴리오 항목 추가</p>
+              <p className="text-sm">새 프로젝트 항목 추가</p>
             </div>
           </button>
         ) : (
@@ -879,7 +879,7 @@ export default function MyPortfolioPage() {
           <button
             type="button"
             onClick={() => setStudyMgrOpen(true)}
-            className="rounded-full bg-amber-500 px-3 py-1 text-xs font-medium text-white shadow-sm transition-all hover:bg-amber-600"
+            className="btn-primary shrink-0 text-sm"
           >
             + 추가 / 관리
           </button>
@@ -952,7 +952,7 @@ export default function MyPortfolioPage() {
             </div>
 
             {/* 스크롤 영역 */}
-            <div className="flex-1 overflow-y-auto px-6 pb-2 pt-2">
+            <div className="flex-1 overflow-y-auto px-6 pb-4 pt-2">
               {/* 폼 섹션 */}
               <section className="mb-1 pt-1">
                 <div className="mb-1 flex items-center justify-between py-1">
@@ -1176,7 +1176,7 @@ export default function MyPortfolioPage() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-6 pb-2 pt-2">
+            <div className="flex-1 overflow-y-auto px-6 pb-4 pt-2">
               {/* 폼 섹션 */}
               <section className="mb-1 pt-1">
                 <div className="mb-1 flex items-center justify-between py-1">
@@ -1339,12 +1339,12 @@ export default function MyPortfolioPage() {
         </div>
       )}
 
-      {/* ─────── 포트폴리오 관리 모달 ─────── */}
+      {/* ─────── 프로젝트 관리 모달 ─────── */}
       {portfolioMgrOpen && (
         <ItemMgrModal
-          title="포트폴리오 관리"
+          title="프로젝트 관리"
           items={portfolioItems}
-          addLabel="+ 새 포트폴리오 항목 추가"
+          addLabel="+ 새 프로젝트 항목 추가"
           addHref="/portfolio/edit"
           onClose={() => setPortfolioMgrOpen(false)}
           onDelete={deleteItem}
@@ -1356,7 +1356,7 @@ export default function MyPortfolioPage() {
         <ItemMgrModal
           title="스터디 관리"
           items={studyItems}
-          addLabel="+ 새 스터디 추가"
+          addLabel="+ 새 스터디 항목 추가"
           addHref="/portfolio/edit?type=study"
           onClose={() => setStudyMgrOpen(false)}
           onDelete={deleteItem}

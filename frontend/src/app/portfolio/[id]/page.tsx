@@ -109,7 +109,7 @@ export default function PortfolioItemPage({
 
   if (!item) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-8">
+      <div className="mx-auto max-w-3xl px-4 py-4">
         <Link
           href="/portfolio"
           className="mb-4 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
@@ -157,10 +157,10 @@ export default function PortfolioItemPage({
   };
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10">
+    <div className="mx-auto max-w-3xl px-4 py-4">
       <Link
         href="/portfolio"
-        className="mb-6 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+        className="mb-4 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
       >
         ← 포트폴리오로
       </Link>
@@ -215,7 +215,7 @@ export default function PortfolioItemPage({
           </>
         )}
 
-        <div className="mt-7 flex justify-end gap-2">
+        <div className="mt-2 flex justify-end gap-1">
           <Link
             href={`/portfolio/edit?id=${item.id}`}
             className="btn-secondary text-sm"
@@ -228,10 +228,10 @@ export default function PortfolioItemPage({
       {/* 인터뷰 답변 카드 — 같은 Q/A 양식으로 표시 */}
       {details ? (
         <div style={{ rowGap: '0.5rem' }} className="card flex flex-col">
-          <Section title="왜 만들었나요?">
+          <Section title="문제 정의">
             <Para>{renderInline(details.motivation)}</Para>
           </Section>
-          <Section title="왜 이 기술 조합을 선택했나요?">
+          <Section title="기술 스택 선정 배경">
             <Para>{renderInline(details.techChoice)}</Para>
           </Section>
           <Section title="아키텍처 설계 및 과정">
@@ -243,7 +243,7 @@ export default function PortfolioItemPage({
           <Section title="회고">
             <Para>{renderInline(details.retro.text)}</Para>
           </Section>
-          <Section title="본인 참여 활동">
+          <Section title="본인 참여 활동">  
             <Para>{renderInline(details.contribution)}</Para>
           </Section>
 

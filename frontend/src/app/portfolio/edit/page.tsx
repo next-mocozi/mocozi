@@ -164,9 +164,12 @@ function SimpleForm() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className="mx-auto max-w-2xl px-6 py-2 sm:px-10 sm:py-2">
       {/* 헤더 */}
-      <div className="mb-6 flex items-center justify-between">
+      <div
+        style={{ marginTop: '1rem', marginBottom: '1.25rem' }}
+        className="flex items-center justify-between"
+      >
         <div>
           <Link
             href="/portfolio"
@@ -180,33 +183,14 @@ function SimpleForm() {
         </div>
       </div>
 
-      <div className="card space-y-6">
-        {/* 카테고리 */}
-        <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">
-            카테고리
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {(Object.keys(TYPE_META) as PortfolioItemType[]).map((t) => {
-              const meta = TYPE_META[t];
-              const selected = type === t;
-              return (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setType(t)}
-                  className={`rounded-full border px-3 py-1.5 text-xs transition-all ${
-                    selected
-                      ? 'border-blue-600 bg-blue-600 text-white'
-                      : `border-gray-200 ${meta.text} hover:bg-gray-50`
-                  }`}
-                >
-                  {meta.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+      <div className="space-y-6 rounded-2xl bg-white p-8 shadow-sm sm:p-6">
+        {/* 제목 — 카테고리는 항목 유형별로 별도 페이지에서 구현 예정 */}
+        <h2
+          style={{ marginBottom: '1rem' }}
+          className="text-xl font-bold text-gray-900"
+        >
+          {TYPE_META[type].label} {isEdit ? '수정' : '추가'}
+        </h2>
 
         {/* 제목 */}
         <div>
