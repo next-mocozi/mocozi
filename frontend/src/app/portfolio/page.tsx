@@ -45,6 +45,12 @@ export type PortfolioItem = {
   tags: string[];
   /** 대표 프로젝트 (최대 4개). 정렬 시 맨 앞으로. */
   featured?: boolean;
+  /** 카드/미리보기 우측에 표시할 대표 이미지 (data URL) */
+  thumbnail?: string;
+  /** 미완성 임시저장 — true 면 메인 목록 대신 "임시저장" 탭에 노출 */
+  draft?: boolean;
+  /** 연구 항목용 — 논문 URL (카드에서 바로 이동) */
+  paperUrl?: string;
 };
 
 /** 대표 프로젝트 최대 개수 */
@@ -329,8 +335,9 @@ export default function MyPortfolioPage() {
     useState<Omit<CareerItem, 'id'>>(EMPTY_CAREER_FORM);
   const [careerError, setCareerError] = useState('');
 
-  // 포트폴리오 / 스터디 관리 모달
+  // 포트폴리오 / 연구 / 스터디 관리 모달
   const [portfolioMgrOpen, setPortfolioMgrOpen] = useState(false);
+  const [researchMgrOpen, setResearchMgrOpen] = useState(false);
   const [studyMgrOpen, setStudyMgrOpen] = useState(false);
 
   useEffect(() => {
@@ -554,10 +561,17 @@ export default function MyPortfolioPage() {
     return b.id - a.id;
   });
 
+  // 임시저장(draft) 항목은 포트폴리오 탭에 노출하지 않음
+  // (인터뷰 페이지의 "임시저장 목록" 버튼/팝업에서만 접근)
   const portfolioItems = sortPortfolioItems(
-    items.filter((it) => it.type !== 'study'),
+    items.filter(
+      (it) => it.type !== 'study' && it.type !== 'research' && !it.draft,
+    ),
   );
-  const studyItems = items.filter((it) => it.type === 'study');
+  const researchItems = items.filter(
+    (it) => it.type === 'research' && !it.draft,
+  );
+  const studyItems = items.filter((it) => it.type === 'study' && !it.draft);
   const featuredCount = portfolioItems.filter((it) => it.featured).length;
 
   /** 대표 프로젝트 토글 — 최대 MAX_FEATURED 개 제한 */
@@ -825,7 +839,185 @@ export default function MyPortfolioPage() {
                     featured={!!item.featured}
                     onToggle={() => toggleFeatured(item.id)}
                   />
-                  <div className="mb-2 flex flex-wrap items-center gap-2 pr-8">
+                  <div className="flex gap-3">
+                    {/* 좌측: 카드 콘텐츠 */}
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-2 flex flex-wrap items-center gap-2 pr-8">
+                        <span
+                          className={`rounded px-2 py-0.5 text-xs ${meta.bg} ${meta.text}`}
+                        >
+                          {meta.label}
+                        </span>
+                        {item.domain && (
+                          <span className="rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-600">
+                            {item.domain}
+                          </span>
+                        )}
+                        <span className="text-xs text-gray-500">{item.period}</span>
+                        {item.current && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                            <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                            진행중
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="mb-1 font-semibold">{item.title}</h3>
+                      <p className="mb-2 line-clamp-2 text-sm text-gray-600">
+                        {item.description}
+                      </p>
+                      {item.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {item.tags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {/* 우측: 썸네일 (없으면 백지) */}
+                    <div
+                      className={`shrink-0 overflow-hidden rounded-lg border ${
+                        item.thumbnail ? 'border-gray-200' : 'border-dashed border-gray-200 bg-gray-50'
+                      }`}
+                      style={{ width: '5rem', height: '5rem' }}
+                      aria-hidden
+                    >
+                      {item.thumbnail && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={item.thumbnail}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      )}
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ─────── 연구 — 프로젝트와 동일한 직사각형 카드 ─────── */}
+      <div className="mb-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">연구</h2>
+          <button
+            type="button"
+            onClick={() => setResearchMgrOpen(true)}
+            className="btn-primary shrink-0 text-sm"
+          >
+            + 추가 / 관리
+          </button>
+        </div>
+        {researchItems.length === 0 ? (
+          <button
+            type="button"
+            onClick={() => setResearchMgrOpen(true)}
+            className="card flex w-full items-center justify-center border-dashed py-8 text-center text-gray-400 transition-all hover:border-blue-300 hover:text-blue-500"
+          >
+            <div>
+              <div className="mb-2 text-3xl">+</div>
+              <p className="text-sm">새 연구 항목 추가</p>
+            </div>
+          </button>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2">
+            {researchItems.map((item) => {
+              const meta = TYPE_META[item.type];
+              return (
+                <Link
+                  key={item.id}
+                  href={`/portfolio/${item.id}`}
+                  className="card relative block transition-all hover:shadow-md"
+                >
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <span
+                      className={`rounded px-2 py-0.5 text-xs ${meta.bg} ${meta.text}`}
+                    >
+                      {meta.label}
+                    </span>
+                    {item.domain && (
+                      <span className="rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-600">
+                        {item.domain}
+                      </span>
+                    )}
+                    <span className="text-xs text-gray-500">{item.period}</span>
+                    {item.current && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                        <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                        진행중
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="mb-1 font-semibold">{item.title}</h3>
+                  <p className="mb-2 line-clamp-2 text-sm text-gray-600">
+                    {item.description}
+                  </p>
+                  {item.paperUrl && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        window.open(
+                          item.paperUrl,
+                          '_blank',
+                          'noopener,noreferrer',
+                        );
+                      }}
+                      className="inline-flex items-center gap-1 rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-600 hover:bg-blue-100"
+                    >
+                      📄 논문 →
+                    </button>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ─────── 스터디 — 프로젝트와 동일한 직사각형 카드 ─────── */}
+      <div>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">스터디</h2>
+          <button
+            type="button"
+            onClick={() => setStudyMgrOpen(true)}
+            className="btn-primary shrink-0 text-sm"
+          >
+            + 추가 / 관리
+          </button>
+        </div>
+
+        {studyItems.length === 0 ? (
+          <button
+            type="button"
+            onClick={() => setStudyMgrOpen(true)}
+            className="card flex w-full items-center justify-center border-dashed py-8 text-center text-gray-400 transition-all hover:border-blue-300 hover:text-blue-500"
+          >
+            <div>
+              <div className="mb-2 text-3xl">+</div>
+              <p className="text-sm">새 스터디 항목 추가</p>
+            </div>
+          </button>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2">
+            {studyItems.map((item) => {
+              const meta = TYPE_META[item.type];
+              return (
+                <Link
+                  key={item.id}
+                  href={`/portfolio/${item.id}`}
+                  className="card relative block transition-all hover:shadow-md"
+                >
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
                     <span
                       className={`rounded px-2 py-0.5 text-xs ${meta.bg} ${meta.text}`}
                     >
@@ -864,62 +1056,6 @@ export default function MyPortfolioPage() {
               );
             })}
           </div>
-        )}
-      </div>
-
-      {/* ─────── 스터디 — 보기 전용, 편집은 관리 모달 ─────── */}
-      <div>
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">스터디</h2>
-          <button
-            type="button"
-            onClick={() => setStudyMgrOpen(true)}
-            className="btn-primary shrink-0 text-sm"
-          >
-            + 추가 / 관리
-          </button>
-        </div>
-
-        {studyItems.length === 0 ? (
-          <button
-            type="button"
-            onClick={() => setStudyMgrOpen(true)}
-            className="card flex w-full items-center justify-center border-dashed py-6 text-center text-sm text-gray-400 transition-all hover:border-amber-300 hover:text-amber-600"
-          >
-            아직 등록된 스터디가 없습니다. 추가하기 +
-          </button>
-        ) : (
-          <ul className="space-y-2">
-            {studyItems.map((item) => (
-              <li key={item.id}>
-                <Link
-                  href={`/portfolio/${item.id}`}
-                  className="card flex items-start gap-3 transition-all hover:shadow-md"
-                >
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-50 text-sm">
-                    📚
-                  </span>
-                  <div className="flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-semibold text-gray-800">
-                        {item.title}
-                      </p>
-                      {item.current && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                          <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                          진행중
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-0.5 line-clamp-1 text-sm text-gray-600">
-                      {item.description}
-                    </p>
-                    <p className="mt-1 text-xs text-gray-400">{item.period}</p>
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
         )}
       </div>
 
@@ -1346,6 +1482,18 @@ export default function MyPortfolioPage() {
         />
       )}
 
+      {/* ─────── 연구 관리 모달 ─────── */}
+      {researchMgrOpen && (
+        <ItemMgrModal
+          title="연구 관리"
+          items={researchItems}
+          addLabel="+ 새 연구 항목 추가"
+          addHref="/portfolio/edit?type=research"
+          onClose={() => setResearchMgrOpen(false)}
+          onDelete={deleteItem}
+        />
+      )}
+
       {/* ─────── 스터디 관리 모달 ─────── */}
       {studyMgrOpen && (
         <ItemMgrModal
@@ -1384,10 +1532,10 @@ export function FeaturedStar({
       aria-pressed={featured}
       aria-label={featured ? '대표 프로젝트 해제' : '대표 프로젝트로 지정'}
       title={featured ? '대표 프로젝트 해제' : '대표 프로젝트로 지정'}
-      className={`absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full text-lg leading-none transition-all ${
+      className={`absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full text-lg leading-none shadow-sm ring-1 transition-all ${
         featured
-          ? 'text-amber-400 hover:bg-amber-50'
-          : 'text-gray-300 hover:bg-gray-100 hover:text-amber-400'
+          ? 'bg-amber-100 text-amber-500 ring-amber-200 hover:bg-amber-200'
+          : 'bg-white/90 text-gray-300 ring-gray-200 hover:bg-amber-50 hover:text-amber-400'
       } ${className ?? ''}`}
     >
       {featured ? '★' : '☆'}
@@ -1486,7 +1634,7 @@ function ItemMgrModal({
                       </div>
                       <div className="flex shrink-0 flex-row items-center gap-1.5">
                         <Link
-                          href={`/portfolio/edit?id=${item.id}`}
+                          href={`/portfolio/edit?id=${item.id}&type=${item.type}`}
                           className="rounded-md px-2.5 py-1 text-xs text-gray-600 hover:bg-white hover:text-blue-600"
                         >
                           수정

@@ -58,6 +58,8 @@ type PortfolioItem = {
   current: boolean;
   domain?: string;
   tags: string[];
+  /** 미완성 임시저장 — 프로필에는 노출하지 않음 */
+  draft?: boolean;
 };
 
 const TYPE_META: Record<
@@ -72,13 +74,21 @@ const TYPE_META: Record<
 };
 
 // 포트폴리오에서 가져올 수 있는 항목들
-type SectionKey = 'intro' | 'experiences' | 'careers' | 'projects';
+type SectionKey =
+  | 'intro'
+  | 'experiences'
+  | 'careers'
+  | 'projects'
+  | 'research'
+  | 'studies';
 
 const SECTION_ORDER: SectionKey[] = [
   'intro',
   'experiences',
   'careers',
   'projects',
+  'research',
+  'studies',
 ];
 
 const SECTION_META: Record<SectionKey, { label: string; hint: string }> = {
@@ -97,6 +107,14 @@ const SECTION_META: Record<SectionKey, { label: string; hint: string }> = {
   projects: {
     label: '프로젝트',
     hint: '등록된 프로젝트 카드를 표시합니다.',
+  },
+  research: {
+    label: '연구',
+    hint: '등록된 연구 카드를 표시합니다.',
+  },
+  studies: {
+    label: '스터디',
+    hint: '등록된 스터디 카드를 표시합니다.',
   },
 };
 
@@ -169,8 +187,10 @@ export default function MyProfilePage() {
     );
   if (!user) return null;
 
-  // 프로젝트(스터디 제외) — 정렬된 경력
-  const projects = items.filter((it) => it.type !== 'study');
+  // 타입별로 분리 — 임시저장은 모두 제외
+  const projects = items.filter((it) => it.type === 'project' && !it.draft);
+  const research = items.filter((it) => it.type === 'research' && !it.draft);
+  const studies = items.filter((it) => it.type === 'study' && !it.draft);
   const sortedCareers = [...careers].sort((a, b) => {
     const ya = Number(a.year);
     const yb = Number(b.year);
@@ -201,16 +221,22 @@ export default function MyProfilePage() {
     setImportOpen(false);
   };
 
-  const sectionCount = (k: SectionKey) =>
-    k === 'intro'
-      ? intro.trim()
-        ? 1
-        : 0
-      : k === 'experiences'
-        ? experiences.length
-        : k === 'careers'
-          ? careers.length
-          : projects.length;
+  const sectionCount = (k: SectionKey) => {
+    switch (k) {
+      case 'intro':
+        return intro.trim() ? 1 : 0;
+      case 'experiences':
+        return experiences.length;
+      case 'careers':
+        return careers.length;
+      case 'projects':
+        return projects.length;
+      case 'research':
+        return research.length;
+      case 'studies':
+        return studies.length;
+    }
+  };
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
@@ -432,63 +458,27 @@ export default function MyProfilePage() {
             )}
 
             {selected.includes('projects') && (
-              <div className="card">
-                <h3 className="mb-3 text-base font-semibold text-gray-900">
-                  프로젝트
-                </h3>
-                {projects.length === 0 ? (
-                  <p className="text-sm text-gray-400">
-                    포트폴리오에 등록된 프로젝트가 없습니다.
-                  </p>
-                ) : (
-                  <div className="grid gap-3 md:grid-cols-2">
-                    {projects.map((item) => {
-                      const meta = TYPE_META[item.type];
-                      return (
-                        <Link
-                          key={item.id}
-                          href="/portfolio"
-                          className="block rounded-xl border border-gray-100 p-3 transition-all hover:border-blue-200 hover:shadow-sm"
-                        >
-                          <div className="mb-2 flex flex-wrap items-center gap-2">
-                            <span
-                              className={`rounded px-2 py-0.5 text-xs ${meta.bg} ${meta.text}`}
-                            >
-                              {meta.label}
-                            </span>
-                            {item.domain && (
-                              <span className="rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-600">
-                                {item.domain}
-                              </span>
-                            )}
-                            <span className="text-xs text-gray-500">
-                              {item.period}
-                            </span>
-                          </div>
-                          <h4 className="mb-1 text-sm font-semibold text-gray-900">
-                            {item.title}
-                          </h4>
-                          <p className="line-clamp-2 text-xs text-gray-600">
-                            {item.description}
-                          </p>
-                          {item.tags.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-1">
-                              {item.tags.map((tag) => (
-                                <span
-                                  key={tag}
-                                  className="rounded bg-gray-100 px-2 py-0.5 text-[10px] text-gray-600"
-                                >
-                                  {tag}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+              <SectionCardList
+                title="프로젝트"
+                emptyText="포트폴리오에 등록된 프로젝트가 없습니다."
+                items={projects}
+              />
+            )}
+
+            {selected.includes('research') && (
+              <SectionCardList
+                title="연구"
+                emptyText="포트폴리오에 등록된 연구가 없습니다."
+                items={research}
+              />
+            )}
+
+            {selected.includes('studies') && (
+              <SectionCardList
+                title="스터디"
+                emptyText="포트폴리오에 등록된 스터디가 없습니다."
+                items={studies}
+              />
             )}
           </div>
         )}
@@ -581,6 +571,71 @@ export default function MyProfilePage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** 프로필에 표시되는 프로젝트/연구/스터디 카드 목록 — 동일 레이아웃 재사용 */
+function SectionCardList({
+  title,
+  emptyText,
+  items,
+}: {
+  title: string;
+  emptyText: string;
+  items: PortfolioItem[];
+}) {
+  return (
+    <div className="card">
+      <h3 className="mb-3 text-base font-semibold text-gray-900">{title}</h3>
+      {items.length === 0 ? (
+        <p className="text-sm text-gray-400">{emptyText}</p>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2">
+          {items.map((item) => {
+            const meta = TYPE_META[item.type];
+            return (
+              <Link
+                key={item.id}
+                href="/portfolio"
+                className="block rounded-xl border border-gray-100 p-3 transition-all hover:border-blue-200 hover:shadow-sm"
+              >
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <span
+                    className={`rounded px-2 py-0.5 text-xs ${meta.bg} ${meta.text}`}
+                  >
+                    {meta.label}
+                  </span>
+                  {item.domain && (
+                    <span className="rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-600">
+                      {item.domain}
+                    </span>
+                  )}
+                  <span className="text-xs text-gray-500">{item.period}</span>
+                </div>
+                <h4 className="mb-1 text-sm font-semibold text-gray-900">
+                  {item.title}
+                </h4>
+                <p className="line-clamp-2 text-xs text-gray-600">
+                  {item.description}
+                </p>
+                {item.tags.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {item.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded bg-gray-100 px-2 py-0.5 text-[10px] text-gray-600"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>

@@ -9,6 +9,8 @@ import {
   type PortfolioItemType,
 } from '../page';
 import ProjectInterview from './_interview';
+import ResearchForm from './_research';
+import StudyForm from './_study';
 
 // TODO: 백엔드 연동
 //   - GET    /api/portfolios/:id   로 초기값 로드 (편집 모드)
@@ -59,6 +61,10 @@ export default function PortfolioEditPage() {
   // 프로젝트는 신규/수정 모두 대화형 인터뷰 UI 사용
   // (수정 시 _interview.tsx 가 mock_portfolio_details 에서 답변을 불러와 미리보기로 표시)
   if (initialType === 'project') return <ProjectInterview />;
+  // 연구는 정형화된 단일 페이지 폼 (mock_research_details 에 저장)
+  if (initialType === 'research') return <ResearchForm />;
+  // 스터디는 스터디 전용 정형화된 폼 (mock_study_details 에 저장)
+  if (initialType === 'study') return <StudyForm />;
   return <SimpleForm />;
 }
 

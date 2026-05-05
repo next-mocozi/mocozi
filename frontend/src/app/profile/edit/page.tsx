@@ -49,6 +49,7 @@ const OTHER_PLATFORMS: { key: PlatformKey; prefix: string }[] = [
   { key: 'youtube', prefix: 'https://youtube.com/@' },
   { key: 'notion', prefix: 'https://www.notion.so/' },
   { key: 'twitter', prefix: 'https://x.com/' },
+  { key: 'threads', prefix: 'https://www.threads.com/@' },
   { key: 'instagram', prefix: 'https://instagram.com/' },
   { key: 'velog', prefix: 'https://velog.io/@' },
   { key: 'medium', prefix: 'https://medium.com/@' },

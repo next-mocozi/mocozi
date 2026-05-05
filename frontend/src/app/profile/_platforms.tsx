@@ -10,6 +10,7 @@ export type PlatformKey =
   | 'googledrive'
   | 'notion'
   | 'twitter'
+  | 'threads'
   | 'instagram'
   | 'velog'
   | 'tistory'
@@ -53,6 +54,12 @@ export const PlatformIcon = ({
       return (
         <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
           <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.45-6.231zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z" />
+        </svg>
+      );
+    case 'threads':
+      return (
+        <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+          <path d="M17.6 11.5c-.1 0-.1-.1-.2-.1-.1-2.6-1.5-4.1-3.9-4.1h-.1c-1.4 0-2.6.6-3.4 1.7l1.3.9c.6-.8 1.4-1 2.1-1h.1c.8 0 1.4.3 1.8.7.3.3.5.7.6 1.2-.7-.1-1.5-.2-2.4-.1-2.4.1-3.9 1.5-3.8 3.4 0 1 .5 1.8 1.4 2.4.7.4 1.7.7 2.7.6 1.4-.1 2.4-.6 3.2-1.5.6-.7.9-1.6 1.1-2.7.6.4 1.1.9 1.4 1.5.5 1 .5 2.6-.8 3.9-1.1 1.1-2.4 1.6-4.4 1.6-2.2 0-3.9-.7-5-2.1C7.2 16.4 6.7 14.4 6.7 12s.5-4.4 1.5-5.7c1.1-1.4 2.8-2.1 5-2.1s3.9.7 5 2.1c.5.7.9 1.5 1.2 2.5l1.5-.4c-.3-1.2-.8-2.3-1.5-3.1-1.4-1.8-3.5-2.7-6.2-2.7s-4.8.9-6.2 2.7c-1.3 1.6-2 3.9-2 6.7s.6 5.1 1.9 6.7c1.4 1.8 3.5 2.7 6.2 2.7 2.4 0 4.1-.6 5.5-2 1.8-1.8 1.8-4 1.2-5.4-.4-1-1.2-1.8-2.3-2.5zm-3.8 3.5c-1.1.1-2.3-.4-2.4-1.5 0-.8.6-1.7 2.4-1.8h.4c.7 0 1.3.1 1.9.2-.2 2.2-1.3 3-2.3 3.1z" />
         </svg>
       );
     case 'instagram':
@@ -137,6 +144,7 @@ export const PLATFORM_META: Record<
     text: 'text-gray-900',
   },
   twitter: { label: 'X', bg: 'bg-black', text: 'text-white' },
+  threads: { label: 'Threads', bg: 'bg-black', text: 'text-white' },
   instagram: {
     label: 'Instagram',
     bg: 'bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600',
@@ -168,6 +176,7 @@ export function detectPlatform(url: string): PlatformKey {
     return 'googledrive';
   if (host.endsWith('notion.so') || host.endsWith('notion.site')) return 'notion';
   if (host === 'twitter.com' || host === 'x.com') return 'twitter';
+  if (host === 'threads.net' || host === 'threads.com' || host.endsWith('.threads.net') || host.endsWith('.threads.com')) return 'threads';
   if (host === 'instagram.com' || host.endsWith('.instagram.com')) return 'instagram';
   if (host === 'velog.io' || host.endsWith('.velog.io')) return 'velog';
   if (host.endsWith('tistory.com')) return 'tistory';

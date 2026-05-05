@@ -7,7 +7,6 @@ import type { PortfolioItem } from '../page';
 
 // ─────── Storage keys ───────
 const ITEMS_STORAGE_KEY = 'mock_portfolio_items';
-const DRAFT_STORAGE_KEY = 'mock_portfolio_draft';
 const DETAILS_STORAGE_KEY = 'mock_portfolio_details';
 
 // ─────── Types ───────
@@ -46,6 +45,8 @@ const EMPTY_PERIOD: ProjectPeriod = {
 
 export type Draft = {
   name: string;
+  /** 카드/미리보기에 표시할 대표 이미지 (data URL). 없으면 빈 문자열 */
+  thumbnail: string;
   period: ProjectPeriod;
   activityTypes: string[];
   fieldTags: string[];
@@ -70,6 +71,7 @@ export type Draft = {
 
 const EMPTY_DRAFT: Draft = {
   name: '',
+  thumbnail: '',
   period: EMPTY_PERIOD,
   activityTypes: [],
   fieldTags: [],
@@ -504,8 +506,13 @@ export default function ProjectInterview() {
   const isEdit = editId !== null;
 
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
-  const [phase, setPhase] = useState<'loading' | 'resume' | 'form'>('loading');
+  const [phase, setPhase] = useState<'loading' | 'form'>('loading');
   const [toast, setToast] = useState<string | null>(null);
+  /** 신규/수정 양쪽에서 단일 ID로 ITEMS·DETAILS 저장. 신규는 진입 시 1회 발급. */
+  const [projectId, setProjectId] = useState<number | null>(null);
+  /** 임시저장 목록 팝업 */
+  const [draftsModalOpen, setDraftsModalOpen] = useState(false);
+  const [draftsList, setDraftsList] = useState<PortfolioItem[]>([]);
 
   const steps = useMemo(() => buildSteps(draft.hasDomain), [draft.hasDomain]);
   const stepIdx = Math.min(Math.max(draft.stepIdx, 0), steps.length - 1);
@@ -513,10 +520,34 @@ export default function ProjectInterview() {
   const isLast = stepCfg.key === 'summary';
   const isLastInput = stepIdx === steps.length - 2;
 
-  // 초기 로드 — 수정 모드면 details 에서 답변 불러와 미리보기, 아니면 draft resume
+  /** draft → PortfolioItem 변환 (저장용) */
+  const buildItem = (id: number, d: Draft): PortfolioItem => ({
+    id,
+    type: 'project',
+    title: d.name.trim() || '(제목 없음)',
+    description:
+      d.motivation.trim() ||
+      d.contribution.trim() ||
+      d.result.text.trim() ||
+      '',
+    period: formatPeriod(d.period),
+    current: d.period.current,
+    domain: d.hasDomain && d.domainTags[0] ? d.domainTags[0] : undefined,
+    tags: Array.from(
+      new Set([
+        ...d.activityTypes,
+        ...d.fieldTags,
+        ...d.toolTags,
+        ...d.roles,
+      ]),
+    ).filter(Boolean),
+    thumbnail: d.thumbnail || undefined,
+  });
+
+  // 초기 로드 — 수정 모드면 저장된 답변 로드, 신규면 새 ID 발급
   useEffect(() => {
-    // 1) 수정 모드: 저장된 인터뷰 답변 불러오기
-    if (isEdit) {
+    if (isEdit && editId !== null) {
+      setProjectId(editId);
       try {
         const detailsRaw = localStorage.getItem(DETAILS_STORAGE_KEY);
         const map: Record<string, Draft> = detailsRaw
@@ -524,13 +555,11 @@ export default function ProjectInterview() {
           : {};
         const saved = map[String(editId)];
         if (saved) {
-          // 마지막 단계(미리보기)로 이동시켜 작성한 답변을 같은 양식으로 보여줌
           const stepsForSaved = buildSteps(saved.hasDomain);
           setDraft({
             ...EMPTY_DRAFT,
             ...saved,
             period: { ...EMPTY_PERIOD, ...(saved.period ?? {}) },
-            // 기존(stepKey 없는) 자료는 'architecture' 로 기본 마이그레이션
             assets: (saved.assets ?? []).map((a) => ({
               ...a,
               stepKey: a.stepKey ?? 'architecture',
@@ -540,79 +569,132 @@ export default function ProjectInterview() {
           setPhase('form');
           return;
         }
-        // 인터뷰 details 가 없는 기존 항목 → 제목만 가져와서 처음부터
+        // details 없는 기존 항목 → 제목만 복원
         const itemsRaw = localStorage.getItem(ITEMS_STORAGE_KEY);
         const items: PortfolioItem[] = itemsRaw ? JSON.parse(itemsRaw) : [];
         const found = items.find((it) => it.id === editId);
         if (found) {
-          setDraft({ ...EMPTY_DRAFT, name: found.title });
+          setDraft({
+            ...EMPTY_DRAFT,
+            name: found.title,
+            thumbnail: found.thumbnail ?? '',
+          });
         }
       } catch {
-        // 로드 실패 시 빈 폼
+        // 무시
       }
       setPhase('form');
       return;
     }
-
-    // 2) 신규 작성: 저장된 draft 가 있으면 resume 모달
-    try {
-      const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as Draft;
-        const merged: Draft = {
-          ...EMPTY_DRAFT,
-          ...parsed,
-          period: { ...EMPTY_PERIOD, ...(parsed.period ?? {}) },
-          // 기존(stepKey 없는) 자료는 'architecture' 로 기본 마이그레이션
-          assets: (parsed.assets ?? []).map((a) => ({
-            ...a,
-            stepKey: a.stepKey ?? 'architecture',
-          })),
-        };
-        if (!isDraftEmpty(merged)) {
-          setDraft(merged);
-          setPhase('resume');
-          return;
-        }
-      }
-    } catch {
-      // 무시
-    }
+    // 신규: 매번 새 ID 발급 (이전 작성 건은 별도 항목으로 보존됨)
+    setProjectId(Date.now());
     setPhase('form');
   }, [isEdit, editId]);
 
-  // 자동 저장
-  // - 신규: draft 키에 자동 저장 (다음 진입 시 resume 가능)
-  // - 수정: details 맵에 해당 id 자리를 직접 갱신 (즉시 반영)
+  // 자동 저장 — projectId 슬롯에 항상 ITEMS+DETAILS 동기 저장
+  // (빈 draft 는 저장 안 함 — 빈 placeholder 항목 방지)
+  // 기간이 잘못된 경우(종료<시작) ITEMS 갱신은 건너뜀 — 잘못된 기간이 카드에 노출되는 것 방지
   useEffect(() => {
-    if (phase !== 'form') return;
+    if (phase !== 'form' || projectId === null) return;
+    if (isDraftEmpty(draft)) return;
     try {
-      if (isEdit && editId !== null) {
-        const raw = localStorage.getItem(DETAILS_STORAGE_KEY);
-        const map: Record<string, Draft> = raw ? JSON.parse(raw) : {};
-        map[String(editId)] = draft;
-        localStorage.setItem(DETAILS_STORAGE_KEY, JSON.stringify(map));
-      } else {
-        localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
-      }
+      // DETAILS 는 입력 보존을 위해 항상 저장
+      const detailsRaw = localStorage.getItem(DETAILS_STORAGE_KEY);
+      const map: Record<string, Draft> = detailsRaw
+        ? JSON.parse(detailsRaw)
+        : {};
+      map[String(projectId)] = draft;
+      localStorage.setItem(DETAILS_STORAGE_KEY, JSON.stringify(map));
+
+      // 기간이 잘못된 동안에는 ITEMS 를 건드리지 않음 (기존 유효 값 보존)
+      const p = draft.period;
+      const periodBad =
+        !p.current &&
+        !!p.startYear &&
+        !!p.startMonth &&
+        !!p.endYear &&
+        !!p.endMonth &&
+        Number(p.endYear) * 100 + Number(p.endMonth) <
+          Number(p.startYear) * 100 + Number(p.startMonth);
+      if (periodBad) return;
+
+      const itemsRaw = localStorage.getItem(ITEMS_STORAGE_KEY);
+      const list: PortfolioItem[] = itemsRaw ? JSON.parse(itemsRaw) : [];
+      const item = buildItem(projectId, draft);
+      const exists = list.some((it) => it.id === projectId);
+      const nextList = exists
+        ? // 기존 draft 플래그/featured 등을 유지한 채 입력 내용만 갱신
+          list.map((it) => (it.id === projectId ? { ...it, ...item } : it))
+        : // 신규는 임시저장 (draft=true) 으로 시작
+          [...list, { ...item, draft: true }];
+      localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(nextList));
     } catch {
       // 용량 초과 시 무시 — base64 이미지 누적 가능성
     }
-  }, [draft, phase, isEdit, editId]);
+  }, [draft, phase, projectId]);
 
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 2000);
   };
 
+  /** 기간 검증 — 진행중이 아닐 때 종료 < 시작 이면 invalid (YYYYMM 비교) */
+  const periodInvalid = (() => {
+    const p = draft.period;
+    if (p.current) return false;
+    if (!p.startYear || !p.startMonth || !p.endYear || !p.endMonth) return false;
+    const s = Number(p.startYear) * 100 + Number(p.startMonth);
+    const e = Number(p.endYear) * 100 + Number(p.endMonth);
+    return e < s;
+  })();
+
   const handleClose = () => {
+    if (periodInvalid) {
+      // 잘못된 기간으로 나가는 것 차단 — 기간 단계로 이동시켜 수정 유도
+      showToast('종료 날짜는 시작 날짜 이후여야 합니다.');
+      const idx = steps.findIndex((s) => s.key === 'period');
+      if (idx >= 0) setDraft((d) => ({ ...d, stepIdx: idx }));
+      return;
+    }
+    // 자동 저장이 이미 ITEMS+DETAILS 를 갱신했으므로 그대로 나가면 됨
+    showToast(isEdit ? '수정 내용이 저장되었습니다.' : '저장되었습니다.');
+    setTimeout(() => router.push('/portfolio'), 700);
+  };
+
+  /** 임시저장 목록 모달 열기 — 현재 작업 중인 항목은 제외 */
+  const openDraftsModal = () => {
     try {
-      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+      const raw = localStorage.getItem(ITEMS_STORAGE_KEY);
+      const list: PortfolioItem[] = raw ? JSON.parse(raw) : [];
+      setDraftsList(
+        list
+          .filter((it) => it.draft && it.id !== projectId)
+          .sort((a, b) => b.id - a.id),
+      );
+    } catch {
+      setDraftsList([]);
+    }
+    setDraftsModalOpen(true);
+  };
+
+  const deleteDraftItem = (id: number) => {
+    if (!confirm('이 임시저장을 삭제하시겠어요?')) return;
+    try {
+      const raw = localStorage.getItem(ITEMS_STORAGE_KEY);
+      const list: PortfolioItem[] = raw ? JSON.parse(raw) : [];
+      const next = list.filter((it) => it.id !== id);
+      localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(next));
+      // details 도 같이 정리
+      const detailsRaw = localStorage.getItem(DETAILS_STORAGE_KEY);
+      if (detailsRaw) {
+        const map: Record<string, Draft> = JSON.parse(detailsRaw);
+        delete map[String(id)];
+        localStorage.setItem(DETAILS_STORAGE_KEY, JSON.stringify(map));
+      }
+      setDraftsList((prev) => prev.filter((it) => it.id !== id));
     } catch {
       // 무시
     }
-    showToast('진행 상황이 저장되었습니다.');
-    setTimeout(() => router.push('/portfolio'), 700);
   };
 
   const next = () =>
@@ -623,15 +705,10 @@ export default function ProjectInterview() {
   const prev = () =>
     setDraft((d) => ({ ...d, stepIdx: Math.max(d.stepIdx - 1, 0) }));
 
-  const handleResumeYes = () => setPhase('form');
-  const handleResumeNo = () => {
-    setDraft(EMPTY_DRAFT);
-    try {
-      localStorage.removeItem(DRAFT_STORAGE_KEY);
-    } catch {
-      // 무시
-    }
-    setPhase('form');
+  /** 미리보기에서 질문을 클릭하면 해당 단계로 이동 */
+  const jumpToStep = (key: StepKey) => {
+    const idx = steps.findIndex((s) => s.key === key);
+    if (idx >= 0) setDraft((d) => ({ ...d, stepIdx: idx }));
   };
 
   // 현재 step 의 유효성
@@ -690,57 +767,22 @@ export default function ProjectInterview() {
     }
   }, [stepCfg.key, draft]);
 
+  /** 미리보기의 "포트폴리오에 저장" / "수정 완료" — draft 플래그 해제 후 이동 */
   const handleSaveProject = () => {
-    const targetId = isEdit && editId !== null ? editId : Date.now();
-    const item: PortfolioItem = {
-      id: targetId,
-      type: 'project',
-      title: draft.name.trim() || '(제목 없음)',
-      description:
-        draft.motivation.trim() ||
-        draft.contribution.trim() ||
-        draft.result.text.trim() ||
-        '',
-      period: formatPeriod(draft.period),
-      current: draft.period.current,
-      domain:
-        draft.hasDomain && draft.domainTags[0] ? draft.domainTags[0] : undefined,
-      tags: Array.from(
-        new Set([
-          ...draft.activityTypes,
-          ...draft.fieldTags,
-          ...draft.toolTags,
-          ...draft.roles,
-        ]),
-      ).filter(Boolean),
-    };
-    try {
-      const itemsRaw = localStorage.getItem(ITEMS_STORAGE_KEY);
-      const list: PortfolioItem[] = itemsRaw ? JSON.parse(itemsRaw) : [];
-      const next = isEdit
-        ? list.map((it) => (it.id === targetId ? item : it))
-        : [...list, item];
-      // 수정인데 list 에 없는 경우(이상 케이스)도 안전하게 추가
-      const ensured =
-        isEdit && !list.some((it) => it.id === targetId) ? [...next, item] : next;
-      localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(ensured));
-    } catch {
-      // 무시
+    if (periodInvalid) {
+      showToast('종료 날짜는 시작 날짜 이후여야 합니다.');
+      const idx = steps.findIndex((s) => s.key === 'period');
+      if (idx >= 0) setDraft((d) => ({ ...d, stepIdx: idx }));
+      return;
     }
-    try {
-      const detailsRaw = localStorage.getItem(DETAILS_STORAGE_KEY);
-      const map: Record<string, Draft> = detailsRaw
-        ? JSON.parse(detailsRaw)
-        : {};
-      map[String(targetId)] = draft;
-      localStorage.setItem(DETAILS_STORAGE_KEY, JSON.stringify(map));
-    } catch {
-      // 무시
-    }
-    if (!isEdit) {
-      // 신규 저장 후엔 임시 draft 비우기 (수정은 draft 안 씀)
+    if (projectId !== null) {
       try {
-        localStorage.removeItem(DRAFT_STORAGE_KEY);
+        const itemsRaw = localStorage.getItem(ITEMS_STORAGE_KEY);
+        const list: PortfolioItem[] = itemsRaw ? JSON.parse(itemsRaw) : [];
+        const nextList = list.map((it) =>
+          it.id === projectId ? { ...it, draft: false } : it,
+        );
+        localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(nextList));
       } catch {
         // 무시
       }
@@ -802,15 +844,26 @@ export default function ProjectInterview() {
           </div>
           <button
             type="button"
+            onClick={openDraftsModal}
+            aria-label="임시저장 목록"
+            title="임시저장 목록"
+            style={{ paddingLeft: '0.875rem', paddingRight: '0.875rem' }}
+            className="ml-2 inline-flex items-center gap-1.5 rounded-full bg-white py-2 text-xs leading-relaxed text-amber-700 shadow-sm hover:bg-amber-50"
+          >
+            <span aria-hidden>📂</span>
+            <span className="whitespace-nowrap font-medium">임시저장</span>
+          </button>
+          <button
+            type="button"
             onClick={handleClose}
-            aria-label="여기까지 저장하고 나가기"
-            title="여기까지 저장하고 나가기"
+            aria-label={isEdit ? '편집 완료' : '여기까지 저장하고 나가기'}
+            title={isEdit ? '편집 완료' : '여기까지 저장하고 나가기'}
             style={{ paddingLeft: '1.25rem', paddingRight: '1.25rem' }}
             className="ml-2 inline-flex items-center gap-2 rounded-full bg-white py-2 text-xs leading-relaxed text-gray-600 shadow-sm hover:bg-gray-100 hover:text-gray-800"
           >
-            <span aria-hidden>✕</span>
+            <span aria-hidden>{isEdit ? '✓' : '✕'}</span>
             <span className="whitespace-nowrap font-medium">
-              저장하고 나가기
+              {isEdit ? '편집 완료' : '저장하고 나가기'}
             </span>
           </button>
         </div>
@@ -820,6 +873,20 @@ export default function ProjectInterview() {
           key={stepIdx}
           style={{ minHeight: '30rem' }}
           className="mocozi-step-in flex flex-col rounded-2xl bg-white p-8 shadow-sm sm:p-6"
+          onKeyDown={(e) => {
+            // Enter 로 다음 단계 이동 — 작성된 질문에서 빠르게 진행
+            if (e.key !== 'Enter') return;
+            if (e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return;
+            // 내부에서 처리한 Enter (예: 태그 직접 입력 추가) 는 건너뜀
+            if (e.defaultPrevented) return;
+            const target = e.target as HTMLElement | null;
+            // textarea 의 Enter 는 줄바꿈으로 보존
+            if (target?.tagName === 'TEXTAREA') return;
+            if (!isStepValid) return;
+            if (isLast) return;
+            e.preventDefault();
+            next();
+          }}
         >
           {/* 분류 (예: 프로젝트 분야) — 작게, 회색 */}
           <h2
@@ -850,7 +917,12 @@ export default function ProjectInterview() {
             </p>
           )}
           <div className="flex-1">
-            <StepBody cfg={stepCfg} draft={draft} setDraft={setDraft} />
+            <StepBody
+              cfg={stepCfg}
+              draft={draft}
+              setDraft={setDraft}
+              jumpToStep={jumpToStep}
+            />
           </div>
         </div>
 
@@ -900,31 +972,90 @@ export default function ProjectInterview() {
         )}
       </div>
 
-      {/* 이어서 작성 모달 — 인터뷰 카드와 동일한 폭/여백으로 가운데 정렬 */}
-      {phase === 'resume' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-6 sm:px-10">
-          <div className="w-full max-w-2xl rounded-2xl bg-white p-8 shadow-xl sm:p-10">
-            <h3 className="mb-4 text-xl font-bold leading-snug text-gray-900">
-              저장된 항목이 있습니다
-            </h3>
-            <p className="mb-9 text-sm leading-7 text-gray-500">
-              이어서 작성하시겠어요?
-            </p>
-            <div className="flex justify-end gap-2.5">
+      {/* ─────── 임시저장 목록 모달 ─────── */}
+      {draftsModalOpen && (
+        <div
+          onClick={() => setDraftsModalOpen(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-6 py-8 sm:px-10"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="flex max-h-full w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
+          >
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
+              <h3 className="text-lg font-bold text-gray-900">
+                임시저장 목록{' '}
+                <span className="text-sm font-normal text-gray-400">
+                  ({draftsList.length})
+                </span>
+              </h3>
               <button
                 type="button"
-                onClick={handleResumeNo}
-                className="rounded-full border border-gray-200 bg-white px-5 py-2 text-sm text-gray-600 hover:bg-gray-50"
+                onClick={() => setDraftsModalOpen(false)}
+                aria-label="닫기"
+                className="text-gray-400 hover:text-gray-600"
               >
-                새로 시작
+                ✕
               </button>
-              <button
-                type="button"
-                onClick={handleResumeYes}
-                className="rounded-full bg-blue-600 px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
-              >
-                예
-              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-6 py-5">
+              {draftsList.length === 0 ? (
+                <p className="py-10 text-center text-sm text-gray-400">
+                  다른 임시저장 항목이 없어요.
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {draftsList.map((it) => (
+                    <li
+                      key={it.id}
+                      className="flex items-center gap-3 rounded-xl border border-dashed border-amber-200 bg-amber-50/40 px-4 py-3 transition-all hover:border-amber-300 hover:bg-amber-50"
+                    >
+                      <div
+                        className={`shrink-0 overflow-hidden rounded-lg border ${
+                          it.thumbnail
+                            ? 'border-gray-200'
+                            : 'border-dashed border-gray-200 bg-white'
+                        }`}
+                        style={{ width: '3rem', height: '3rem' }}
+                        aria-hidden
+                      >
+                        {it.thumbnail && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={it.thumbnail}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDraftsModalOpen(false);
+                          router.push(`/portfolio/edit?id=${it.id}`);
+                        }}
+                        className="min-w-0 flex-1 text-left"
+                      >
+                        <p className="truncate text-sm font-medium text-gray-900">
+                          {it.title || '(제목 없음)'}
+                        </p>
+                        <p className="mt-0.5 truncate text-xs text-gray-500">
+                          {it.description || '아직 작성 중인 프로젝트'}
+                        </p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteDraftItem(it.id)}
+                        aria-label="임시저장 삭제"
+                        title="임시저장 삭제"
+                        className="shrink-0 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-400 hover:bg-red-50 hover:text-red-500"
+                      >
+                        ✕
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
         </div>
@@ -947,10 +1078,12 @@ function StepBody({
   cfg,
   draft,
   setDraft,
+  jumpToStep,
 }: {
   cfg: StepCfg;
   draft: Draft;
   setDraft: Dispatch<SetStateAction<Draft>>;
+  jumpToStep: (key: StepKey) => void;
 }) {
   switch (cfg.key) {
     case 'name':
@@ -966,6 +1099,10 @@ function StepBody({
             }
             placeholder="예: 모코지"
             className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+          />
+          <ThumbnailPicker
+            value={draft.thumbnail}
+            onChange={(v) => setDraft((d) => ({ ...d, thumbnail: v }))}
           />
         </>
       );
@@ -1170,7 +1307,13 @@ function StepBody({
     case 'deliverables':
       return <DeliverablesStep draft={draft} setDraft={setDraft} />;
     case 'summary':
-      return <SummaryView draft={draft} />;
+      return (
+        <SummaryView
+          draft={draft}
+          setDraft={setDraft}
+          onJumpTo={jumpToStep}
+        />
+      );
     default:
       return null;
   }
@@ -1347,9 +1490,107 @@ function PeriodPicker({
         </div>
       </div>
 
+      {(() => {
+        // 시작 > 종료 검증 (진행중이 아니고 양쪽 년·월 모두 입력된 경우)
+        if (period.current) return null;
+        if (
+          !period.startYear ||
+          !period.startMonth ||
+          !period.endYear ||
+          !period.endMonth
+        )
+          return null;
+        const s = Number(period.startYear) * 100 + Number(period.startMonth);
+        const e = Number(period.endYear) * 100 + Number(period.endMonth);
+        if (e >= s) return null;
+        return (
+          <p className="text-xs leading-relaxed text-red-500">
+            종료 날짜는 시작 날짜 이후여야 합니다.
+          </p>
+        );
+      })()}
+
       <p className="text-[11px] leading-relaxed text-gray-400">
         * 년·월은 필수, 일은 선택입니다.
       </p>
+    </div>
+  );
+}
+
+/** 프로젝트 대표 이미지(썸네일) 업로더 — 카드/미리보기 우측에 표시될 이미지.
+ *  비워두면 백지로 표시됨 (선택 입력). */
+function ThumbnailPicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = async (file: File | null) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return;
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      onChange(dataUrl);
+    } catch {
+      // 무시
+    }
+  };
+
+  return (
+    <div style={{ marginTop: '1rem' }}>
+      <p className="mb-2 text-xs font-medium text-gray-500">
+        대표 이미지 (선택) — 카드/미리보기에 표시됩니다
+      </p>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-dashed border-gray-300 bg-gray-50 text-xs text-gray-400 transition-all hover:border-blue-400 hover:text-blue-500"
+          aria-label="대표 이미지 선택"
+        >
+          {value ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={value}
+              alt="대표 이미지 미리보기"
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <span>+ 이미지</span>
+          )}
+        </button>
+        <div className="flex flex-col gap-1.5">
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+          >
+            {value ? '이미지 변경' : '이미지 추가'}
+          </button>
+          {value && (
+            <button
+              type="button"
+              onClick={() => onChange('')}
+              className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-50"
+            >
+              제거
+            </button>
+          )}
+        </div>
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          handleFile(e.target.files?.[0] ?? null);
+          e.target.value = '';
+        }}
+      />
     </div>
   );
 }
@@ -1963,8 +2204,27 @@ function DeliverablesStep({
 }
 
 // ─────── Summary view ───────
-function SummaryView({ draft }: { draft: Draft }) {
+function SummaryView({
+  draft,
+  setDraft,
+  onJumpTo,
+}: {
+  draft: Draft;
+  setDraft: Dispatch<SetStateAction<Draft>>;
+  onJumpTo: (key: StepKey) => void;
+}) {
   const [copied, setCopied] = useState(false);
+  const thumbInputRef = useRef<HTMLInputElement>(null);
+
+  const handleThumbFile = async (file: File | null) => {
+    if (!file || !file.type.startsWith('image/')) return;
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      setDraft((d) => ({ ...d, thumbnail: dataUrl }));
+    } catch {
+      // 무시
+    }
+  };
 
   /** 단계별 자료 풀 — alias 가 단계 단위로만 유일하므로 lookup 도 단계별로 분리 */
   const assetsByStep = (key: AssetStepKey) =>
@@ -2071,67 +2331,152 @@ function SummaryView({ draft }: { draft: Draft }) {
     }
   };
 
-  const tags = [
-    ...draft.activityTypes,
-    ...draft.fieldTags,
-    ...draft.toolTags,
-    ...draft.roles,
+  const tagGroups: { label: string; values: string[]; step: StepKey }[] = [
+    { label: '활동', values: draft.activityTypes, step: 'activity' },
+    { label: '분야', values: draft.fieldTags, step: 'field' },
+    { label: '프로그램', values: draft.toolTags, step: 'tools' },
+    { label: '역할', values: draft.roles, step: 'roles' },
   ];
+  const hasAnyTag = tagGroups.some((g) => g.values.length > 0);
 
   return (
-    <div className="space-y-10">
-      <header>
-        <h3 className="text-2xl font-bold leading-snug text-gray-900">
-          {draft.name || '(제목 없음)'}
-        </h3>
-        {tags.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {tags.map((t) => (
-              <span
-                key={t}
-                className="rounded-full bg-blue-50 px-3 py-1 text-xs leading-relaxed text-blue-700"
-              >
-                {t}
-              </span>
-            ))}
-          </div>
-        )}
+    <div className="space-y-4">
+      <header className="flex items-start gap-5">
+        <div className="min-w-0 flex-1">
+          <button
+            type="button"
+            onClick={() => onJumpTo('name')}
+            className="group block w-full text-left"
+            aria-label="제목 수정"
+          >
+            <h3 className="text-2xl font-bold leading-snug text-gray-900 group-hover:text-blue-600 group-hover:underline">
+              {draft.name || '(제목 없음)'}
+            </h3>
+          </button>
+          {hasAnyTag && (
+            <div className="mt-4 space-y-2">
+              {tagGroups.map((g) =>
+                g.values.length === 0 ? null : (
+                  <div key={g.label} className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onJumpTo(g.step)}
+                      aria-label={`${g.label} 수정`}
+                      className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-gray-400 hover:text-blue-600 hover:underline"
+                    >
+                      {g.label}
+                    </button>
+                    <div className="flex flex-wrap gap-1.5">
+                      {g.values.map((t) => (
+                        <span
+                          key={t}
+                          className="rounded-full bg-blue-50 px-3 py-1 text-xs leading-relaxed text-blue-700"
+                        >
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ),
+              )}
+            </div>
+          )}
+        </div>
+        {/* 우측 썸네일 — 클릭하면 직접 업로드. 없으면 백지(점선 박스)로 표시. */}
+        <div className="shrink-0">
+          <button
+            type="button"
+            onClick={() => thumbInputRef.current?.click()}
+            aria-label={
+              draft.thumbnail ? '대표 이미지 변경' : '대표 이미지 추가'
+            }
+            className={`block overflow-hidden rounded-xl border bg-gray-50 transition-all hover:border-blue-400 hover:shadow ${
+              draft.thumbnail ? 'border-gray-200' : 'border-dashed border-gray-300'
+            }`}
+            style={{ width: '11rem', height: '11rem' }}
+          >
+            {draft.thumbnail ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={draft.thumbnail}
+                alt="대표 이미지"
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-xs leading-relaxed text-gray-400">
+                + 대표 이미지
+              </div>
+            )}
+          </button>
+          {draft.thumbnail && (
+            <button
+              type="button"
+              onClick={() => setDraft((d) => ({ ...d, thumbnail: '' }))}
+              className="mt-1.5 w-full rounded-full border border-gray-200 bg-white px-3 py-1 text-[11px] text-gray-500 hover:bg-gray-50"
+            >
+              제거
+            </button>
+          )}
+          <input
+            ref={thumbInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              handleThumbFile(e.target.files?.[0] ?? null);
+              e.target.value = '';
+            }}
+          />
+        </div>
       </header>
 
       <SummarySection
-        title="왜 만들었나요?"
+        title="문제 정의"
         text={draft.motivation}
         renderInline={renderPlain}
+        onJump={() => onJumpTo('motivation')}
       />
       <SummarySection
-        title="왜 이 기술 조합을 선택했나요?"
+        title="기술 스택 선정 배경"
         text={draft.techChoice}
         renderInline={renderPlain}
+        onJump={() => onJumpTo('techChoice')}
       />
       <SummarySection
         title="아키텍처 설계 및 과정"
         text={draft.architecture.text}
         renderInline={renderInlineFor(assetsByStep('architecture'))}
+        onJump={() => onJumpTo('architecture')}
       />
       <SummarySection
         title="결과물"
         text={draft.result.text}
         renderInline={renderInlineFor(assetsByStep('result'))}
+        onJump={() => onJumpTo('result')}
       />
       <SummarySection
         title="회고"
         text={draft.retro.text}
         renderInline={renderInlineFor(assetsByStep('retro'))}
+        onJump={() => onJumpTo('retro')}
       />
       <SummarySection
         title="본인 참여 활동"
         text={draft.contribution}
         renderInline={renderPlain}
+        onJump={() => onJumpTo('contribution')}
       />
 
       {draft.hasDomain && (
         <section>
-          <h4 className="mb-4 text-sm font-bold text-gray-800">도메인</h4>
+          <button
+            type="button"
+            onClick={() => onJumpTo('domainCheck')}
+            style={{ marginBottom: '1rem' }}
+            className="block text-left text-sm font-bold text-gray-800 hover:text-blue-600 hover:underline"
+          >
+            도메인
+          </button>
           <div className="space-y-3 text-sm leading-7 text-gray-700">
             {draft.domainTags.length > 0 && (
               <p>
@@ -2161,7 +2506,14 @@ function SummaryView({ draft }: { draft: Draft }) {
 
       {(draft.deliverableUrl || draft.deliverableFiles.length > 0) && (
         <section>
-          <h4 className="mb-2 text-sm font-bold text-gray-800">결과물 / 배포물</h4>
+          <button
+            type="button"
+            onClick={() => onJumpTo('deliverables')}
+            style={{ marginBottom: '1rem' }}
+            className="block text-left text-sm font-bold text-gray-800 hover:text-blue-600 hover:underline"
+          >
+            결과물 / 배포물
+          </button>
           <div className="space-y-3 text-sm leading-7">
             {draft.deliverableUrl && (
               <a
@@ -2204,15 +2556,31 @@ function SummarySection({
   title,
   text,
   renderInline,
+  onJump,
 }: {
   title: string;
   text: string;
   renderInline: (t: string) => ReactNode;
+  onJump?: () => void;
 }) {
   if (!text || !text.trim()) return null;
   return (
     <section>
-      <h4 className="mb-4 text-sm font-bold text-gray-800">{title}</h4>
+      {onJump ? (
+        <button
+          type="button"
+          onClick={onJump}
+          style={{ marginBottom: '1rem' }}
+          className="block text-left text-sm font-bold text-gray-800 hover:text-blue-600 hover:underline"
+          aria-label={`${title} 수정`}
+        >
+          {title}
+        </button>
+      ) : (
+        <h4 style={{ marginBottom: '1rem' }} className="text-sm font-bold text-gray-800">
+          {title}
+        </h4>
+      )}
       <div className="whitespace-pre-wrap text-sm leading-8 text-gray-700">
         {renderInline(text)}
       </div>
