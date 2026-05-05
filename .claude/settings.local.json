@@ -22,7 +22,38 @@
       "Bash(docker-compose up *)",
       "Bash(docker-compose exec *)",
       "Bash(curl *)",
-      "Bash(npx prisma *)"
+      "Bash(npx prisma *)",
+      "WebSearch",
+      "Bash(claude mcp *)",
+      "mcp__tally__list_workspaces",
+      "mcp__tally__create_new_form",
+      "mcp__tally__list_forms",
+      "mcp__tally__list_blocks",
+      "mcp__tally__create_blocks",
+      "mcp__tally__configure_blocks",
+      "mcp__tally__apply_logic",
+      "mcp__tally__save_form",
+      "Bash(git checkout *)",
+      "Bash(Get-ChildItem -Path \"D:\\\\2026\\\\mocozi-temp\\\\frontend\\\\src\" -Recurse -Force)",
+      "Bash(Select-Object FullName)",
+      "Bash(ConvertTo-Csv -NoTypeInformation)",
+      "Bash(Out-String)",
+      "Bash(docker compose ps *)",
+      "Bash(docker compose exec *)",
+      "Bash(docker compose restart *)",
+      "Bash(docker compose logs *)",
+      "Bash(Get-ChildItem *)",
+      "Bash(git stash *)",
+      "Bash(docker compose *)",
+      "Bash(gh pr *)",
+      "PowerShell(cd \"D:\\\\2026\\\\mocozi-temp\\\\backend\"; npx tsc --noEmit 2>&1 | Where-Object { $_ -match \"portfolio\" })",
+      "Bash(Remove-Item -Recurse -Force \"frontend\\\\.next\" -ErrorAction SilentlyContinue)",
+      "Bash(dir /s /b \"D:\\\\2026\\\\mocozi-temp\\\\frontend\\\\src\\\\app\\\\team\")",
+      "Bash(git diff *)",
+      "Read(//mnt/d/2026/mocozi-temp/frontend/**)"
     ]
+  },
+  "enabledPlugins": {
+    "frontend-design@claude-code-plugins": true
   }
 }

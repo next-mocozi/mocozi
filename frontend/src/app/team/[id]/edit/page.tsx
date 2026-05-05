@@ -75,7 +75,7 @@ export default function EditTeamPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [hasProposal, setHasProposal] = useState(false);
@@ -105,12 +105,14 @@ export default function EditTeamPage({
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (authLoading) return;
+
     api
       .get(`/api/teams/${id}`)
       .then((res) => {
         const team = res.data.data;
 
-        if (user && team.leaderId !== user.id) {
+        if (!user || team.leaderId !== user.id) {
           router.replace(`/team/${id}`);
           return;
         }
@@ -135,7 +137,7 @@ export default function EditTeamPage({
       })
       .catch(() => router.replace(`/team/${id}`))
       .finally(() => setLoading(false));
-  }, [id, user, router]);
+  }, [id, authLoading, router]);
 
   const addSkill = () => {
     const v = skillInput.trim();
@@ -161,6 +163,7 @@ export default function EditTeamPage({
 
     setSaving(true);
     setError('');
+
     try {
       await api.patch(`/api/teams/${id}`, {
         name,
@@ -169,7 +172,13 @@ export default function EditTeamPage({
         maxMembers: maxMembers ? Number(maxMembers) : undefined,
         isRecruiting,
       });
+    } catch (err: any) {
+      setError(err.response?.data?.message || '팀 기본 정보 저장에 실패했습니다.');
+      setSaving(false);
+      return;
+    }
 
+    try {
       const proposalData = {
         projectName: projectName || name,
         overview,
@@ -186,13 +195,13 @@ export default function EditTeamPage({
       } else {
         await api.post(`/api/teams/${id}/proposal`, proposalData);
       }
-
-      router.push(`/team/${id}`);
     } catch (err: any) {
-      setError(err.response?.data?.message || '수정에 실패했습니다.');
-    } finally {
+      setError('팀 기본 정보는 저장됐지만 기획서 저장에 실패했습니다. 다시 시도해주세요.');
       setSaving(false);
+      return;
     }
+
+    router.push(`/team/${id}`);
   };
 
   if (loading) {
