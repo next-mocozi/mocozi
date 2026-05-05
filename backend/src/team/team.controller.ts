@@ -24,8 +24,11 @@ export class TeamController {
   }
 
   @Get(':id')
-  async getTeam(@Param('id') teamId: string) {
-    return this.teamService.getTeam(teamId);
+  async getTeam(
+    @Param('id') teamId: string,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.teamService.getTeam(teamId, user.id);
   }
 
   @Post(':id/proposal')

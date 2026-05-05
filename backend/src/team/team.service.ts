@@ -80,7 +80,7 @@ export class TeamService {
     });
   }
 
-  async getTeam(teamId: string) {
+  async getTeam(teamId: string, requesterId?: string) {
     const team = await this.prisma.team.findUnique({
       where: { id: teamId },
       include: {
@@ -107,6 +107,11 @@ export class TeamService {
     }
 
     if (team.proposal) {
+      // 팀장은 공개 여부 관계없이 전체 데이터 반환
+      if (requesterId && team.leaderId === requesterId) {
+        return team;
+      }
+
       const { publicFields, detailedPlan, expectedOutcome, referenceLinks, ...rest } = team.proposal;
       const filteredProposal = {
         ...rest,

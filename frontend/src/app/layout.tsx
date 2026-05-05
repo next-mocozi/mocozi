@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Plus_Jakarta_Sans, Noto_Sans_KR } from 'next/font/google';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { AuthProvider } from '@/contexts/AuthContext';
@@ -7,7 +7,19 @@ import { SocketProvider } from '@/providers/SocketProvider';
 import { ToastContainer } from '@/components/chat/ToastContainer';
 import '@/styles/globals.css';
 
-const inter = Inter({ subsets: ['latin'] });
+const plusJakarta = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  variable: '--font-jakarta',
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+});
+
+const notoSans = Noto_Sans_KR({
+  subsets: ['latin'],
+  variable: '--font-noto',
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: '모코지 - IT 대학생 팀 빌딩 플랫폼',
@@ -23,7 +35,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
-      <body className={inter.className}>
+      <body className={`${plusJakarta.variable} ${notoSans.variable}`}>
         <AuthProvider>
           <SocketProvider>
             <div className="flex min-h-screen flex-col">

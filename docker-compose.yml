@@ -12,6 +12,7 @@ services:
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8080
       - NEXT_PUBLIC_SOCKET_URL=http://localhost:8080
+      - WATCHPACK_POLLING=true
     depends_on:
       - backend
 
