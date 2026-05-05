@@ -307,7 +307,7 @@ export default function ProfileEditPage() {
                         : 'border-blue-200 text-blue-600 hover:bg-blue-50'
                   }`}
                 >
-                  {isExploring ? `🔍 ${role}` : role}
+                  {role}
                 </button>
               );
             })}
