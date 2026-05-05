@@ -258,9 +258,6 @@ export default function MyProfilePage() {
                 </span>
               )}
             </p>
-            {user.bio && (
-              <p className="mt-2 text-sm text-gray-500">{user.bio}</p>
-            )}
 
             {/* 직군 */}
             {(mainRole || subRoles.length > 0) && (
@@ -298,6 +295,16 @@ export default function MyProfilePage() {
           </Link>
         </div>
       </div>
+
+      {/* 한 줄 소개 — 링크처럼 카드 바깥의 칩 스타일로 표시 */}
+      {user.bio && (
+        <div className="mb-6 flex flex-wrap gap-2">
+          <span className="inline-flex items-center gap-2 rounded-full bg-gray-50 px-4 py-2 text-sm text-gray-700 shadow-sm">
+            <span aria-hidden>💬</span>
+            <span className="font-medium">{user.bio}</span>
+          </span>
+        </div>
+      )}
 
       {/* 외부 링크 — 보기 전용 (수정은 프로필 수정에서) */}
       <div className="card mb-6">
