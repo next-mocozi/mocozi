@@ -2,12 +2,14 @@
 
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
-import api from '@/lib/api';
 import { useRouter } from 'next/navigation';
+import api from '@/lib/api';
+
+type ApplicationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED';
 
 interface Application {
   id: string;
-  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  status: ApplicationStatus;
   message: string;
   createdAt: string;
   user: {
@@ -19,16 +21,16 @@ interface Application {
   };
 }
 
-const STATUS_LABEL: Record<string, string> = {
+const STATUS_LABEL: Record<ApplicationStatus, string> = {
   PENDING: '검토 중',
-  ACCEPTED: '수락됨',
-  REJECTED: '거절됨',
+  ACCEPTED: '수락',
+  REJECTED: '거절',
 };
 
-const STATUS_CLASS: Record<string, string> = {
-  PENDING: 'bg-yellow-100 text-yellow-700',
-  ACCEPTED: 'bg-green-100 text-green-700',
-  REJECTED: 'bg-red-100 text-red-600',
+const STATUS_CLASS: Record<ApplicationStatus, string> = {
+  PENDING: 'bg-amber-50 text-amber-600 border-amber-200',
+  ACCEPTED: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+  REJECTED: 'bg-red-50 text-red-400 border-red-200',
 };
 
 export default function ApplicationsPage({
@@ -36,128 +38,195 @@ export default function ApplicationsPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id: teamId } = use(params);
+  const { id } = use(params);
   const router = useRouter();
 
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [processing, setProcessing] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   useEffect(() => {
     api
-      .get(`/api/apply/${teamId}/applications`)
-      .then((res) => setApplications(res.data.data))
+      .get(`/api/apply/${id}/applications`)
+      .then((res) => setApplications(res.data?.data ?? res.data ?? []))
       .catch((err) => {
-        if (err.response?.status === 400) {
-          router.replace(`/team/${teamId}`);
+        if (err.response?.status === 403 || err.response?.status === 400) {
+          router.replace(`/team/${id}`);
         } else {
-          setError('지원자 목록을 불러올 수 없습니다.');
+          setError('지원자 목록을 불러오지 못했습니다.');
         }
       })
       .finally(() => setLoading(false));
-  }, [teamId, router]);
+  }, [id]);
 
   const updateStatus = async (applicationId: string, status: 'ACCEPTED' | 'REJECTED') => {
-    setProcessing(applicationId);
+    setProcessingId(applicationId);
     try {
       await api.patch(`/api/apply/applications/${applicationId}/${status}`);
       setApplications((prev) =>
-        prev.map((a) => (a.id === applicationId ? { ...a, status } : a))
+        prev.map((a) => (a.id === applicationId ? { ...a, status } : a)),
       );
-      if (status === 'ACCEPTED') router.refresh();
-    } catch {
-      setError('처리에 실패했습니다. 다시 시도해주세요.');
+    } catch (err: any) {
+      alert(err?.response?.data?.message ?? '처리에 실패했습니다.');
     } finally {
-      setProcessing(null);
+      setProcessingId(null);
     }
   };
+
+  const pending = applications.filter((a) => a.status === 'PENDING');
+  const processed = applications.filter((a) => a.status !== 'PENDING');
 
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <p className="text-gray-400">불러오는 중...</p>
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center text-red-400">{error}</div>
     );
   }
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <Link
-        href={`/team/${teamId}`}
-        className="mb-4 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+        href={`/team/${id}`}
+        className="mb-6 inline-flex items-center gap-1.5 text-sm text-slate-400 transition-colors hover:text-slate-700"
       >
-        ← 팀으로 돌아가기
+        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+        팀으로 돌아가기
       </Link>
-      <h1 className="mb-6 text-2xl font-bold">지원자 목록</h1>
 
-      {error && <p className="mb-4 text-sm text-red-500">{error}</p>}
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-xl font-bold text-slate-900">지원자 목록</h1>
+        <span className="rounded-full bg-indigo-50 px-3 py-1 text-sm font-medium text-indigo-600">
+          대기 {pending.length}명
+        </span>
+      </div>
 
       {applications.length === 0 ? (
-        <div className="card py-12 text-center text-gray-400">
-          아직 지원자가 없습니다.
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-slate-100 bg-white py-16 text-center shadow-sm">
+          <p className="text-3xl">📭</p>
+          <p className="font-semibold text-slate-700">아직 지원자가 없습니다</p>
+          <p className="text-sm text-slate-400">지원자가 생기면 여기에 표시됩니다.</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {applications.map((app) => (
-            <div key={app.id} className="card space-y-3">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <Link
-                    href={`/profile/${app.user.id}`}
-                    className="font-semibold hover:text-blue-600 hover:underline"
-                  >
-                    {app.user.name}
-                  </Link>
-                  <p className="text-sm text-gray-500">
-                    {app.user.university} · {app.user.department}
-                  </p>
-                </div>
-                <span
-                  className={`flex-shrink-0 rounded-full px-3 py-1 text-xs font-medium ${STATUS_CLASS[app.status]}`}
-                >
-                  {STATUS_LABEL[app.status]}
-                </span>
-              </div>
-
-              {app.user.skills.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {app.user.skills.map((s) => (
-                    <span
-                      key={s}
-                      className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs text-gray-600"
-                    >
-                      {s}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              <div className="rounded-lg bg-gray-50 p-3 text-sm text-gray-700">
-                {app.message}
-              </div>
-
-              {app.status === 'PENDING' && (
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => updateStatus(app.id, 'ACCEPTED')}
-                    disabled={processing === app.id}
-                    className="flex-1 rounded-full bg-blue-600 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-60"
-                  >
-                    수락
-                  </button>
-                  <button
-                    onClick={() => updateStatus(app.id, 'REJECTED')}
-                    disabled={processing === app.id}
-                    className="flex-1 rounded-full border border-red-200 py-2 text-sm text-red-500 hover:bg-red-50 disabled:opacity-60"
-                  >
-                    거절
-                  </button>
-                </div>
-              )}
+        <div className="space-y-6">
+          {pending.length > 0 && (
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">검토 대기</p>
+              {pending.map((app) => (
+                <ApplicationCard
+                  key={app.id}
+                  app={app}
+                  processingId={processingId}
+                  onAccept={() => updateStatus(app.id, 'ACCEPTED')}
+                  onReject={() => updateStatus(app.id, 'REJECTED')}
+                />
+              ))}
             </div>
-          ))}
+          )}
+          {processed.length > 0 && (
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">처리 완료</p>
+              {processed.map((app) => (
+                <ApplicationCard
+                  key={app.id}
+                  app={app}
+                  processingId={processingId}
+                  onAccept={() => updateStatus(app.id, 'ACCEPTED')}
+                  onReject={() => updateStatus(app.id, 'REJECTED')}
+                />
+              ))}
+            </div>
+          )}
         </div>
+      )}
+    </div>
+  );
+}
+
+function ApplicationCard({
+  app,
+  processingId,
+  onAccept,
+  onReject,
+}: {
+  app: Application;
+  processingId: string | null;
+  onAccept: () => void;
+  onReject: () => void;
+}) {
+  const isProcessing = processingId === app.id;
+
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-indigo-50 text-sm font-semibold text-indigo-600">
+            {app.user.name[0]}
+          </div>
+          <div>
+            <p className="font-semibold text-slate-800">{app.user.name}</p>
+            <p className="text-xs text-slate-400">{app.user.university} · {app.user.department}</p>
+          </div>
+        </div>
+        <span className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${STATUS_CLASS[app.status]}`}>
+          {STATUS_LABEL[app.status]}
+        </span>
+      </div>
+
+      {app.user.skills.length > 0 && (
+        <div className="mb-3 flex flex-wrap gap-1">
+          {app.user.skills.slice(0, 5).map((skill) => (
+            <span key={skill} className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+              {skill}
+            </span>
+          ))}
+          {app.user.skills.length > 5 && (
+            <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-400">
+              +{app.user.skills.length - 5}
+            </span>
+          )}
+        </div>
+      )}
+
+      <p className="mb-4 rounded-xl bg-slate-50 px-4 py-3 text-sm leading-relaxed text-slate-600">
+        {app.message}
+      </p>
+
+      {app.status === 'PENDING' && (
+        <div className="flex gap-2">
+          <button
+            onClick={onReject}
+            disabled={isProcessing}
+            className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-50 disabled:opacity-50"
+          >
+            거절
+          </button>
+          <button
+            onClick={onAccept}
+            disabled={isProcessing}
+            className="flex-1 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:shadow-md disabled:opacity-50"
+          >
+            {isProcessing ? '처리 중...' : '수락'}
+          </button>
+        </div>
+      )}
+
+      {app.status === 'ACCEPTED' && (
+        <Link
+          href={`/profile/${app.user.id}`}
+          className="block text-center text-xs text-indigo-500 hover:underline"
+        >
+          프로필 보기 →
+        </Link>
       )}
     </div>
   );
