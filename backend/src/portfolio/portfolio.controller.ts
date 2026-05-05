@@ -39,14 +39,18 @@ export class PortfolioController {
   /** PUT /portfolios/items/:id - 포트폴리오 아이템 수정 */
   @UseGuards(JwtAuthGuard)
   @Put('items/:id')
-  updateItem(@Param('id') id: string, @Body() dto: UpdatePortfolioDto) {
-    return this.portfolioService.updateItem(id, dto);
+  updateItem(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+    @Body() dto: UpdatePortfolioDto,
+  ) {
+    return this.portfolioService.updateItem(user.id, id, dto);
   }
 
   /** DELETE /portfolios/items/:id - 포트폴리오 아이템 삭제 */
   @UseGuards(JwtAuthGuard)
   @Delete('items/:id')
-  deleteItem(@Param('id') id: string) {
-    return this.portfolioService.deleteItem(id);
+  deleteItem(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.portfolioService.deleteItem(user.id, id);
   }
 }

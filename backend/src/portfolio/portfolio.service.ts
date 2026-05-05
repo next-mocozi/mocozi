@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePortfolioDto } from './dto/create-portfolio.dto';
 import { UpdatePortfolioDto } from './dto/update-portfolio.dto';
@@ -38,13 +38,18 @@ export class PortfolioService {
   }
 
   /** 포트폴리오 아이템 수정 */
-  async updateItem(itemId: string, dto: UpdatePortfolioDto) {
+  async updateItem(userId: string, itemId: string, dto: UpdatePortfolioDto) {
     const item = await this.prisma.portfolioItem.findUnique({
       where: { id: itemId },
+      include: { portfolio: true },
     });
 
     if (!item) {
       throw new NotFoundException('포트폴리오 아이템을 찾을 수 없습니다.');
+    }
+
+    if (item.portfolio.userId !== userId) {
+      throw new ForbiddenException('본인의 포트폴리오 아이템만 수정할 수 있습니다.');
     }
 
     return this.prisma.portfolioItem.update({
@@ -54,7 +59,20 @@ export class PortfolioService {
   }
 
   /** 포트폴리오 아이템 삭제 */
-  async deleteItem(itemId: string) {
+  async deleteItem(userId: string, itemId: string) {
+    const item = await this.prisma.portfolioItem.findUnique({
+      where: { id: itemId },
+      include: { portfolio: true },
+    });
+
+    if (!item) {
+      throw new NotFoundException('포트폴리오 아이템을 찾을 수 없습니다.');
+    }
+
+    if (item.portfolio.userId !== userId) {
+      throw new ForbiddenException('본인의 포트폴리오 아이템만 삭제할 수 있습니다.');
+    }
+
     return this.prisma.portfolioItem.delete({
       where: { id: itemId },
     });
