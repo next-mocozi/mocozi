@@ -892,10 +892,7 @@ export default function MyPortfolioPage() {
                           </span>
                         )}
                       </div>
-                      <h3 className="mb-1 font-semibold">{item.title}</h3>
-                      <p className="mb-2 line-clamp-2 text-sm text-gray-600">
-                        {item.description}
-                      </p>
+                      <h3 className="mb-2 font-semibold">{item.title}</h3>
                       {item.tags.length > 0 && (
                         <div className="flex flex-wrap gap-1">
                           {item.tags.map((tag) => (
@@ -986,10 +983,7 @@ export default function MyPortfolioPage() {
                       </span>
                     )}
                   </div>
-                  <h3 className="mb-1 font-semibold">{item.title}</h3>
-                  <p className="mb-2 line-clamp-2 text-sm text-gray-600">
-                    {item.description}
-                  </p>
+                  <h3 className="mb-2 font-semibold">{item.title}</h3>
                   {item.paperUrl && (
                     <button
                       type="button"
@@ -1067,10 +1061,7 @@ export default function MyPortfolioPage() {
                       </span>
                     )}
                   </div>
-                  <h3 className="mb-1 font-semibold">{item.title}</h3>
-                  <p className="mb-2 line-clamp-2 text-sm text-gray-600">
-                    {item.description}
-                  </p>
+                  <h3 className="mb-2 font-semibold">{item.title}</h3>
                   {item.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1">
                       {item.tags.map((tag) => (
@@ -1657,11 +1648,6 @@ function ItemMgrModal({
                         <p className="break-words text-sm font-semibold leading-relaxed text-gray-800">
                           {item.title}
                         </p>
-                        {item.description && (
-                          <p className="mt-2 break-words text-xs leading-7 text-gray-500">
-                            {item.description}
-                          </p>
-                        )}
                       </div>
                       <div className="flex shrink-0 flex-row items-center gap-1.5">
                         <Link
