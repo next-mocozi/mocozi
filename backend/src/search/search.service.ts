@@ -44,11 +44,23 @@ export class SearchService {
     });
   }
 
-  async searchUsers(filters: { skill?: string; university?: string }) {
+  async searchUsers(filters: { keyword?: string; skills?: string[]; role?: string; university?: string }) {
     const where: any = {};
 
-    if (filters.skill) {
-      where.skills = { has: filters.skill };
+    if (filters.keyword) {
+      where.OR = [
+        { name: { contains: filters.keyword, mode: 'insensitive' } },
+        { bio: { contains: filters.keyword, mode: 'insensitive' } },
+        { department: { contains: filters.keyword, mode: 'insensitive' } },
+      ];
+    }
+
+    if (filters.skills?.length) {
+      where.skills = { hasSome: filters.skills };
+    }
+
+    if (filters.role) {
+      where.roles = { has: filters.role };
     }
 
     if (filters.university) {
@@ -63,6 +75,7 @@ export class SearchService {
         university: true,
         department: true,
         skills: true,
+        roles: true,
         profileImage: true,
         bio: true,
       },

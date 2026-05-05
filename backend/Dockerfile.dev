@@ -16,4 +16,4 @@ EXPOSE 8080
 
 # 컨테이너 시작 시 DB 스키마 동기화 후 서버 실행
 # (마이그레이션 파일이 없어도 schema.prisma 기준으로 DB에 테이블 생성)
-CMD ["sh", "-c", "pnpm prisma db push --skip-generate && pnpm start:dev"]
+CMD ["sh", "-c", "pnpm exec prisma generate && pnpm prisma db push --skip-generate && pnpm start:dev"]

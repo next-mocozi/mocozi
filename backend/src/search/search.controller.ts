@@ -20,9 +20,12 @@ export class SearchController {
   /** GET /search/users - 사용자 검색 */
   @Get('users')
   searchUsers(
-    @Query('skill') skill?: string,
+    @Query('keyword') keyword?: string,
+    @Query('skill') skill?: string | string[],
+    @Query('role') role?: string,
     @Query('university') university?: string,
   ) {
-    return this.searchService.searchUsers({ skill, university });
+    const skills = skill ? (Array.isArray(skill) ? skill : [skill]) : undefined;
+    return this.searchService.searchUsers({ keyword, skills, role, university });
   }
 }

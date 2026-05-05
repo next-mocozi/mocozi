@@ -22,6 +22,7 @@ model User {
   profileImage      String?
   bio               String?
   skills            String[]
+  roles             String[] @default([])
   emailVerified     Boolean   @default(false)
   verificationToken String?
   refreshToken      String?

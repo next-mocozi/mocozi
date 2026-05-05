@@ -23,6 +23,11 @@ export class TeamController {
     return this.teamService.getTeams();
   }
 
+  @Get('my')
+  async getMyTeams(@CurrentUser() user: { id: string }) {
+    return this.teamService.getMyTeams(user.id);
+  }
+
   @Get(':id')
   async getTeam(
     @Param('id') teamId: string,

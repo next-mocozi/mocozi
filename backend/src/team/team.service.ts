@@ -62,6 +62,13 @@ export class TeamService {
     return proposal;
   }
 
+  async getMyTeams(userId: string) {
+    return this.prisma.team.findMany({
+      where: { leaderId: userId },
+      select: { id: true, name: true, teamType: true },
+    });
+  }
+
   async getTeams() {
     return this.prisma.team.findMany({
       include: {
