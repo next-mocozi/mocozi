@@ -1,5 +1,6 @@
 'use client';
 import { useState, useMemo, useEffect } from 'react';
+import Link from 'next/link';
 import { usePagination } from '@/hooks/usePagination';
 import { Pagination } from '@/components/ui/Pagination';
 import { useAuth } from '@/hooks/useAuth';
@@ -332,9 +333,12 @@ export default function RecruitListPage() {
                         스카우트
                       </button>
                     )}
-                    <button className="rounded-xl border border-indigo-200 px-3 py-1.5 text-sm font-medium text-indigo-600 transition-all hover:bg-indigo-600 hover:text-white">
+                    <Link
+                      href={`/profile/${person.id}`}
+                      className="rounded-xl border border-indigo-200 px-3 py-1.5 text-sm font-medium text-indigo-600 transition-all hover:bg-indigo-600 hover:text-white"
+                    >
                       프로필 보기
-                    </button>
+                    </Link>
                   </div>
                 </div>
 
