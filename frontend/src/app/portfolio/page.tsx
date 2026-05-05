@@ -565,16 +565,11 @@ export default function MyPortfolioPage() {
     const target = items.find((it) => it.id === id);
     if (!target) return;
     const willBeFeatured = !target.featured;
-    if (willBeFeatured) {
-      const featuredCount = items.filter(
-        (it) => it.featured && it.type !== 'study',
-      ).length;
-      if (featuredCount >= MAX_FEATURED) {
-        alert(
-          `대표 프로젝트는 최대 ${MAX_FEATURED}개까지만 지정할 수 있어요.`,
-        );
-        return;
-      }
+    if (willBeFeatured && featuredCount >= MAX_FEATURED) {
+      alert(
+        `대표 프로젝트는 최대 ${MAX_FEATURED}개까지만 지정할 수 있어요.`,
+      );
+      return;
     }
     const next = items.map((it) =>
       it.id === id ? { ...it, featured: willBeFeatured } : it,

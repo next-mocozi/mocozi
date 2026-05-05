@@ -372,13 +372,13 @@ const buildSteps = (hasDomain: boolean | null): StepCfg[] => {
     {
       key: 'name',
       label: 'Q1.',
-      title: '1. 프로젝트명',
+      title: '1. 기본 정보',
       subtitle: '어떤 프로젝트인가요?',
     },
     {
       key: 'period',
       label: 'Q2.',
-      title: '1. 프로젝트명',
+      title: '1. 기본 정보',
       subtitle: '진행한 날짜를 선택해주세요.',
     },
     {
@@ -1185,7 +1185,14 @@ const PERIOD_YEAR_OPTIONS = Array.from(
   (_, i) => PERIOD_CURRENT_YEAR + 1 - i, // 최신 연도가 위
 );
 const PERIOD_MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1);
-const PERIOD_DAY_OPTIONS = Array.from({ length: 31 }, (_, i) => i + 1);
+
+/** year/month 가 비어 있으면 31을 반환 (선택 전 폴백). month 는 1-indexed 문자열. */
+const getDaysInMonth = (year: string, month: string): number => {
+  const y = Number(year);
+  const m = Number(month);
+  if (!y || !m) return 31;
+  return new Date(y, m, 0).getDate();
+};
 
 function YearMonthDayPicker({
   year,
@@ -1203,6 +1210,20 @@ function YearMonthDayPicker({
   // 다른 단계의 input/태그와 동일한 높이·radius·포커스 링 사용
   const selectClass =
     'rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm leading-relaxed outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400';
+
+  const maxDays = getDaysInMonth(year, month);
+  const dayOptions = Array.from({ length: maxDays }, (_, i) => i + 1);
+
+  const handleYearChange = (newYear: string) => {
+    const newMax = getDaysInMonth(newYear, month);
+    onChange(newYear, month, day && Number(day) > newMax ? '' : day);
+  };
+
+  const handleMonthChange = (newMonth: string) => {
+    const newMax = getDaysInMonth(year, newMonth);
+    onChange(year, newMonth, day && Number(day) > newMax ? '' : day);
+  };
+
   return (
     <div
       style={{ rowGap: '0.625rem', columnGap: '0.625rem' }}
@@ -1210,7 +1231,7 @@ function YearMonthDayPicker({
     >
       <select
         value={year}
-        onChange={(e) => onChange(e.target.value, month, day)}
+        onChange={(e) => handleYearChange(e.target.value)}
         disabled={disabled}
         aria-label="년"
         className={selectClass}
@@ -1224,7 +1245,7 @@ function YearMonthDayPicker({
       </select>
       <select
         value={month}
-        onChange={(e) => onChange(year, e.target.value, day)}
+        onChange={(e) => handleMonthChange(e.target.value)}
         disabled={disabled}
         aria-label="월"
         className={selectClass}
@@ -1244,7 +1265,7 @@ function YearMonthDayPicker({
         className={selectClass}
       >
         <option value="">일 (선택)</option>
-        {PERIOD_DAY_OPTIONS.map((d) => (
+        {dayOptions.map((d) => (
           <option key={d} value={String(d).padStart(2, '0')}>
             {d}일
           </option>
