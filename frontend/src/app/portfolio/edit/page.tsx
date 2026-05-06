@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import api from '@/lib/api';
 import {
   OWNER_STORAGE_KEY,
   TYPE_META,
@@ -20,10 +21,6 @@ import StudyForm from './_study';
 //   - PUT    /api/portfolios/:id   로 수정 저장
 //   - DELETE /api/portfolios/:id   로 삭제
 // (CLAUDE.md §11 TODO)
-
-const ITEMS_STORAGE_KEY = 'mock_portfolio_items';
-
-const DEFAULT_ITEMS: PortfolioItem[] = [];
 
 /** 포트폴리오 항목 작성/수정 페이지
  *  - 신규 프로젝트(type=project) 추가 시: 대화형 인터뷰 UI (_interview.tsx)
@@ -126,25 +123,27 @@ function SimpleForm() {
   const [tagInput, setTagInput] = useState('');
   const [titleError, setTitleError] = useState('');
 
-  // 편집 모드: 기존 항목 로드
+  // 편집 모드: API에서 항목 로드
   useEffect(() => {
-    if (!isEdit) return;
-    try {
-      const raw = localStorage.getItem(ITEMS_STORAGE_KEY);
-      const list: PortfolioItem[] = raw ? JSON.parse(raw) : DEFAULT_ITEMS;
-      const found = list.find((it) => it.id === editId);
-      if (found) {
-        setType(found.type);
-        setTitle(found.title);
-        setDescription(found.description);
-        setPeriod(found.period);
-        setCurrent(found.current);
-        setDomain(found.domain ?? '');
-        setTags(found.tags);
-      }
-    } catch {
-      // 로드 실패 시 기본 빈 폼 유지
-    }
+    if (!isEdit || editId === null) return;
+    api
+      .get('/api/portfolios/me')
+      .then((res) => {
+        const p = res.data.data ?? res.data;
+        const found = (p.items ?? []).find(
+          (it: PortfolioItem) => it.id === editId,
+        );
+        if (found) {
+          setType(found.type);
+          setTitle(found.title);
+          setDescription(found.description);
+          setPeriod(found.period);
+          setCurrent(found.current);
+          setDomain(found.domain ?? '');
+          setTags(found.tags);
+        }
+      })
+      .catch(() => {});
   }, [isEdit, editId]);
 
   const addTag = () => {
@@ -162,43 +161,38 @@ function SimpleForm() {
     setTags((prev) => prev.filter((x) => x !== t));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!title.trim()) {
       setTitleError('제목을 입력해주세요.');
       return;
     }
-    // TODO: POST/PUT /api/portfolios 호출 (현재는 mock 저장)
+    const body = {
+      type: type.toUpperCase(),
+      title: title.trim(),
+      description: description.trim(),
+      period: period.trim(),
+      current,
+      domain: domain.trim() || undefined,
+      tags,
+      draft: false,
+    };
     try {
-      const raw = localStorage.getItem(ITEMS_STORAGE_KEY);
-      const list: PortfolioItem[] = raw ? JSON.parse(raw) : DEFAULT_ITEMS;
-      const payload: PortfolioItem = {
-        id: isEdit && editId !== null ? editId : String(Date.now()),
-        type,
-        title: title.trim(),
-        description: description.trim(),
-        period: period.trim(),
-        current,
-        domain: domain.trim() || undefined,
-        tags,
-      };
-      const next = isEdit
-        ? list.map((it) => (it.id === editId ? payload : it))
-        : [...list, payload];
-      localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(next));
+      if (isEdit && editId !== null) {
+        await api.put(`/api/portfolios/items/${editId}`, body);
+      } else {
+        await api.post('/api/portfolios/items', body);
+      }
     } catch {
       // 저장 실패해도 이동은 진행
     }
     router.push('/portfolio');
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!isEdit || editId === null) return;
     if (!confirm('이 포트폴리오 항목을 삭제하시겠어요?')) return;
     try {
-      const raw = localStorage.getItem(ITEMS_STORAGE_KEY);
-      const list: PortfolioItem[] = raw ? JSON.parse(raw) : DEFAULT_ITEMS;
-      const next = list.filter((it) => it.id !== editId);
-      localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(next));
+      await api.delete(`/api/portfolios/items/${editId}`);
     } catch {
       // 삭제 실패해도 이동은 진행
     }

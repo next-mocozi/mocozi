@@ -3,11 +3,7 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import type { PortfolioItem } from '../page';
-
-// ─────── Storage keys ───────
-const ITEMS_STORAGE_KEY = 'mock_portfolio_items';
-const STUDY_DETAILS_STORAGE_KEY = 'mock_study_details';
+import api from '@/lib/api';
 
 // ─────── Year/Month options ───────
 const PERIOD_CURRENT_YEAR = new Date().getFullYear();
@@ -77,30 +73,19 @@ export default function StudyForm() {
     return e < s;
   })();
 
-  // 편집 모드: 저장된 답변 로드
+  // 편집 모드: API에서 항목 로드
   useEffect(() => {
     if (!isEdit || editId === null) return;
-    try {
-      const raw = localStorage.getItem(STUDY_DETAILS_STORAGE_KEY);
-      const map: Record<string, StudyDetail> = raw ? JSON.parse(raw) : {};
-      const saved = map[String(editId)];
-      if (saved) {
-        setD({ ...EMPTY_DETAIL, ...saved });
-        return;
-      }
-      // details 없는 기존 항목 → 제목 기본 복원
-      const itemsRaw = localStorage.getItem(ITEMS_STORAGE_KEY);
-      const items: PortfolioItem[] = itemsRaw ? JSON.parse(itemsRaw) : [];
-      const found = items.find((it) => it.id === editId);
-      if (found) {
-        setD({
-          ...EMPTY_DETAIL,
-          topic: found.title,
-        });
-      }
-    } catch {
-      // 무시
-    }
+    api
+      .get('/api/portfolios/me')
+      .then((res) => {
+        const p = res.data.data ?? res.data;
+        const found = (p.items ?? []).find(
+          (it: { id: string; title: string }) => it.id === editId,
+        );
+        if (found) setD((prev) => ({ ...prev, topic: found.title }));
+      })
+      .catch(() => {});
   }, [isEdit, editId]);
 
   const update = <K extends keyof StudyDetail>(
@@ -108,7 +93,7 @@ export default function StudyForm() {
     value: StudyDetail[K],
   ) => setD((prev) => ({ ...prev, [key]: value }));
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!d.topic.trim()) {
       setTopicError('스터디 주제를 입력해주세요.');
       return;
@@ -117,52 +102,42 @@ export default function StudyForm() {
       setPeriodError('종료 날짜는 시작 날짜 이후여야 합니다.');
       return;
     }
-    const targetId = isEdit && editId !== null ? editId : String(Date.now());
     const period = formatPeriod(d);
-    const item: PortfolioItem = {
-      id: targetId,
-      type: 'study',
+    const description = [
+      d.motivation.trim(),
+      d.process.trim(),
+      d.learned.trim(),
+      d.improvements.trim(),
+      d.moreToLearn.trim(),
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+    const body = {
+      type: 'STUDY',
       title: d.topic.trim(),
-      description: d.motivation.trim() || d.process.trim() || '',
+      description,
       period,
       current: d.current,
       tags: [],
+      draft: false,
     };
     try {
-      const itemsRaw = localStorage.getItem(ITEMS_STORAGE_KEY);
-      const list: PortfolioItem[] = itemsRaw ? JSON.parse(itemsRaw) : [];
-      const exists = list.some((it) => it.id === targetId);
-      const next = exists
-        ? list.map((it) => (it.id === targetId ? { ...it, ...item } : it))
-        : [...list, item];
-      localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(next));
-
-      const detailsRaw = localStorage.getItem(STUDY_DETAILS_STORAGE_KEY);
-      const map: Record<string, StudyDetail> = detailsRaw
-        ? JSON.parse(detailsRaw)
-        : {};
-      map[String(targetId)] = d;
-      localStorage.setItem(STUDY_DETAILS_STORAGE_KEY, JSON.stringify(map));
+      if (isEdit && editId !== null) {
+        await api.put(`/api/portfolios/items/${editId}`, body);
+      } else {
+        await api.post('/api/portfolios/items', body);
+      }
     } catch {
-      // 무시
+      // 실패해도 이동
     }
     router.push('/portfolio');
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!isEdit || editId === null) return;
     if (!confirm('이 스터디 항목을 삭제하시겠어요?')) return;
     try {
-      const itemsRaw = localStorage.getItem(ITEMS_STORAGE_KEY);
-      const list: PortfolioItem[] = itemsRaw ? JSON.parse(itemsRaw) : [];
-      const next = list.filter((it) => it.id !== editId);
-      localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(next));
-      const detailsRaw = localStorage.getItem(STUDY_DETAILS_STORAGE_KEY);
-      if (detailsRaw) {
-        const map: Record<string, StudyDetail> = JSON.parse(detailsRaw);
-        delete map[String(editId)];
-        localStorage.setItem(STUDY_DETAILS_STORAGE_KEY, JSON.stringify(map));
-      }
+      await api.delete(`/api/portfolios/items/${editId}`);
     } catch {
       // 무시
     }
