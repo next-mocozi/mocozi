@@ -51,7 +51,8 @@
       "Bash(dir /s /b \"D:\\\\2026\\\\mocozi-temp\\\\frontend\\\\src\\\\app\\\\team\")",
       "Bash(git diff *)",
       "Read(//mnt/d/2026/mocozi-temp/frontend/**)",
-      "Bash(Select-Object -First 20 FullName)"
+      "Bash(Select-Object -First 20 FullName)",
+      "Bash(docker volume ls *)"
     ]
   },
   "enabledPlugins": {
