@@ -1,12 +1,17 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Fragment, use, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import {
   FeaturedStar,
   MAX_FEATURED,
+  OWNER_STORAGE_KEY,
+  VISIBILITY_STORAGE_KEY,
   type PortfolioItem,
+  type PortfolioVisibility,
 } from '../page';
 import {
   renderMarkdown,
@@ -55,6 +60,8 @@ export default function PortfolioItemPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const { id } = use(params);
   const itemId = Number(id);
   const [item, setItem] = useState<PortfolioItem | null>(null);
@@ -62,8 +69,15 @@ export default function PortfolioItemPage({
   const [research, setResearch] = useState<ResearchDetail | null>(null);
   const [study, setStudy] = useState<StudyDetail | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [ownerId, setOwnerId] = useState<string | null>(null);
+  const [visibility, setVisibility] = useState<PortfolioVisibility>('private');
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      router.replace('/login');
+      return;
+    }
     try {
       const raw = localStorage.getItem(ITEMS_STORAGE_KEY);
       const list: PortfolioItem[] = raw ? JSON.parse(raw) : DEFAULT_ITEMS;
@@ -92,13 +106,43 @@ export default function PortfolioItemPage({
     } catch {
       setStudy(null);
     }
+    try {
+      setOwnerId(localStorage.getItem(OWNER_STORAGE_KEY));
+      const v = localStorage.getItem(VISIBILITY_STORAGE_KEY);
+      setVisibility(v === 'public' ? 'public' : 'private');
+    } catch {
+      // 기본값 유지
+    }
     setLoaded(true);
-  }, [itemId]);
+  }, [authLoading, user, itemId, router]);
 
-  if (!loaded) {
+  if (authLoading || !loaded) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-8">
         <p className="text-sm text-gray-400">로딩 중…</p>
+      </div>
+    );
+  }
+  if (!user) return null;
+
+  // 비소유자 접근 — 비공개면 차단, 공개면 허용 (개별 항목 단위 공개/비공개는 추후)
+  const isOwner = !ownerId || user.id === ownerId;
+  if (!isOwner && visibility !== 'public') {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-8">
+        <Link
+          href="/portfolio"
+          className="mb-4 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+        >
+          ← 포트폴리오로
+        </Link>
+        <div className="card text-center">
+          <div className="mb-2 text-4xl">🔒</div>
+          <p className="font-semibold text-gray-700">비공개 포트폴리오입니다.</p>
+          <p className="mt-1 text-sm text-gray-500">
+            소유자만 이 항목을 볼 수 있어요.
+          </p>
+        </div>
       </div>
     );
   }
@@ -238,7 +282,9 @@ export default function PortfolioItemPage({
 
       {/* 미리보기(SummaryView)와 동일한 카드 레이아웃 */}
       <div className="card relative">
-        <FeaturedStar featured={!!item.featured} onToggle={toggleFeatured} />
+        {isOwner && (
+          <FeaturedStar featured={!!item.featured} onToggle={toggleFeatured} />
+        )}
 
         <div className="space-y-4">
           {/* ── 헤더: 좌측 제목/기간/태그 + 우측 썸네일 ── */}
@@ -421,15 +467,17 @@ export default function PortfolioItemPage({
             </p>
           )}
 
-          {/* 수정 버튼 — 미리보기의 "복사하기" 자리 */}
-          <div className="flex justify-end">
-            <Link
-              href={`/portfolio/edit?id=${item.id}&type=${item.type}`}
-              className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50"
-            >
-              수정
-            </Link>
-          </div>
+          {/* 수정 버튼 — 미리보기의 "복사하기" 자리 (소유자에게만 노출) */}
+          {isOwner && (
+            <div className="flex justify-end">
+              <Link
+                href={`/portfolio/edit?id=${item.id}&type=${item.type}`}
+                className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50"
+              >
+                수정
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </div>

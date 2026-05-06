@@ -3,7 +3,9 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import {
+  OWNER_STORAGE_KEY,
   TYPE_META,
   type PortfolioItem,
   type PortfolioItemType,
@@ -49,6 +51,8 @@ const DEFAULT_ITEMS: PortfolioItem[] = [
  *  - 그 외(스터디 등) 또는 기존 항목 편집: 아래 단순 폼
  */
 export default function PortfolioEditPage() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const editIdParam = searchParams.get('id');
   const isEdit = editIdParam !== null && Number.isFinite(Number(editIdParam));
@@ -57,6 +61,59 @@ export default function PortfolioEditPage() {
     initialTypeParam && initialTypeParam in TYPE_META
       ? (initialTypeParam as PortfolioItemType)
       : 'project';
+
+  // 권한 체크 — 로그인 + (편집 모드면) 소유자 일치
+  const [accessChecked, setAccessChecked] = useState(false);
+  const [denied, setDenied] = useState(false);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      router.replace('/login');
+      return;
+    }
+    if (isEdit) {
+      try {
+        const ownerId = localStorage.getItem(OWNER_STORAGE_KEY);
+        if (ownerId && ownerId !== user.id) {
+          setDenied(true);
+          setAccessChecked(true);
+          return;
+        }
+      } catch {
+        // 읽기 실패 시 통과 (mock 한정)
+      }
+    }
+    setAccessChecked(true);
+  }, [authLoading, user, isEdit, router]);
+
+  if (authLoading || !accessChecked) {
+    return (
+      <div className="mx-auto max-w-2xl px-6 py-8">
+        <p className="text-sm text-gray-400">로딩 중…</p>
+      </div>
+    );
+  }
+  if (!user) return null;
+  if (denied) {
+    return (
+      <div className="mx-auto max-w-2xl px-6 py-8">
+        <Link
+          href="/portfolio"
+          className="mb-4 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+        >
+          ← 포트폴리오로
+        </Link>
+        <div className="card text-center">
+          <div className="mb-2 text-4xl">🚫</div>
+          <p className="font-semibold text-gray-700">수정 권한이 없습니다.</p>
+          <p className="mt-1 text-sm text-gray-500">
+            이 항목은 다른 사용자의 포트폴리오에 속해 있어요.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // 프로젝트는 신규/수정 모두 대화형 인터뷰 UI 사용
   // (수정 시 _interview.tsx 가 mock_portfolio_details 에서 답변을 불러와 미리보기로 표시)

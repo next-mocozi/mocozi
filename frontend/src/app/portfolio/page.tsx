@@ -24,8 +24,12 @@ const ITEMS_STORAGE_KEY = 'mock_portfolio_items';
 const INTRO_STORAGE_KEY = 'mock_portfolio_intro';
 const CAREERS_STORAGE_KEY = 'mock_portfolio_career_items';
 const EXPS_STORAGE_KEY = 'mock_portfolio_experiences';
+export const VISIBILITY_STORAGE_KEY = 'mock_portfolio_visibility';
+export const OWNER_STORAGE_KEY = 'mock_portfolio_owner';
 const INTRO_MAX = 500;
 const CAREER_CONTENT_MAX = 200;
+
+export type PortfolioVisibility = 'public' | 'private';
 
 export type PortfolioItemType =
   | 'project'
@@ -340,6 +344,10 @@ export default function MyPortfolioPage() {
   const [researchMgrOpen, setResearchMgrOpen] = useState(false);
   const [studyMgrOpen, setStudyMgrOpen] = useState(false);
 
+  // 포트폴리오 공개/비공개 설정
+  const [visibility, setVisibility] = useState<PortfolioVisibility>('private');
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
   useEffect(() => {
     const load = <T,>(key: string, fallback: T): T => {
       try {
@@ -370,7 +378,22 @@ export default function MyPortfolioPage() {
     } catch {
       // 기본값 유지
     }
+    const v = load<PortfolioVisibility>(VISIBILITY_STORAGE_KEY, 'private');
+    setVisibility(v === 'public' ? 'public' : 'private');
   }, []);
+
+  // 현재 로그인 사용자를 이 브라우저 localStorage 의 포트폴리오 소유자로 기록 (mock).
+  // 이미 다른 사용자가 소유자로 박혀 있으면 덮어쓰지 않음 — /portfolio/[id] 와
+  // /portfolio/edit 에서 비소유자 접근을 차단하기 위함.
+  useEffect(() => {
+    if (!user) return;
+    try {
+      const existing = localStorage.getItem(OWNER_STORAGE_KEY);
+      if (!existing) localStorage.setItem(OWNER_STORAGE_KEY, user.id);
+    } catch {
+      // 저장 실패 무시
+    }
+  }, [user]);
 
   // 로그인 가드 — 모든 훅 호출 이후에 위치
   if (loading)
@@ -390,6 +413,13 @@ export default function MyPortfolioPage() {
     } catch {
       // 저장 실패 시 무시
     }
+  };
+
+  // ───────── 공개/비공개 설정 ─────────
+  const updateVisibility = (v: PortfolioVisibility) => {
+    setVisibility(v);
+    persist(VISIBILITY_STORAGE_KEY, v);
+    setSettingsOpen(false);
   };
 
   // ───────── 자기소개 ─────────
@@ -595,8 +625,48 @@ export default function MyPortfolioPage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
       {/* ─────── 기본 정보 — /profile 페이지와 동일 (수정 버튼 없음) ─────── */}
-      <div className="card mb-6">
-        <div className="flex items-start gap-6">
+      <div className="card relative mb-6">
+        {/* 공개/비공개 상태 + 설정 버튼 */}
+        <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
+          <span
+            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${
+              visibility === 'public'
+                ? 'bg-green-100 text-green-700'
+                : 'bg-gray-100 text-gray-600'
+            }`}
+          >
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${
+                visibility === 'public' ? 'bg-green-500' : 'bg-gray-400'
+              }`}
+            />
+            {visibility === 'public' ? '공개' : '비공개'}
+          </span>
+          <button
+            type="button"
+            onClick={() => setSettingsOpen(true)}
+            aria-label="포트폴리오 공개 설정"
+            title="공개 설정"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition-all hover:bg-gray-100 hover:text-gray-700"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-4 w-4"
+              aria-hidden
+            >
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="flex items-start gap-6 pr-32">
           <div className="flex h-24 w-24 items-center justify-center rounded-full bg-primary-100 text-3xl text-primary-600">
             👤
           </div>
@@ -1526,6 +1596,72 @@ export default function MyPortfolioPage() {
           onClose={() => setStudyMgrOpen(false)}
           onDelete={deleteItem}
         />
+      )}
+
+      {/* ─────── 포트폴리오 공개 설정 모달 ─────── */}
+      {settingsOpen && (
+        <div
+          onClick={() => setSettingsOpen(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-xl"
+          >
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+              <h2 className="text-lg font-bold text-gray-900">
+                포트폴리오 공개 설정
+              </h2>
+              <button
+                onClick={() => setSettingsOpen(false)}
+                aria-label="닫기"
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="space-y-3 px-6 py-5">
+              <button
+                type="button"
+                onClick={() => updateVisibility('public')}
+                className={`w-full rounded-xl border p-4 text-left transition-all ${
+                  visibility === 'public'
+                    ? 'border-blue-400 bg-blue-50/60'
+                    : 'border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold text-gray-900">공개</p>
+                  {visibility === 'public' && (
+                    <span className="text-sm text-blue-600">✓ 선택됨</span>
+                  )}
+                </div>
+                <p className="mt-1 text-xs leading-relaxed text-gray-500">
+                  다른 사용자가 내 포트폴리오를 볼 수 있어요.
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => updateVisibility('private')}
+                className={`w-full rounded-xl border p-4 text-left transition-all ${
+                  visibility === 'private'
+                    ? 'border-blue-400 bg-blue-50/60'
+                    : 'border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold text-gray-900">비공개</p>
+                  {visibility === 'private' && (
+                    <span className="text-sm text-blue-600">✓ 선택됨</span>
+                  )}
+                </div>
+                <p className="mt-1 text-xs leading-relaxed text-gray-500">
+                  본인만 볼 수 있어요. 다른 사용자는 접근할 수 없습니다.
+                </p>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

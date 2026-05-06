@@ -530,7 +530,7 @@ export function renderInlineMd(text: string): ReactNode {
   if (!text) return null;
   const tokens: ReactNode[] = [];
   const re =
-    /(!\[[^\]]*\]\([^)]+\)|\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|`[^`]+`|https?:\/\/[^\s)]+)/g;
+    /(!\[[^\]]*\]\([^)]+\)|\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|\*[^*\n]+\*|`[^`]+`|https?:\/\/[^\s)]+)/g;
   let last = 0;
   let key = 0;
   let m: RegExpExecArray | null;
@@ -574,6 +574,14 @@ export function renderInlineMd(text: string): ReactNode {
           <strong key={key++} className="font-semibold">
             {bm[1]}
           </strong>,
+        );
+    } else if (t.startsWith('*')) {
+      const im2 = t.match(/^\*([^*\n]+)\*$/);
+      if (im2)
+        tokens.push(
+          <em key={key++} className="italic">
+            {im2[1]}
+          </em>,
         );
     } else if (t.startsWith('`')) {
       const cm = t.match(/^`([^`]+)`$/);
@@ -1302,7 +1310,7 @@ export default function ProjectInterview() {
               onClick={prev}
               className="rounded-full border border-gray-200 bg-white px-5 py-2 text-sm text-gray-600 hover:bg-gray-50"
             >
-              다시 편집
+              질문으로 돌아가기
             </button>
             <button
               type="button"
@@ -2552,6 +2560,109 @@ function DeliverablesStep({
 const ensureNonEmpty = (list: ContentBlock[]): ContentBlock[] =>
   list.length > 0 ? list : [{ id: genBlockId(), type: 'p', text: '' }];
 
+/** 블록 좌측 [+] 메뉴 — 노션처럼 형식 변경 / 굵게 / 기울임 / 아래 새 블록 */
+function BlockTypeMenu({
+  block,
+  open,
+  onOpenChange,
+  onSetType,
+  onWrap,
+  onAddBelow,
+  onDelete,
+}: {
+  block: ContentBlock;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSetType: (t: BlockText['type']) => void;
+  onWrap: (marker: string) => void;
+  onAddBelow: () => void;
+  onDelete: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) onOpenChange(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open, onOpenChange]);
+
+  const isText =
+    block.type === 'p' ||
+    block.type === 'h2' ||
+    block.type === 'h3' ||
+    block.type === 'li';
+  if (!isText) return null;
+
+  const cur = block.type;
+  const item = (label: string, onClick: () => void, active?: boolean) => (
+    <button
+      type="button"
+      onClick={() => {
+        onClick();
+        onOpenChange(false);
+      }}
+      className={`flex w-full items-center justify-between gap-3 px-3 py-1.5 text-left text-xs hover:bg-blue-50 ${
+        active ? 'font-semibold text-blue-600' : 'text-gray-700'
+      }`}
+    >
+      <span>{label}</span>
+      {active && <span className="text-[10px]">✓</span>}
+    </button>
+  );
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpenChange(!open);
+        }}
+        aria-label="블록 형식 / 스타일"
+        title="블록 형식 / 스타일"
+        className={`flex h-5 w-5 items-center justify-center rounded text-base leading-none text-gray-400 hover:bg-white hover:text-gray-700 ${
+          open ? 'bg-white text-gray-700' : ''
+        }`}
+      >
+        +
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full z-30 mt-1 min-w-[160px] overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+          <div className="px-3 pb-0.5 pt-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+            형식
+          </div>
+          {item('제목', () => onSetType('h2'), cur === 'h2')}
+          {item('소제목', () => onSetType('h3'), cur === 'h3')}
+          {item('본문', () => onSetType('p'), cur === 'p')}
+          {item('목록', () => onSetType('li'), cur === 'li')}
+          <div className="my-1 border-t border-gray-100" />
+          <div className="px-3 pb-0.5 pt-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+            스타일
+          </div>
+          {item('B  굵게', () => onWrap('**'))}
+          {item('I  기울임', () => onWrap('*'))}
+          <div className="my-1 border-t border-gray-100" />
+          {item('+ 아래에 새 블록', onAddBelow)}
+          <div className="my-1 border-t border-gray-100" />
+          <button
+            type="button"
+            onClick={() => {
+              onDelete();
+              onOpenChange(false);
+            }}
+            className="flex w-full items-center justify-between gap-3 px-3 py-1.5 text-left text-xs text-red-500 hover:bg-red-50"
+          >
+            <span>삭제하기</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function BlockEditor({
   value,
   onChange,
@@ -2594,6 +2705,14 @@ function BlockEditor({
     if (el) textareaRefs.current.set(id, el);
     else textareaRefs.current.delete(id);
   };
+  // 제목/소제목은 input 으로 렌더하므로 별도 ref 풀에서 관리 (포커스 이동용)
+  const headingRefs = useRef<Map<string, HTMLInputElement>>(new Map());
+  const setHeadingRef = (id: string) => (el: HTMLInputElement | null) => {
+    if (el) headingRefs.current.set(id, el);
+    else headingRefs.current.delete(id);
+  };
+  // [+] 메뉴가 열려있는 블록 id (좌측 컨트롤이 hover 가 풀려도 사라지지 않도록 lift)
+  const [menuOpenFor, setMenuOpenFor] = useState<string | null>(null);
 
   // blocks 의 최신 값을 ref 로 유지 (전역 pointermove 핸들러 클로저 안전)
   useEffect(() => {
@@ -2640,6 +2759,174 @@ function BlockEditor({
   };
 
   const addBlock = (block: ContentBlock) => commit([...blocksRef.current, block]);
+
+  // ─── 텍스트 블록 헬퍼 (형식 변경 / 인라인 마커 / 분할·병합·삽입) ───
+  const isTextBlock = (b: ContentBlock): b is BlockText =>
+    b.type === 'p' || b.type === 'h2' || b.type === 'h3' || b.type === 'li';
+
+  const focusBlock = (id: string, caret?: number) => {
+    const el =
+      textareaRefs.current.get(id) ?? headingRefs.current.get(id) ?? null;
+    if (!el) return;
+    el.focus();
+    const pos = caret ?? el.value.length;
+    try {
+      el.setSelectionRange(pos, pos);
+    } catch {
+      // input type=text/textarea 모두 지원되지만 일부 환경에서 throw 가능
+    }
+  };
+
+  const setBlockType = (i: number, t: BlockText['type']) => {
+    const cur = blocksRef.current[i];
+    if (!cur || !isTextBlock(cur)) return;
+    const next = blocksRef.current.slice();
+    next[i] = { ...cur, type: t };
+    commit(next);
+    requestAnimationFrame(() => focusBlock(cur.id));
+  };
+
+  const wrapInline = (i: number, marker: string) => {
+    const cur = blocksRef.current[i];
+    if (!cur || !isTextBlock(cur)) return;
+    const el =
+      textareaRefs.current.get(cur.id) ??
+      headingRefs.current.get(cur.id) ??
+      null;
+    let start = 0;
+    let end = cur.text.length;
+    if (el) {
+      start = el.selectionStart ?? 0;
+      end = el.selectionEnd ?? 0;
+      if (start === end) {
+        // 선택 범위가 없으면 블록 전체 텍스트를 감싼다
+        start = 0;
+        end = cur.text.length;
+      }
+    }
+    const before = cur.text.slice(0, start);
+    const sel = cur.text.slice(start, end);
+    const after = cur.text.slice(end);
+    const body = sel || '텍스트';
+    const text = `${before}${marker}${body}${marker}${after}`;
+    const next = blocksRef.current.slice();
+    next[i] = { ...cur, text };
+    commit(next);
+    requestAnimationFrame(() => {
+      const target =
+        textareaRefs.current.get(cur.id) ?? headingRefs.current.get(cur.id);
+      if (!target) return;
+      target.focus();
+      const startPos = before.length + marker.length;
+      const endPos = startPos + body.length;
+      try {
+        target.setSelectionRange(startPos, endPos);
+      } catch {
+        // 무시
+      }
+    });
+  };
+
+  const insertBlankBelow = (i: number) => {
+    const newId = genBlockId();
+    const next = blocksRef.current.slice();
+    next.splice(i + 1, 0, { id: newId, type: 'p', text: '' });
+    commit(next);
+    requestAnimationFrame(() => focusBlock(newId, 0));
+  };
+
+  /** 현재 블록을 caret 위치 기준으로 분할해 새 블록으로 만든다 (Enter) */
+  const splitAt = (i: number, caret: number) => {
+    const cur = blocksRef.current[i];
+    if (!cur || !isTextBlock(cur)) return;
+    const before = cur.text.slice(0, caret);
+    const after = cur.text.slice(caret);
+    const newId = genBlockId();
+    // 제목 다음 Enter 는 본문으로, 목록 다음 Enter 는 같은 목록으로 이어가기
+    const newType: BlockText['type'] = cur.type === 'li' ? 'li' : 'p';
+    const next = blocksRef.current.slice();
+    next[i] = { ...cur, text: before };
+    next.splice(i + 1, 0, { id: newId, type: newType, text: after });
+    commit(next);
+    requestAnimationFrame(() => focusBlock(newId, 0));
+  };
+
+  /** Backspace at start: 이전 텍스트 블록과 병합 */
+  const mergeWithPrev = (i: number) => {
+    if (i <= 0) return;
+    const cur = blocksRef.current[i];
+    const prev = blocksRef.current[i - 1];
+    if (!cur || !prev || !isTextBlock(cur) || !isTextBlock(prev)) return;
+    const prevLen = prev.text.length;
+    const next = blocksRef.current.slice();
+    next[i - 1] = { ...prev, text: prev.text + cur.text };
+    next.splice(i, 1);
+    commit(next);
+    requestAnimationFrame(() => focusBlock(prev.id, prevLen));
+  };
+
+  const onTextKeyDown = (
+    i: number,
+    e: React.KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>,
+  ) => {
+    // 한글 IME 조합 중에는 동작하지 않음 (Enter 분할이 조합을 끊지 않도록)
+    if (e.nativeEvent.isComposing) return;
+    const cur = blocksRef.current[i];
+    if (!cur || !isTextBlock(cur)) return;
+
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      const target = e.currentTarget;
+      const caret = target.selectionStart ?? cur.text.length;
+      // 빈 목록 항목에서 Enter — 본문 블록으로 빠져나오는 노션 동작
+      if (cur.type === 'li' && cur.text.trim() === '') {
+        const next = blocksRef.current.slice();
+        next[i] = { ...cur, type: 'p', text: '' };
+        commit(next);
+        requestAnimationFrame(() => focusBlock(cur.id, 0));
+        return;
+      }
+      splitAt(i, caret);
+      return;
+    }
+
+    if (e.key === 'Backspace') {
+      const target = e.currentTarget;
+      const at0 =
+        (target.selectionStart ?? 0) === 0 &&
+        (target.selectionEnd ?? 0) === 0;
+      if (!at0) return;
+      // 제목/소제목/목록은 본문으로 강등 (텍스트 보존)
+      if (cur.type !== 'p') {
+        e.preventDefault();
+        const next = blocksRef.current.slice();
+        next[i] = { ...cur, type: 'p' };
+        commit(next);
+        requestAnimationFrame(() => focusBlock(cur.id, 0));
+        return;
+      }
+      // 본문이라면 이전 블록과 병합
+      if (i > 0) {
+        const prev = blocksRef.current[i - 1];
+        if (prev && isTextBlock(prev)) {
+          e.preventDefault();
+          mergeWithPrev(i);
+        }
+      }
+      return;
+    }
+
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
+      e.preventDefault();
+      wrapInline(i, '**');
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'i' || e.key === 'I')) {
+      e.preventDefault();
+      wrapInline(i, '*');
+      return;
+    }
+  };
 
   const addImageFile = async (file: File | null) => {
     if (!file || !file.type.startsWith('image/')) return;
@@ -2899,8 +3186,23 @@ function BlockEditor({
                 : 'hover:bg-gray-50'
           }`}
         >
-          {/* 좌측 드래그 핸들 + 삭제 */}
-          <div className="flex shrink-0 items-center gap-0.5 pt-1 opacity-0 transition-opacity group-hover:opacity-100">
+          {/* 좌측 [+] 메뉴 + 드래그 핸들 (삭제는 [+] 메뉴 안에서) */}
+          <div
+            className={`flex shrink-0 items-center gap-0.5 pt-1 transition-opacity ${
+              menuOpenFor === b.id
+                ? 'opacity-100'
+                : 'opacity-0 group-hover:opacity-100'
+            }`}
+          >
+            <BlockTypeMenu
+              block={b}
+              open={menuOpenFor === b.id}
+              onOpenChange={(open) => setMenuOpenFor(open ? b.id : null)}
+              onSetType={(t) => setBlockType(i, t)}
+              onWrap={(marker) => wrapInline(i, marker)}
+              onAddBelow={() => insertBlankBelow(i)}
+              onDelete={() => removeAt(i)}
+            />
             <div
               role="button"
               tabIndex={0}
@@ -2912,15 +3214,6 @@ function BlockEditor({
             >
               ⋮⋮
             </div>
-            <button
-              type="button"
-              onClick={() => removeAt(i)}
-              aria-label="삭제"
-              title="삭제"
-              className="rounded px-1 text-xs text-gray-400 hover:bg-red-50 hover:text-red-500"
-            >
-              ✕
-            </button>
           </div>
 
           {/* 본문 */}
@@ -2943,9 +3236,11 @@ function BlockEditor({
               </a>
             ) : b.type === 'h2' || b.type === 'h3' ? (
               <input
+                ref={setHeadingRef(b.id)}
                 type="text"
                 value={b.text}
                 onChange={(e) => updateAt(i, { text: e.target.value })}
+                onKeyDown={(e) => onTextKeyDown(i, e)}
                 placeholder={b.type === 'h2' ? '큰 제목' : '소제목'}
                 className={`w-full border-0 bg-transparent px-0 outline-none ${
                   b.type === 'h2'
@@ -2960,6 +3255,7 @@ function BlockEditor({
                   ref={setTextareaRef(b.id)}
                   value={b.text}
                   onChange={(e) => handleTextareaChange(i, b.id, e)}
+                  onKeyDown={(e) => onTextKeyDown(i, e)}
                   onBlur={() => setTimeout(() => setMention(null), 150)}
                   rows={Math.max(1, b.text.split('\n').length)}
                   className="w-full resize-none border-0 bg-transparent px-0 text-sm leading-7 text-gray-700 outline-none"
@@ -2972,12 +3268,13 @@ function BlockEditor({
                   ref={setTextareaRef(b.id)}
                   value={b.text}
                   onChange={(e) => handleTextareaChange(i, b.id, e)}
+                  onKeyDown={(e) => onTextKeyDown(i, e)}
                   onBlur={() => setTimeout(() => setMention(null), 150)}
                   rows={Math.max(1, b.text.split('\n').length)}
                   placeholder={
                     useAssets
-                      ? '여기에 입력하거나 이미지를 붙여넣어 주세요. @ 로 자료 인용'
-                      : '여기에 입력하거나 이미지를 붙여넣어 주세요.'
+                      ? 'Enter 로 새 줄 · 좌측 + 로 형식·스타일 · @ 로 자료 인용'
+                      : 'Enter 로 새 줄 · 좌측 + 로 형식·스타일'
                   }
                   className="w-full resize-none border-0 bg-transparent px-0 text-sm leading-7 text-gray-700 outline-none"
                 />
