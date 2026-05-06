@@ -221,7 +221,9 @@ export default function MyProfilePage() {
   };
 
   const saveImport = () => {
-    const ordered = SECTION_ORDER.filter((k) => draftSelected.includes(k));
+    const ordered = SECTION_ORDER.filter(
+      (k) => draftSelected.includes(k) && sectionCount(k) > 0,
+    );
     setSelected(ordered);
     try {
       localStorage.setItem(PROFILE_SECTIONS_KEY, JSON.stringify(ordered));
@@ -553,8 +555,9 @@ export default function MyProfilePage() {
               <div className="space-y-2">
                 {SECTION_ORDER.map((k) => {
                   const meta = SECTION_META[k];
-                  const checked = draftSelected.includes(k);
                   const count = sectionCount(k);
+                  const disabled = count === 0;
+                  const checked = !disabled && draftSelected.includes(k);
                   const countLabel =
                     k === 'intro'
                       ? count
@@ -564,17 +567,22 @@ export default function MyProfilePage() {
                   return (
                     <label
                       key={k}
-                      className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-all ${
-                        checked
-                          ? 'border-blue-300 bg-blue-50/40'
-                          : 'border-gray-100 hover:bg-gray-50'
+                      className={`flex items-start gap-3 rounded-xl border p-4 transition-all ${
+                        disabled
+                          ? 'cursor-not-allowed border-gray-100 bg-gray-50/60 opacity-60'
+                          : checked
+                            ? 'cursor-pointer border-blue-300 bg-blue-50/40'
+                            : 'cursor-pointer border-gray-100 hover:bg-gray-50'
                       }`}
                     >
                       <input
                         type="checkbox"
                         checked={checked}
-                        onChange={() => toggleDraft(k)}
-                        className="mt-0.5 h-4 w-4 rounded border-gray-300"
+                        disabled={disabled}
+                        onChange={() => {
+                          if (!disabled) toggleDraft(k);
+                        }}
+                        className="mt-0.5 h-4 w-4 rounded border-gray-300 disabled:cursor-not-allowed"
                       />
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
@@ -586,7 +594,9 @@ export default function MyProfilePage() {
                           </span>
                         </div>
                         <p className="mt-0.5 text-xs text-gray-500">
-                          {meta.hint}
+                          {disabled
+                            ? '작성된 항목이 없어 선택할 수 없습니다.'
+                            : meta.hint}
                         </p>
                       </div>
                     </label>

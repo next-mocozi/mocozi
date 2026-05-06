@@ -39,6 +39,17 @@ const MAIN_ROLE_OPTIONS = [...ROLE_OPTIONS, EXPLORING_ROLE];
 const LINKS_STORAGE_KEY = 'mock_profile_links';
 const ROLES_STORAGE_KEY = 'mock_profile_roles';
 
+/** 구인 페이지와 동일한 기술 스택 카테고리 — 사용자가 클릭으로 추가/제거 */
+const SKILL_GROUPS: { label: string; skills: string[] }[] = [
+  { label: '프론트엔드', skills: ['React', 'Next.js', 'Vue.js', 'TypeScript', 'JavaScript', 'Tailwind CSS', 'Redux', 'Vite'] },
+  { label: '백엔드', skills: ['Node.js', 'NestJS', 'Spring Boot', 'Java', 'Python', 'FastAPI', 'Go', 'Kotlin', 'PHP', 'Rust'] },
+  { label: '모바일', skills: ['React Native', 'Flutter', 'Swift', 'iOS', 'Android'] },
+  { label: '데이터베이스', skills: ['MySQL', 'PostgreSQL', 'MongoDB', 'Redis', 'Firebase', 'GraphQL'] },
+  { label: 'DevOps', skills: ['AWS', 'GCP', 'Azure', 'Docker', 'Kubernetes', 'Linux'] },
+  { label: 'AI/데이터', skills: ['TensorFlow', 'PyTorch', 'Pandas', 'LangChain', 'OpenAI API'] },
+  { label: '툴/기타', skills: ['Git', 'GitHub', 'Figma', 'Jest', 'Jira'] },
+];
+
 const QUICK_ADD: { key: PlatformKey; prefix: string }[] = [
   { key: 'github', prefix: 'https://github.com/' },
   { key: 'linkedin', prefix: 'https://linkedin.com/in/' },
@@ -70,6 +81,7 @@ export default function ProfileEditPage() {
   const [subRoles, setSubRoles] = useState<string[]>([]);
   const [skills, setSkills] = useState<string[]>([]);
   const [skillInput, setSkillInput] = useState('');
+  const [skillSearch, setSkillSearch] = useState('');
 
   const [links, setLinks] = useState<ProfileLink[]>([]);
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -131,6 +143,9 @@ export default function ProfileEditPage() {
   };
 
   const removeSkill = (s: string) => setSkills((prev) => prev.filter((x) => x !== s));
+
+  const toggleSkill = (s: string) =>
+    setSkills((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
 
   const resetLinkForm = () => {
     setNewUrl('');
@@ -346,13 +361,56 @@ export default function ProfileEditPage() {
         {/* 기술 스택 */}
         <div>
           <label className="mb-2 block text-sm font-medium text-gray-700">기술 스택</label>
+
+          {/* 카테고리별 선택 — 클릭으로 토글 */}
+          <input
+            type="text"
+            value={skillSearch}
+            onChange={(e) => setSkillSearch(e.target.value)}
+            placeholder="스킬 검색..."
+            className="mb-2 w-full rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+          />
+          <div className="mb-3 flex max-h-56 flex-col gap-3 overflow-y-auto rounded-xl border border-gray-100 p-3">
+            {SKILL_GROUPS.map(({ label, skills: groupSkills }) => {
+              const filtered = groupSkills.filter((s) =>
+                s.toLowerCase().includes(skillSearch.toLowerCase()),
+              );
+              if (filtered.length === 0) return null;
+              return (
+                <div key={label}>
+                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400">{label}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {filtered.map((s) => {
+                      const active = skills.includes(s);
+                      return (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => toggleSkill(s)}
+                          className={`rounded-full border px-3 py-1 text-xs transition-all ${
+                            active
+                              ? 'border-blue-600 bg-blue-600 text-white'
+                              : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                          }`}
+                        >
+                          {s}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 직접 입력 (목록에 없는 커스텀 스킬용) */}
           <div className="mb-2 flex gap-2">
             <input
               type="text"
               value={skillInput}
               onChange={(e) => setSkillInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSkill(); } }}
-              placeholder="기술명 입력 후 Enter (예: React)"
+              placeholder="목록에 없으면 직접 입력 후 Enter"
               className="flex-1 rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
             />
             <button
@@ -363,6 +421,7 @@ export default function ProfileEditPage() {
               추가
             </button>
           </div>
+
           {skills.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {skills.map((s) => (
