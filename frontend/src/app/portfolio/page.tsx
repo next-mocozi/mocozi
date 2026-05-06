@@ -235,8 +235,10 @@ export default function MyPortfolioPage() {
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [careers, setCareers] = useState<CareerItem[]>([]);
 
-  const [mainRole, setMainRole] = useState('');
-  const [subRoles, setSubRoles] = useState<string[]>([]);
+  // 직군 — user.roles 첫번째가 메인, 나머지가 서브 (편집은 /profile/edit)
+  const userRoles = user?.roles ?? [];
+  const mainRole = userRoles[0] ?? '';
+  const subRoles = userRoles.slice(1);
 
   // 자기소개 — draft / saved 분리 (저장 버튼 패턴)
   const [introSaved, setIntroSaved] = useState('');
@@ -325,10 +327,6 @@ export default function MyPortfolioPage() {
         })),
       );
     }).catch(() => { /* API 실패 시 빈 상태 유지 */ });
-
-    // 직군은 user 객체에서
-    setMainRole((user as { mainRole?: string }).mainRole ?? '');
-    setSubRoles((user as { subRoles?: string[] }).subRoles ?? []);
 
     try {
       const v = localStorage.getItem(VISIBILITY_STORAGE_KEY);

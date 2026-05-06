@@ -536,7 +536,7 @@ export default function ChatRoomPage({ params }: PageProps) {
         <RoomList />
       </aside>
 
-      <div className="mx-auto flex h-full max-w-2xl flex-col overflow-hidden rounded-xl border border-gray-200 bg-white">
+      <div className="mx-auto flex h-full max-w-[40rem] flex-col overflow-hidden rounded-xl border border-gray-200 bg-white">
       {/* 헤더 */}
       <div className="flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-3">
         <Link href="/chat" className="text-gray-500 hover:text-gray-700">

@@ -1,77 +1,135 @@
 import Link from 'next/link';
+import PeerDirectory from '@/components/landing/PeerDirectory';
+import HowItWorks from '@/components/landing/HowItWorks';
+
+type SamplePeer = {
+  initial: string;
+  nameMasked: string;
+  school: string;
+  role: string;
+  skills: string[];
+  accent: string;
+  rotate: string;
+};
+
+const SAMPLE_PEERS: SamplePeer[] = [
+  {
+    initial: '김',
+    nameMasked: '김태윤',
+    school: '고려대학교 컴퓨터학과',
+    role: '백엔드',
+    skills: ['Node.js', 'Postgres', 'AWS'],
+    accent: 'bg-primary-100 text-primary-700',
+    rotate: '-rotate-3 -translate-y-8',
+  },
+  {
+    initial: '이',
+    nameMasked: '이지민',
+    school: '서울대학교 컴퓨터공학과',
+    role: '풀스택',
+    skills: ['Next.js', 'React', 'Figma'],
+    accent: 'bg-emerald-100 text-emerald-700',
+    rotate: 'rotate-2 translate-x-14',
+  },
+  {
+    initial: '박',
+    nameMasked: '박우진',
+    school: '서강대학교 컴퓨터공학과',
+    role: '프론트엔드',
+    skills: ['React', 'TypeScript', 'Tailwind'],
+    accent: 'bg-amber-100 text-amber-700',
+    rotate: '-rotate-1 translate-y-16 -translate-x-10',
+  },
+];
 
 /** 랜딩 페이지 */
 export default function HomePage() {
   return (
     <div>
-      {/* 히어로 섹션 */}
-      <section className="bg-gradient-to-b from-primary-50 to-white py-20">
-        <div className="mx-auto max-w-7xl px-4 text-center">
-          <h1 className="text-4xl font-bold text-gray-900 md:text-5xl">
-            모든 순간 코만하게
-            <br />
-            <span className="text-primary-600">지내시오</span>
-          </h1>
-          <p className="mt-6 text-lg text-gray-600">
-            대학교 메일 인증 기반의 신뢰할 수 있는 프로젝트/해커톤/스터디 구인
-            서비스
-          </p>
-          <div className="mt-8 flex justify-center gap-4">
-            <Link href="/register" className="btn-primary px-8 py-3 text-lg">
-              시작하기
-            </Link>
-            <Link href="/recruit" className="btn-secondary px-8 py-3 text-lg">
-              구인 둘러보기
-            </Link>
+      {/* 히어로 섹션: 좌 카피+CTA / 우 학생 프로필 카드 스택 */}
+      <section className="bg-gradient-to-b from-primary-50 to-white py-16 md:py-24">
+        <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 md:grid-cols-2">
+          {/* 좌측: 카피 + CTA */}
+          <div className="text-center md:text-left">
+            <span className="inline-flex items-center gap-2 rounded-full border border-primary-200 bg-white px-3 py-1 text-xs font-medium text-primary-700">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary-500" />
+              .ac.kr 인증된 IT 대학생만
+            </span>
+            <h1 className="mt-5 text-4xl font-bold leading-tight text-gray-900 md:text-5xl">
+              코만하게 팀을 찾으세요
+              <br />
+              <span className="text-primary-600">검증된 동료들과</span>
+            </h1>
+            <p className="mt-5 text-lg text-gray-600">
+              프로젝트, 해커톤, 스터디 — 학교 이메일로 인증된 IT 대학생들이
+              기다리고 있어요.
+            </p>
+            <p className="mt-3 text-sm text-gray-500">
+              지난 7일간 <span className="font-semibold text-gray-700">24개</span> 팀이 매칭됐어요
+            </p>
+            <div className="mt-8 flex flex-wrap justify-center gap-3 md:justify-start">
+              <Link href="/register" className="btn-primary px-7 py-3 text-base">
+                시작하기
+              </Link>
+              <Link href="/recruit" className="btn-secondary px-7 py-3 text-base">
+                먼저 둘러보기
+              </Link>
+            </div>
+          </div>
+
+          {/* 우측: 프로필 카드 스택 */}
+          <div className="relative mx-auto h-[420px] w-full max-w-md md:h-[460px]">
+            <p className="absolute -top-2 right-0 text-[11px] font-medium uppercase tracking-wider text-gray-400">
+              미리보기 예시
+            </p>
+            {SAMPLE_PEERS.map((peer, idx) => {
+              const baseZ = ['z-10', 'z-20', 'z-30'][idx] ?? 'z-10';
+              return (
+              <article
+                key={peer.nameMasked}
+                aria-hidden="true"
+                className={`absolute left-1/2 top-1/2 w-72 -translate-x-1/2 -translate-y-1/2 ${peer.rotate} ${baseZ} card transform-gpu transition-[transform,box-shadow] duration-300 ease-out hover:z-40 hover:scale-[1.03] hover:shadow-[0_8px_24px_-4px_rgba(0,0,0,0.12)]`}
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-base font-semibold ${peer.accent}`}
+                  >
+                    {peer.initial}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline gap-2">
+                      <p className="font-semibold text-gray-900">{peer.nameMasked}</p>
+                    </div>
+                    <p className="text-sm text-gray-500">{peer.school}</p>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  <span className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
+                    {peer.role}
+                  </span>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {peer.skills.map((s) => (
+                    <span
+                      key={s}
+                      className="rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
+                    >
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              </article>
+              );
+            })}
           </div>
         </div>
       </section>
 
-      {/* 주요 기능 소개 */}
-      <section className="py-20">
-        <div className="mx-auto max-w-7xl px-4">
-          <h2 className="mb-12 text-center text-3xl font-bold text-gray-900">
-            주요 기능
-          </h2>
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
-            {/* 구인 */}
-            <div className="card text-center">
-              <div className="mb-4 text-4xl">🔍</div>
-              <h3 className="mb-2 text-xl font-semibold">구인/지원</h3>
-              <p className="text-gray-600">
-                스킬, 직군, 학교 등 조건별로 세분화된 검색으로 딱 맞는 팀을
-                찾으세요
-              </p>
-            </div>
-            {/* 기획서 */}
-            <div className="card text-center">
-              <div className="mb-4 text-4xl">📝</div>
-              <h3 className="mb-2 text-xl font-semibold">기획서 시스템</h3>
-              <p className="text-gray-600">
-                정형화된 기획서로 팀을 소개하고, 공개 범위 설정으로 아이디어를
-                보호하세요
-              </p>
-            </div>
-            {/* 포트폴리오 */}
-            <div className="card text-center">
-              <div className="mb-4 text-4xl">💼</div>
-              <h3 className="mb-2 text-xl font-semibold">포트폴리오</h3>
-              <p className="text-gray-600">
-                활동 유형별 카드로 나를 표현하고, 도메인 태그로 전문성을
-                어필하세요
-              </p>
-            </div>
-            {/* 채팅 */}
-            <div className="card text-center">
-              <div className="mb-4 text-4xl">💬</div>
-              <h3 className="mb-2 text-xl font-semibold">실시간 채팅</h3>
-              <p className="text-gray-600">
-                서비스 내 실시간 채팅으로 팀원과 빠르게 소통하세요
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* 공개 학생 디렉토리 */}
+      <PeerDirectory />
+
+      {/* 이렇게 흘러가요 */}
+      <HowItWorks />
 
       {/* CTA 섹션 */}
       <section className="bg-primary-600 py-16">

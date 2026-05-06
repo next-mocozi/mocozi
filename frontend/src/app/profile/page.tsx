@@ -122,8 +122,10 @@ export default function MyProfilePage() {
   const { user, loading } = useAuth();
   const [links, setLinks] = useState<ProfileLink[]>([]);
 
-  const [mainRole, setMainRole] = useState('');
-  const [subRoles, setSubRoles] = useState<string[]>([]);
+  // 직군 — user.roles 첫번째가 메인, 나머지가 서브
+  const userRoles = user?.roles ?? [];
+  const mainRole = userRoles[0] ?? '';
+  const subRoles = userRoles.slice(1);
 
   const [intro, setIntro] = useState('');
   const [experiences, setExperiences] = useState<Experience[]>([]);
@@ -207,10 +209,6 @@ export default function MyProfilePage() {
         ),
       );
     }).catch(() => { /* API 실패 시 빈 상태 유지 */ });
-
-    // 직군은 user 객체에서
-    setMainRole((user as { mainRole?: string }).mainRole ?? '');
-    setSubRoles((user as { subRoles?: string[] }).subRoles ?? []);
 
     // 가져오기 섹션 선택 상태는 localStorage 유지
     try {

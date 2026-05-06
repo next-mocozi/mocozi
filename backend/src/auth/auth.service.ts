@@ -83,6 +83,7 @@ export class AuthService {
         grade: user.grade,
         bio: user.bio,
         skills: user.skills,
+        roles: user.roles,
         careerSummary: user.careerSummary,
       },
       message: '로그인에 성공하였습니다.',

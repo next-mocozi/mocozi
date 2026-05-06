@@ -37,8 +37,6 @@ const ROLE_OPTIONS = [
 /** 메인 직군 선택지 — 일반 옵션 + "탐색 중" */
 const MAIN_ROLE_OPTIONS = [...ROLE_OPTIONS, EXPLORING_ROLE];
 
-const ROLES_STORAGE_KEY = 'mock_profile_roles';
-
 /** 구인 페이지와 동일한 기술 스택 카테고리 — 사용자가 클릭으로 추가/제거 */
 const SKILL_GROUPS: { label: string; skills: string[] }[] = [
   { label: '프론트엔드', skills: ['React', 'Next.js', 'Vue.js', 'TypeScript', 'JavaScript', 'Tailwind CSS', 'Redux', 'Vite'] },
@@ -120,19 +118,10 @@ export default function ProfileEditPage() {
     setGrade(user.grade ?? '');
     setBio(user.bio ?? '');
     setSkills(user.skills ?? []);
+    const roles = user.roles ?? [];
+    setMainRole(roles[0] ?? '');
+    setSubRoles(roles.slice(1));
   }, [user]);
-
-  // localStorage에서 roles 로드 (roles는 백엔드 미지원)
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(ROLES_STORAGE_KEY);
-      if (raw) {
-        const roles = JSON.parse(raw) as { mainRole: string; subRoles: string[] };
-        setMainRole(roles.mainRole);
-        setSubRoles(roles.subRoles);
-      }
-    } catch { /* 무시 */ }
-  }, []);
 
   // 포트폴리오 API에서 links 로드
   useEffect(() => {
@@ -229,8 +218,8 @@ export default function ProfileEditPage() {
     setSaving(true);
     setSaveError('');
     try {
-      await api.put('/api/users/me', { name, university, department, grade, bio, skills });
-      localStorage.setItem(ROLES_STORAGE_KEY, JSON.stringify({ mainRole, subRoles }));
+      const roles = mainRole ? [mainRole, ...subRoles] : [];
+      await api.put('/api/users/me', { name, university, department, grade, bio, skills, roles });
       await refreshUser();
       router.push('/profile');
     } catch {

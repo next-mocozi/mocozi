@@ -14,6 +14,7 @@ export interface AuthUser {
   grade: string | null;
   bio: string | null;
   skills: string[];
+  roles: string[];
   careerSummary: string | null;
 }
 

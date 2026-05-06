@@ -345,29 +345,27 @@ export default function RecruitListPage() {
                 {/* 카드 바디 */}
                 <div className="flex flex-1 flex-col px-5 pb-5 pt-3">
                   <p className="text-lg font-bold text-slate-900">{person.name}</p>
-                  <p className="mb-3 text-sm text-slate-400">{person.university} · {person.department}</p>
+                  <p className="mb-1 text-sm text-slate-400">{person.university} · {person.department}</p>
 
-                  {(mainRole || subRoles.length > 0) && (
-                    <div className="mb-3 flex flex-wrap items-center gap-1.5">
-                      {mainRole && (
-                        <span className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
-                          {mainRole}
-                        </span>
-                      )}
-                      {subRoles.slice(0, 2).map((role) => (
-                        <span key={role} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-500">
-                          {role}
-                        </span>
-                      ))}
-                      {subRoles.length > 2 && (
-                        <span className="rounded-full border border-slate-200 px-3 py-1 text-xs text-slate-400">
-                          +{subRoles.length - 2}
-                        </span>
-                      )}
-                    </div>
-                  )}
+                  <div className="mb-2 flex min-h-[1.75rem] flex-wrap items-center gap-1.5">
+                    {mainRole && (
+                      <span className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
+                        {mainRole}
+                      </span>
+                    )}
+                    {subRoles.slice(0, 2).map((role) => (
+                      <span key={role} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-500">
+                        {role}
+                      </span>
+                    ))}
+                    {subRoles.length > 2 && (
+                      <span className="rounded-full border border-slate-200 px-3 py-1 text-xs text-slate-400">
+                        +{subRoles.length - 2}
+                      </span>
+                    )}
+                  </div>
 
-                  <div className="mb-3 flex flex-wrap gap-1.5">
+                  <div className="mb-2 flex min-h-[1.25rem] flex-wrap gap-1.5">
                     {(person.skills ?? []).slice(0, 4).map((skill) => (
                       <span key={skill} className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{skill}</span>
                     ))}
@@ -376,7 +374,7 @@ export default function RecruitListPage() {
                     )}
                   </div>
 
-                  <p className="line-clamp-3 text-sm leading-relaxed text-slate-500">{person.bio ?? '소개가 없습니다.'}</p>
+                  <p className="line-clamp-3 min-h-[4.5rem] text-sm leading-relaxed text-slate-500">{person.bio ?? '소개가 없습니다.'}</p>
                 </div>
               </div>
             );

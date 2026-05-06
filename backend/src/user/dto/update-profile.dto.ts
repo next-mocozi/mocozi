@@ -38,6 +38,12 @@ export class UpdateProfileDto {
   @IsString({ each: true })
   skills?: string[];
 
+  /** 직군 (메인이 0번 인덱스, 이후 서브) */
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  roles?: string[];
+
   /** 경력 요약 */
   @IsOptional()
   @IsString()

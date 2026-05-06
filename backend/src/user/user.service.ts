@@ -22,6 +22,7 @@ export class UserService {
         profileImage: true,
         bio: true,
         skills: true,
+        roles: true,
         careerSummary: true,
         createdAt: true,
         portfolio: { include: { items: true } },
@@ -49,6 +50,7 @@ export class UserService {
         profileImage: true,
         bio: true,
         skills: true,
+        roles: true,
         careerSummary: true,
       },
     });
