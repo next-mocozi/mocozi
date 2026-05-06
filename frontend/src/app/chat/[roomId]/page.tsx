@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { use, useCallback, useEffect, useRef, useState } from 'react';
+import RoomList from '@/components/chat/RoomList';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import { useChatNotifications, useChatSocket } from '@/providers/SocketProvider';
@@ -528,7 +529,14 @@ export default function ChatRoomPage({ params }: PageProps) {
   };
 
   return (
-    <div className="mx-auto flex h-[calc(100vh-11rem)] max-w-2xl flex-col border-x border-gray-200">
+    <div className="relative h-[calc(100vh-11rem)]">
+      {/* 좌측 사이드바 — 채팅창 가운데 정렬은 그대로 두고, 좌측 빈 공간에 absolute로 배치.
+          xl(1280px) 미만에선 채팅창과 겹쳐서 hidden 처리 */}
+      <aside className="absolute right-[calc(50%+21rem)] top-0 hidden h-full w-72 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white xl:flex">
+        <RoomList />
+      </aside>
+
+      <div className="mx-auto flex h-full max-w-2xl flex-col overflow-hidden rounded-xl border border-gray-200 bg-white">
       {/* 헤더 */}
       <div className="flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-3">
         <Link href="/chat" className="text-gray-500 hover:text-gray-700">
@@ -640,6 +648,7 @@ export default function ChatRoomPage({ params }: PageProps) {
           전송
         </button>
       </form>
+      </div>
     </div>
   );
 }

@@ -14,6 +14,10 @@
   --color-primary-900: #312e81;
 }
 
+html {
+  scrollbar-gutter: stable;
+}
+
 body {
   @apply bg-slate-50 text-gray-900 antialiased;
   font-family: var(--font-jakarta), var(--font-noto), 'Noto Sans KR', sans-serif;
