@@ -1,7 +1,7 @@
 /** "이렇게 흘러가요" 3-step 플로우. 각 step에 실제 UI를 닮은 미니 미리보기. */
 export default function HowItWorks() {
   return (
-    <section className="bg-white py-16 md:py-24">
+    <section className="bg-slate-50 py-16 md:py-24">
       <div className="mx-auto max-w-7xl px-4">
         <div className="mb-12 text-center">
           <span className="inline-flex items-center gap-2 rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-medium text-primary-700">
@@ -63,7 +63,7 @@ function Step({
         <p className="text-lg font-bold text-slate-900">{title}</p>
       </div>
       <p className="mb-4 text-sm leading-relaxed text-slate-600">{caption}</p>
-      <div className="rounded-2xl border border-gray-100 bg-slate-50 p-4 shadow-[0_2px_12px_-2px_rgba(0,0,0,0.07)]">
+      <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-[0_2px_12px_-2px_rgba(0,0,0,0.07)]">
         {children}
       </div>
     </div>
