@@ -805,6 +805,21 @@ export default function ProjectInterview() {
   // 초기 로드 — 수정 모드면 저장된 답변 로드, 신규면 새 ID 발급
   useEffect(() => {
     if (isEdit && editId !== null) {
+      // 프로젝트가 아닌 항목(연구·스터디 등)이 잘못 라우팅된 경우 해당 폼으로 즉시 이동.
+      // 그렇지 않으면 아래 자동저장이 type 을 'project' 로 덮어쓰게 됨.
+      try {
+        const itemsRaw = localStorage.getItem(ITEMS_STORAGE_KEY);
+        const items: PortfolioItem[] = itemsRaw ? JSON.parse(itemsRaw) : [];
+        const existing = items.find((it) => it.id === editId);
+        if (existing && existing.type !== 'project') {
+          router.replace(
+            `/portfolio/edit?id=${editId}&type=${existing.type}`,
+          );
+          return;
+        }
+      } catch {
+        // 무시 — 정상 흐름 진행
+      }
       setProjectId(editId);
       try {
         const detailsRaw = localStorage.getItem(DETAILS_STORAGE_KEY);
@@ -849,7 +864,7 @@ export default function ProjectInterview() {
     // 신규: 매번 새 ID 발급 (이전 작성 건은 별도 항목으로 보존됨)
     setProjectId(Date.now());
     setPhase('form');
-  }, [isEdit, editId]);
+  }, [isEdit, editId, router]);
 
   // 자동 저장 — projectId 슬롯에 항상 ITEMS+DETAILS 동기 저장
   // (빈 draft 는 저장 안 함 — 빈 placeholder 항목 방지)
@@ -1360,7 +1375,9 @@ export default function ProjectInterview() {
                         type="button"
                         onClick={() => {
                           setDraftsModalOpen(false);
-                          router.push(`/portfolio/edit?id=${it.id}`);
+                          router.push(
+                            `/portfolio/edit?id=${it.id}&type=${it.type}`,
+                          );
                         }}
                         className="min-w-0 flex-1 text-left"
                       >

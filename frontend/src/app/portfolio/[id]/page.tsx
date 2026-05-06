@@ -15,12 +15,16 @@ import {
   type BodySectionKey,
   type Draft,
 } from '../edit/_interview';
+import type { ResearchDetail } from '../edit/_research';
+import type { StudyDetail } from '../edit/_study';
 
 // TODO: 백엔드 연동 — `GET /api/portfolios/:id` 로 교체
 //       (CLAUDE.md §11). 현재는 mock — localStorage 에서 로드.
 
 const ITEMS_STORAGE_KEY = 'mock_portfolio_items';
 const DETAILS_STORAGE_KEY = 'mock_portfolio_details';
+const RESEARCH_DETAILS_KEY = 'mock_research_details';
+const STUDY_DETAILS_KEY = 'mock_study_details';
 
 const DEFAULT_ITEMS: PortfolioItem[] = [
   {
@@ -55,6 +59,8 @@ export default function PortfolioItemPage({
   const itemId = Number(id);
   const [item, setItem] = useState<PortfolioItem | null>(null);
   const [details, setDetails] = useState<Draft | null>(null);
+  const [research, setResearch] = useState<ResearchDetail | null>(null);
+  const [study, setStudy] = useState<StudyDetail | null>(null);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -71,9 +77,22 @@ export default function PortfolioItemPage({
       setDetails(map[String(itemId)] ?? null);
     } catch {
       setDetails(null);
-    } finally {
-      setLoaded(true);
     }
+    try {
+      const raw = localStorage.getItem(RESEARCH_DETAILS_KEY);
+      const map: Record<string, ResearchDetail> = raw ? JSON.parse(raw) : {};
+      setResearch(map[String(itemId)] ?? null);
+    } catch {
+      setResearch(null);
+    }
+    try {
+      const raw = localStorage.getItem(STUDY_DETAILS_KEY);
+      const map: Record<string, StudyDetail> = raw ? JSON.parse(raw) : {};
+      setStudy(map[String(itemId)] ?? null);
+    } catch {
+      setStudy(null);
+    }
+    setLoaded(true);
   }, [itemId]);
 
   if (!loaded) {
@@ -282,7 +301,9 @@ export default function PortfolioItemPage({
           </header>
 
           {/* ── 본문 섹션 — 미리보기와 동일한 순서/타이틀 ── */}
-          {details ? (
+          {/* details 는 프로젝트 인터뷰 전용이므로 type=project 일 때만 사용.
+           *  과거 버그로 연구·스터디 항목에 stale details 가 남아 있어도 무시됨. */}
+          {item.type === 'project' && details ? (
             <>
               {(() => {
                 const domainNode = details.hasDomain ? (
@@ -389,8 +410,12 @@ export default function PortfolioItemPage({
                 </section>
               )}
             </>
+          ) : item.type === 'research' && research ? (
+            <ResearchSections d={research} />
+          ) : item.type === 'study' && study ? (
+            <StudySections d={study} />
           ) : (
-            // 인터뷰 details 가 없는 legacy 항목 → 단순 description 표시
+            // 그 외 legacy 항목 → 단순 description 표시
             <p className="whitespace-pre-wrap text-sm leading-7 text-gray-700">
               {item.description}
             </p>
@@ -399,7 +424,7 @@ export default function PortfolioItemPage({
           {/* 수정 버튼 — 미리보기의 "복사하기" 자리 */}
           <div className="flex justify-end">
             <Link
-              href={`/portfolio/edit?id=${item.id}`}
+              href={`/portfolio/edit?id=${item.id}&type=${item.type}`}
               className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50"
             >
               수정
@@ -408,5 +433,127 @@ export default function PortfolioItemPage({
         </div>
       </div>
     </div>
+  );
+}
+
+// ─────── 섹션 헬퍼: 작성된 필드만 노출 ───────
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section>
+      <h2
+        style={{ marginBottom: '0.5rem' }}
+        className="text-sm font-bold text-gray-800"
+      >
+        {title}
+      </h2>
+      <div className="whitespace-pre-wrap text-sm leading-7 text-gray-700">
+        {children}
+      </div>
+    </section>
+  );
+}
+
+function ResearchSections({ d }: { d: ResearchDetail }) {
+  return (
+    <>
+      {d.background.trim() && <Section title="연구 배경">{d.background}</Section>}
+      {d.process.trim() && <Section title="연구 과정">{d.process}</Section>}
+      {d.limits.trim() && (
+        <Section title="한계 / 추후 발전">{d.limits}</Section>
+      )}
+      {d.hasDomain &&
+        (d.domainTags.length > 0 ||
+          d.domainExpertise.trim() ||
+          d.domainComm.trim() ||
+          d.domainLimits.trim()) && (
+          <section>
+            <h2
+              style={{ marginBottom: '0.5rem' }}
+              className="text-sm font-bold text-gray-800"
+            >
+              도메인
+            </h2>
+            <div className="space-y-3 text-sm leading-7 text-gray-700">
+              {d.domainTags.length > 0 && (
+                <p>
+                  <span className="font-medium">영역:</span>{' '}
+                  {d.domainTags.join(', ')}
+                </p>
+              )}
+              {d.domainExpertise.trim() && (
+                <p>
+                  <span className="font-medium">전문성:</span>{' '}
+                  {d.domainExpertise}
+                </p>
+              )}
+              {d.domainComm.trim() && (
+                <p>
+                  <span className="font-medium">소통:</span> {d.domainComm}
+                </p>
+              )}
+              {d.domainLimits.trim() && (
+                <p>
+                  <span className="font-medium">한계:</span> {d.domainLimits}
+                </p>
+              )}
+            </div>
+          </section>
+        )}
+      {(d.paperUrl.trim() || d.paperFile) && (
+        <section>
+          <h2
+            style={{ marginBottom: '0.5rem' }}
+            className="text-sm font-bold text-gray-800"
+          >
+            논문
+          </h2>
+          <div className="space-y-2 text-sm leading-7">
+            {d.paperUrl.trim() && (
+              <a
+                href={d.paperUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block break-all text-blue-600 hover:underline"
+              >
+                {d.paperUrl}
+              </a>
+            )}
+            {d.paperFile && (
+              <a
+                href={d.paperFile.dataUrl}
+                download={d.paperFile.filename}
+                className="block text-gray-700 hover:text-blue-600"
+              >
+                📎 {d.paperFile.filename}
+              </a>
+            )}
+          </div>
+        </section>
+      )}
+    </>
+  );
+}
+
+function StudySections({ d }: { d: StudyDetail }) {
+  return (
+    <>
+      {d.motivation.trim() && (
+        <Section title="시작한 이유">{d.motivation}</Section>
+      )}
+      {d.process.trim() && <Section title="진행 과정">{d.process}</Section>}
+      {d.learned.trim() && <Section title="배운 점">{d.learned}</Section>}
+      {d.improvements.trim() && (
+        <Section title="아쉬운 점 / 개선">{d.improvements}</Section>
+      )}
+      {d.moreToLearn.trim() && (
+        <Section title="더 학습하고 싶은 점">{d.moreToLearn}</Section>
+      )}
+    </>
   );
 }
