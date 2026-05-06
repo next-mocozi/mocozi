@@ -141,6 +141,16 @@ export default function MyProfilePage() {
   const [draftSelected, setDraftSelected] =
     useState<SectionKey[]>(SECTION_ORDER);
 
+  // 세그먼트 컨트롤 — 현재 활성 탭
+  const [activeTab, setActiveTab] = useState<SectionKey>(SECTION_ORDER[0]);
+
+  // selected 가 바뀌었을 때 activeTab 이 더 이상 선택돼있지 않으면 첫 번째로 이동
+  useEffect(() => {
+    if (selected.length > 0 && !selected.includes(activeTab)) {
+      setActiveTab(selected[0]);
+    }
+  }, [selected, activeTab]);
+
   // localStorage 에서 모든 데이터 로드 (edit / portfolio 페이지가 저장한 값)
   useEffect(() => {
     const loadJson = <T,>(key: string, fallback: T): T => {
@@ -241,9 +251,8 @@ export default function MyProfilePage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
       {/* 프로필 요약 */}
-      <div className="card mb-6">
-        <div className="flex items-start gap-6">
-          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-primary-100 text-3xl text-primary-600">
+        <div className="mb-6 flex items-start gap-6">
+          <div className="flex h-31 w-31 items-center justify-center rounded-full bg-primary-100 text-4xl text-primary-600">
             👤
           </div>
           <div className="flex-1">
@@ -294,17 +303,27 @@ export default function MyProfilePage() {
             프로필 수정
           </Link>
         </div>
-      </div>
 
-      {/* 한 줄 소개 — 링크처럼 카드 바깥의 칩 스타일로 표시 */}
-      {user.bio && (
-        <div className="mb-6 flex flex-wrap gap-2">
-          <span className="inline-flex items-center gap-2 rounded-full bg-gray-50 px-4 py-2 text-sm text-gray-700 shadow-sm">
-            <span aria-hidden>💬</span>
+      {/* 한 줄 소개 — 링크 블록과 동일한 구조 */}
+      <div className="card mb-6">
+        <h2 className="mb-4 text-lg font-semibold">한 줄 소개</h2>
+        {user.bio ? (
+          <div className="flex flex-wrap gap-2">
             <span className="font-medium">{user.bio}</span>
-          </span>
-        </div>
-      )}
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500">
+            아직 등록된 한 줄 소개가 없습니다.{' '}
+            <Link
+              href="/profile/edit"
+              className="text-blue-600 hover:underline"
+            >
+              프로필 수정
+            </Link>
+            에서 추가할 수 있어요.
+          </p>
+        )}
+      </div>
 
       {/* 외부 링크 — 보기 전용 (수정은 프로필 수정에서) */}
       <div className="card mb-6">
@@ -372,11 +391,36 @@ export default function MyProfilePage() {
           </button>
         ) : (
           <div className="space-y-4">
-            {selected.includes('intro') && (
+            {/* 세그먼트 컨트롤 */}
+            <div
+              role="tablist"
+              aria-label="포트폴리오 섹션"
+              className="inline-flex flex-wrap gap-1 rounded-full bg-gray-100 p-1"
+            >
+              {SECTION_ORDER.filter((k) => selected.includes(k)).map((k) => {
+                const isActive = activeTab === k;
+                return (
+                  <button
+                    key={k}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => setActiveTab(k)}
+                    className={`rounded-full px-4 py-1.5 text-sm font-medium transition-all ${
+                      isActive
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    {SECTION_META[k].label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* 활성 탭 컨텐츠 */}
+            {selected.includes(activeTab) && activeTab === 'intro' && (
               <div className="card">
-                <h3 className="mb-3 text-base font-semibold text-gray-900">
-                  자기소개
-                </h3>
                 {intro.trim() ? (
                   <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-700">
                     {intro}
@@ -389,11 +433,8 @@ export default function MyProfilePage() {
               </div>
             )}
 
-            {selected.includes('experiences') && (
+            {selected.includes(activeTab) && activeTab === 'experiences' && (
               <div className="card">
-                <h3 className="mb-3 text-base font-semibold text-gray-900">
-                  실무 경험 & 이력
-                </h3>
                 {experiences.length === 0 ? (
                   <p className="text-sm text-gray-400">
                     포트폴리오에 등록된 실무 경험이 없습니다.
@@ -434,11 +475,8 @@ export default function MyProfilePage() {
               </div>
             )}
 
-            {selected.includes('careers') && (
+            {selected.includes(activeTab) && activeTab === 'careers' && (
               <div className="card">
-                <h3 className="mb-3 text-base font-semibold text-gray-900">
-                  경력 요약
-                </h3>
                 {sortedCareers.length === 0 ? (
                   <p className="text-sm text-gray-400">
                     포트폴리오에 등록된 경력이 없습니다.
@@ -464,25 +502,22 @@ export default function MyProfilePage() {
               </div>
             )}
 
-            {selected.includes('projects') && (
+            {selected.includes(activeTab) && activeTab === 'projects' && (
               <SectionCardList
-                title="프로젝트"
                 emptyText="포트폴리오에 등록된 프로젝트가 없습니다."
                 items={projects}
               />
             )}
 
-            {selected.includes('research') && (
+            {selected.includes(activeTab) && activeTab === 'research' && (
               <SectionCardList
-                title="연구"
                 emptyText="포트폴리오에 등록된 연구가 없습니다."
                 items={research}
               />
             )}
 
-            {selected.includes('studies') && (
+            {selected.includes(activeTab) && activeTab === 'studies' && (
               <SectionCardList
-                title="스터디"
                 emptyText="포트폴리오에 등록된 스터디가 없습니다."
                 items={studies}
               />
@@ -586,17 +621,14 @@ export default function MyProfilePage() {
 
 /** 프로필에 표시되는 프로젝트/연구/스터디 카드 목록 — 동일 레이아웃 재사용 */
 function SectionCardList({
-  title,
   emptyText,
   items,
 }: {
-  title: string;
   emptyText: string;
   items: PortfolioItem[];
 }) {
   return (
     <div className="card">
-      <h3 className="mb-3 text-base font-semibold text-gray-900">{title}</h3>
       {items.length === 0 ? (
         <p className="text-sm text-gray-400">{emptyText}</p>
       ) : (
