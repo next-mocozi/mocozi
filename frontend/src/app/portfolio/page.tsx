@@ -910,23 +910,21 @@ export default function MyPortfolioPage() {
                         </div>
                       )}
                     </div>
-                    {/* 우측: 썸네일 (없으면 백지) */}
-                    <div
-                      className={`shrink-0 overflow-hidden rounded-lg border ${
-                        item.thumbnail ? 'border-gray-200' : 'border-dashed border-gray-200 bg-gray-50'
-                      }`}
-                      style={{ width: '5rem', height: '5rem' }}
-                      aria-hidden
-                    >
-                      {item.thumbnail && (
-                        // eslint-disable-next-line @next/next/no-img-element
+                    {/* 우측: 썸네일 — 대표 이미지가 있을 때만 표시 */}
+                    {item.thumbnail && (
+                      <div
+                        className="shrink-0 overflow-hidden rounded-lg border border-gray-200"
+                        style={{ width: '5rem', height: '5rem' }}
+                        aria-hidden
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={item.thumbnail}
                           alt=""
                           className="h-full w-full object-cover"
                         />
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </Link>
               );

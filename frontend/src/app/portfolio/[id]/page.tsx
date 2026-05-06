@@ -2,29 +2,19 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Fragment, use, useEffect, useState } from 'react';
-import type { ReactNode } from 'react';
+import { use, useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  FeaturedStar,
   MAX_FEATURED,
   OWNER_STORAGE_KEY,
   VISIBILITY_STORAGE_KEY,
   type PortfolioItem,
   type PortfolioVisibility,
 } from '../page';
-import {
-  renderMarkdown,
-  DEFAULT_BODY_ORDER,
-  BODY_SECTION_LABEL,
-  DEFAULT_DOMAIN_SUB_ORDER,
-  DOMAIN_SUB_LABEL,
-  type BodySectionKey,
-  type DomainSubKey,
-  type Draft,
-} from '../edit/_interview';
+import { type Draft } from '../edit/_interview';
 import type { ResearchDetail } from '../edit/_research';
 import type { StudyDetail } from '../edit/_study';
+import { PortfolioItemView } from './_PortfolioItemView';
 
 // TODO: 백엔드 연동 — `GET /api/portfolios/:id` 로 교체
 //       (CLAUDE.md §11). 현재는 mock — localStorage 에서 로드.
@@ -107,7 +97,6 @@ export default function PortfolioItemPage({
   }
   if (!user) return null;
 
-  // 비소유자 접근 — 비공개면 차단, 공개면 허용 (개별 항목 단위 공개/비공개는 추후)
   const isOwner = !ownerId || user.id === ownerId;
   if (!isOwner && visibility !== 'public') {
     return (
@@ -129,7 +118,6 @@ export default function PortfolioItemPage({
     );
   }
 
-  /** 별 토글 — items 전체를 다시 저장 (단일 항목 페이지여도 전체 상태 일관성 유지) */
   const toggleFeatured = () => {
     if (!item) return;
     try {
@@ -141,9 +129,7 @@ export default function PortfolioItemPage({
           (it) => it.featured && it.type !== 'study',
         ).length;
         if (featuredCount >= MAX_FEATURED) {
-          alert(
-            `대표 프로젝트는 최대 ${MAX_FEATURED}개까지만 지정할 수 있어요.`,
-          );
+          alert(`대표 프로젝트는 최대 ${MAX_FEATURED}개까지만 지정할 수 있어요.`);
           return;
         }
       }
@@ -173,102 +159,6 @@ export default function PortfolioItemPage({
     );
   }
 
-  /** 본문 답변을 마크다운으로 렌더 (#·##·**·![](src)·[text](url)·- 목록 지원).
-   *  레거시 @[alias] 토큰은 details.assets 풀에서 이미지로 치환 후 마크다운으로 넘김. */
-  const renderBody = (
-    text: string,
-    pool?: { alias: string; dataUrl: string; filename: string }[],
-  ): ReactNode => {
-    if (!text) return null;
-    const expanded = pool
-      ? text.replace(/@\[([^\]]+)\]/g, (_, alias) => {
-          const a = pool.find((x) => x.alias === alias);
-          return a ? `\n\n![${a.filename}](${a.dataUrl})\n\n` : `@[${alias}]`;
-        })
-      : text;
-    return <>{renderMarkdown(expanded)}</>;
-  };
-
-  // ─── 미리보기와 동일한 헤더 데이터 ───
-  const periodText = item.period?.trim() ?? '';
-  const thumbnail = details?.thumbnail || item.thumbnail || '';
-  const tagGroups: { label: string; values: string[] }[] = details
-    ? [
-        { label: '활동', values: details.activityTypes },
-        { label: '분야', values: details.fieldTags },
-        { label: '프로그램', values: details.toolTags ?? [] },
-        { label: '역할', values: details.roles },
-      ]
-    : [
-        ...(item.domain ? [{ label: '도메인', values: [item.domain] }] : []),
-        { label: '태그', values: item.tags },
-      ];
-  const visibleTagGroups = tagGroups.filter((g) => g.values.length > 0);
-
-  // ─── 본문 섹션 순서 (저장된 순서 우선, 누락된 키는 기본 순서로 보충) ───
-  const sectionOrder: BodySectionKey[] = details
-    ? (() => {
-        const ordered = (
-          details.bodySectionOrder ?? DEFAULT_BODY_ORDER
-        ).filter((k): k is BodySectionKey => k in BODY_SECTION_LABEL);
-        for (const k of DEFAULT_BODY_ORDER) {
-          if (!ordered.includes(k)) ordered.push(k);
-        }
-        return ordered;
-      })()
-    : [];
-
-  const renderSectionFor = (k: BodySectionKey): ReactNode => {
-    if (!details) return null;
-    switch (k) {
-      case 'motivation':
-        return renderBody(details.motivation);
-      case 'techChoice':
-        return renderBody(details.techChoice);
-      case 'architecture':
-        return renderBody(
-          details.architecture.text,
-          details.assets?.filter((a) => a.stepKey === 'architecture'),
-        );
-      case 'result':
-        return renderBody(
-          details.result.text,
-          details.assets?.filter((a) => a.stepKey === 'result'),
-        );
-      case 'retro':
-        return renderBody(
-          details.retro.text,
-          details.assets?.filter((a) => a.stepKey === 'retro'),
-        );
-      case 'contribution':
-        return renderBody(details.contribution);
-    }
-  };
-
-  const domainSubValue = (k: DomainSubKey): string => {
-    if (!details) return '';
-    switch (k) {
-      case 'expertise':
-        return details.domainExpertise;
-      case 'comm':
-        return details.domainComm;
-      case 'limits':
-        return details.domainLimits;
-    }
-  };
-
-  const domainSubOrder: DomainSubKey[] = details
-    ? (() => {
-        const ordered = (
-          details.domainSubOrder ?? DEFAULT_DOMAIN_SUB_ORDER
-        ).filter((k): k is DomainSubKey => k in DOMAIN_SUB_LABEL);
-        for (const k of DEFAULT_DOMAIN_SUB_ORDER) {
-          if (!ordered.includes(k)) ordered.push(k);
-        }
-        return ordered;
-      })()
-    : [];
-
   return (
     <div className="mx-auto max-w-3xl px-4 py-4">
       <Link
@@ -278,317 +168,15 @@ export default function PortfolioItemPage({
         ← 포트폴리오로
       </Link>
 
-      {/* 미리보기(SummaryView)와 동일한 카드 레이아웃 */}
-      <div className="card relative">
-        {isOwner && (
-          <FeaturedStar featured={!!item.featured} onToggle={toggleFeatured} />
-        )}
-
-        <div className="space-y-4">
-          {/* ── 헤더: 좌측 제목/기간/태그 + 우측 썸네일 ── */}
-          <header className="flex items-start gap-5">
-            <div className="min-w-0 flex-1 pr-10">
-              {(periodText || item.current) && (
-                <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                  {periodText && <span>{periodText}</span>}
-                  {item.current && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                      <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                      진행중
-                    </span>
-                  )}
-                </div>
-              )}
-              <h1 className="text-2xl font-bold leading-snug text-gray-900">
-                {item.title || '(제목 없음)'}
-              </h1>
-              {visibleTagGroups.length > 0 && (
-                <div className="mt-4 space-y-2">
-                  {visibleTagGroups.map((g) => (
-                    <div
-                      key={g.label}
-                      className="flex flex-wrap items-center gap-2"
-                    >
-                      <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                        {g.label}
-                      </span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {g.values.map((t) => (
-                          <span
-                            key={t}
-                            className="rounded-full bg-blue-50 px-3 py-1 text-xs leading-relaxed text-blue-700"
-                          >
-                            {t}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            {thumbnail && (
-              <div className="shrink-0">
-                <div
-                  className="overflow-hidden rounded-xl border border-gray-200 bg-gray-50"
-                  style={{ width: '11rem', height: '11rem' }}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={thumbnail}
-                    alt="대표 이미지"
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-              </div>
-            )}
-          </header>
-
-          {/* ── 본문 섹션 — 미리보기와 동일한 순서/타이틀 (도메인 포함) ── */}
-          {/* details 는 프로젝트 인터뷰 전용이므로 type=project 일 때만 사용.
-           *  과거 버그로 연구·스터디 항목에 stale details 가 남아 있어도 무시됨. */}
-          {item.type === 'project' && details ? (
-            <>
-              {sectionOrder.map((k) => {
-                const body = renderSectionFor(k);
-                if (!body) return null;
-                return (
-                  <Fragment key={k}>
-                    <section>
-                      <h2
-                        style={{ marginBottom: '0.5rem' }}
-                        className="text-sm font-bold text-gray-800"
-                      >
-                        {BODY_SECTION_LABEL[k]}
-                      </h2>
-                      <div className="whitespace-pre-wrap text-sm leading-7 text-gray-700">
-                        {body}
-                      </div>
-                    </section>
-                  </Fragment>
-                );
-              })}
-
-              {/* 도메인 그룹 — 헤더 + sub-question (저장된 도메인 내부 순서 적용) */}
-              {details.hasDomain && (
-                <section className="rounded-xl border border-gray-200 bg-gray-50/40 p-4">
-                  <h2
-                    style={{ marginBottom: '0.75rem' }}
-                    className="text-base font-bold text-gray-900"
-                  >
-                    도메인
-                  </h2>
-                  {details.domainTags.length > 0 && (
-                    <p
-                      style={{ marginBottom: '0.75rem' }}
-                      className="text-sm leading-7 text-gray-700"
-                    >
-                      <span className="font-medium">영역:</span>{' '}
-                      {details.domainTags.join(', ')}
-                    </p>
-                  )}
-                  <div className="space-y-3">
-                    {domainSubOrder.map((k) => {
-                      const v = domainSubValue(k);
-                      if (!v?.trim()) return null;
-                      return (
-                        <section key={k}>
-                          <h3
-                            style={{ marginBottom: '0.5rem' }}
-                            className="text-sm font-bold text-gray-800"
-                          >
-                            {DOMAIN_SUB_LABEL[k]}
-                          </h3>
-                          <div className="whitespace-pre-wrap text-sm leading-7 text-gray-700">
-                            {renderBody(v)}
-                          </div>
-                        </section>
-                      );
-                    })}
-                  </div>
-                </section>
-              )}
-
-              {(details.deliverableUrl ||
-                details.deliverableFiles.length > 0) && (
-                <section>
-                  <h2
-                    style={{ marginBottom: '0.5rem' }}
-                    className="text-sm font-bold text-gray-800"
-                  >
-                    결과물 / 배포물
-                  </h2>
-                  <div className="space-y-2 text-sm leading-7">
-                    {details.deliverableUrl && (
-                      <a
-                        href={details.deliverableUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block break-all text-blue-600 hover:underline"
-                      >
-                        {details.deliverableUrl}
-                      </a>
-                    )}
-                    {details.deliverableFiles.map((f) => (
-                      <a
-                        key={f.id}
-                        href={f.dataUrl}
-                        download={f.filename}
-                        className="block text-gray-700 hover:text-blue-600"
-                      >
-                        📎 {f.filename}
-                      </a>
-                    ))}
-                  </div>
-                </section>
-              )}
-            </>
-          ) : item.type === 'research' && research ? (
-            <ResearchSections d={research} />
-          ) : item.type === 'study' && study ? (
-            <StudySections d={study} />
-          ) : (
-            // 그 외 legacy 항목 → 단순 description 표시
-            <p className="whitespace-pre-wrap text-sm leading-7 text-gray-700">
-              {item.description}
-            </p>
-          )}
-
-          {/* 수정 버튼 — 미리보기의 "복사하기" 자리 (소유자에게만 노출) */}
-          {isOwner && (
-            <div className="flex justify-end">
-              <Link
-                href={`/portfolio/edit?id=${item.id}&type=${item.type}`}
-                className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50"
-              >
-                수정
-              </Link>
-            </div>
-          )}
-        </div>
-      </div>
+      <PortfolioItemView
+        item={item}
+        details={details}
+        research={research}
+        study={study}
+        isOwner={isOwner}
+        onToggleFeatured={toggleFeatured}
+        showEditLink
+      />
     </div>
-  );
-}
-
-// ─────── 섹션 헬퍼: 작성된 필드만 노출 ───────
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: ReactNode;
-}) {
-  return (
-    <section>
-      <h2
-        style={{ marginBottom: '0.5rem' }}
-        className="text-sm font-bold text-gray-800"
-      >
-        {title}
-      </h2>
-      <div className="whitespace-pre-wrap text-sm leading-7 text-gray-700">
-        {children}
-      </div>
-    </section>
-  );
-}
-
-function ResearchSections({ d }: { d: ResearchDetail }) {
-  return (
-    <>
-      {d.background.trim() && <Section title="연구 배경">{d.background}</Section>}
-      {d.process.trim() && <Section title="연구 과정">{d.process}</Section>}
-      {d.limits.trim() && (
-        <Section title="한계 / 추후 발전">{d.limits}</Section>
-      )}
-      {d.hasDomain &&
-        (d.domainTags.length > 0 ||
-          d.domainExpertise.trim() ||
-          d.domainComm.trim() ||
-          d.domainLimits.trim()) && (
-          <section>
-            <h2
-              style={{ marginBottom: '0.5rem' }}
-              className="text-sm font-bold text-gray-800"
-            >
-              도메인
-            </h2>
-            <div className="space-y-3 text-sm leading-7 text-gray-700">
-              {d.domainTags.length > 0 && (
-                <p>
-                  <span className="font-medium">영역:</span>{' '}
-                  {d.domainTags.join(', ')}
-                </p>
-              )}
-              {d.domainExpertise.trim() && (
-                <p>
-                  <span className="font-medium">전문성:</span>{' '}
-                  {d.domainExpertise}
-                </p>
-              )}
-              {d.domainComm.trim() && (
-                <p>
-                  <span className="font-medium">소통:</span> {d.domainComm}
-                </p>
-              )}
-              {d.domainLimits.trim() && (
-                <p>
-                  <span className="font-medium">한계:</span> {d.domainLimits}
-                </p>
-              )}
-            </div>
-          </section>
-        )}
-      {(d.paperUrl.trim() || d.paperFile) && (
-        <section>
-          <h2
-            style={{ marginBottom: '0.5rem' }}
-            className="text-sm font-bold text-gray-800"
-          >
-            논문
-          </h2>
-          <div className="space-y-2 text-sm leading-7">
-            {d.paperUrl.trim() && (
-              <a
-                href={d.paperUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block break-all text-blue-600 hover:underline"
-              >
-                {d.paperUrl}
-              </a>
-            )}
-            {d.paperFile && (
-              <a
-                href={d.paperFile.dataUrl}
-                download={d.paperFile.filename}
-                className="block text-gray-700 hover:text-blue-600"
-              >
-                📎 {d.paperFile.filename}
-              </a>
-            )}
-          </div>
-        </section>
-      )}
-    </>
-  );
-}
-
-function StudySections({ d }: { d: StudyDetail }) {
-  return (
-    <>
-      {d.motivation.trim() && (
-        <Section title="시작한 이유">{d.motivation}</Section>
-      )}
-      {d.process.trim() && <Section title="진행 과정">{d.process}</Section>}
-      {d.learned.trim() && <Section title="배운 점">{d.learned}</Section>}
-      {d.improvements.trim() && (
-        <Section title="아쉬운 점 / 개선">{d.improvements}</Section>
-      )}
-      {d.moreToLearn.trim() && (
-        <Section title="더 학습하고 싶은 점">{d.moreToLearn}</Section>
-      )}
-    </>
   );
 }

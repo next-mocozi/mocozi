@@ -13,6 +13,10 @@ services:
       - NEXT_PUBLIC_API_URL=http://localhost:8080
       - NEXT_PUBLIC_SOCKET_URL=http://localhost:8080
       - WATCHPACK_POLLING=true
+      - CHOKIDAR_USEPOLLING=true
+      - CHOKIDAR_INTERVAL=1000
+      - NEXT_WEBPACK_USEPOLLING=true
+      - TURBOPACK_POLLING=true
     depends_on:
       - backend
 

@@ -11,8 +11,17 @@ import {
   getDisplayLabel,
   type ProfileLink,
 } from './_platforms';
+import { PortfolioItemView } from '../portfolio/[id]/_PortfolioItemView';
+import type { Draft } from '../portfolio/edit/_interview';
+import type { ResearchDetail } from '../portfolio/edit/_research';
+import type { StudyDetail } from '../portfolio/edit/_study';
+
+const DETAILS_STORAGE_KEY = 'mock_portfolio_details';
+const RESEARCH_DETAILS_KEY = 'mock_research_details';
+const STUDY_DETAILS_KEY = 'mock_study_details';
 
 const PROFILE_SECTIONS_KEY = 'mock_profile_portfolio_sections';
+const PROFILE_PROJECTS_FEATURED_ONLY_KEY = 'mock_profile_projects_featured_only';
 
 type Experience = {
   id: string;
@@ -46,6 +55,9 @@ type PortfolioItem = {
   domain?: string;
   tags: string[];
   thumbnail?: string;
+  /** 대표 프로젝트 — /portfolio 페이지의 별 토글로 지정 */
+  featured?: boolean;
+  /** 미완성 임시저장 — 프로필에는 노출하지 않음 */
   draft?: boolean;
 };
 
@@ -126,6 +138,19 @@ export default function MyProfilePage() {
   const [draftSelected, setDraftSelected] =
     useState<SectionKey[]>(SECTION_ORDER);
 
+  // 프로젝트 가져올 때 "대표 프로젝트만" 옵션
+  const [projectsFeaturedOnly, setProjectsFeaturedOnly] = useState(false);
+  const [draftProjectsFeaturedOnly, setDraftProjectsFeaturedOnly] =
+    useState(false);
+
+  // 카드 클릭 시 모달로 미리보기 — 디테일 데이터는 localStorage 에서 lazy 로 로드
+  const [detailsMap, setDetailsMap] = useState<Record<string, Draft>>({});
+  const [researchMap, setResearchMap] = useState<Record<string, ResearchDetail>>(
+    {},
+  );
+  const [studyMap, setStudyMap] = useState<Record<string, StudyDetail>>({});
+  const [previewItem, setPreviewItem] = useState<PortfolioItem | null>(null);
+
   // 세그먼트 컨트롤 — 현재 활성 탭
   const [activeTab, setActiveTab] = useState<SectionKey>(SECTION_ORDER[0]);
 
@@ -198,6 +223,33 @@ export default function MyProfilePage() {
     } catch { /* 무시 */ }
   }, [user]);
 
+  // localStorage 기반 추가 상태 (대표 프로젝트만 옵션 + 카드 클릭 시 모달용 디테일 맵)
+  useEffect(() => {
+    const loadJson = <T,>(key: string, fallback: T): T => {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? (JSON.parse(raw) as T) : fallback;
+      } catch {
+        return fallback;
+      }
+    };
+    const savedFeaturedOnly = loadJson<boolean | null>(
+      PROFILE_PROJECTS_FEATURED_ONLY_KEY,
+      null,
+    );
+    if (savedFeaturedOnly !== null) {
+      setProjectsFeaturedOnly(savedFeaturedOnly);
+      setDraftProjectsFeaturedOnly(savedFeaturedOnly);
+    }
+    setDetailsMap(loadJson(DETAILS_STORAGE_KEY, {} as Record<string, Draft>));
+    setResearchMap(
+      loadJson(RESEARCH_DETAILS_KEY, {} as Record<string, ResearchDetail>),
+    );
+    setStudyMap(
+      loadJson(STUDY_DETAILS_KEY, {} as Record<string, StudyDetail>),
+    );
+  }, []);
+
   if (loading)
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -207,7 +259,10 @@ export default function MyProfilePage() {
   if (!user) return null;
 
   // 타입별로 분리 — 임시저장은 모두 제외
-  const projects = items.filter((it) => it.type === 'project' && !it.draft);
+  const allProjects = items.filter((it) => it.type === 'project' && !it.draft);
+  const projects = projectsFeaturedOnly
+    ? allProjects.filter((it) => it.featured)
+    : allProjects;
   const research = items.filter((it) => it.type === 'research' && !it.draft);
   const studies = items.filter((it) => it.type === 'study' && !it.draft);
   const sortedCareers = [...careers].sort((a, b) => {
@@ -219,6 +274,7 @@ export default function MyProfilePage() {
   // 가져오기 모달 핸들러
   const openImport = () => {
     setDraftSelected(selected);
+    setDraftProjectsFeaturedOnly(projectsFeaturedOnly);
     setImportOpen(true);
   };
 
@@ -233,8 +289,13 @@ export default function MyProfilePage() {
       (k) => draftSelected.includes(k) && sectionCount(k) > 0,
     );
     setSelected(ordered);
+    setProjectsFeaturedOnly(draftProjectsFeaturedOnly);
     try {
       localStorage.setItem(PROFILE_SECTIONS_KEY, JSON.stringify(ordered));
+      localStorage.setItem(
+        PROFILE_PROJECTS_FEATURED_ONLY_KEY,
+        JSON.stringify(draftProjectsFeaturedOnly),
+      );
     } catch {
       // 저장 실패 시 무시
     }
@@ -250,7 +311,7 @@ export default function MyProfilePage() {
       case 'careers':
         return careers.length;
       case 'projects':
-        return projects.length;
+        return allProjects.length;
       case 'research':
         return research.length;
       case 'studies':
@@ -514,6 +575,7 @@ export default function MyProfilePage() {
               <SectionCardList
                 emptyText="포트폴리오에 등록된 프로젝트가 없습니다."
                 items={projects}
+                onSelect={setPreviewItem}
               />
             )}
 
@@ -521,6 +583,7 @@ export default function MyProfilePage() {
               <SectionCardList
                 emptyText="포트폴리오에 등록된 연구가 없습니다."
                 items={research}
+                onSelect={setPreviewItem}
               />
             )}
 
@@ -528,6 +591,7 @@ export default function MyProfilePage() {
               <SectionCardList
                 emptyText="포트폴리오에 등록된 스터디가 없습니다."
                 items={studies}
+                onSelect={setPreviewItem}
               />
             )}
           </div>
@@ -572,42 +636,81 @@ export default function MyProfilePage() {
                         ? '작성됨'
                         : '미작성'
                       : `${count}건`;
+                  const featuredProjectCount =
+                    k === 'projects'
+                      ? allProjects.filter((it) => it.featured).length
+                      : 0;
+                  const showProjectsSub = k === 'projects' && checked;
+                  const featuredOnlyDisabled =
+                    k === 'projects' && featuredProjectCount === 0;
                   return (
-                    <label
-                      key={k}
-                      className={`flex items-start gap-3 rounded-xl border p-4 transition-all ${
-                        disabled
-                          ? 'cursor-not-allowed border-gray-100 bg-gray-50/60 opacity-60'
-                          : checked
-                            ? 'cursor-pointer border-blue-300 bg-blue-50/40'
-                            : 'cursor-pointer border-gray-100 hover:bg-gray-50'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        disabled={disabled}
-                        onChange={() => {
-                          if (!disabled) toggleDraft(k);
-                        }}
-                        className="mt-0.5 h-4 w-4 rounded border-gray-300 disabled:cursor-not-allowed"
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-semibold text-gray-900">
-                            {meta.label}
+                    <div key={k}>
+                      <label
+                        className={`flex items-start gap-3 rounded-xl border p-4 transition-all ${
+                          disabled
+                            ? 'cursor-not-allowed border-gray-100 bg-gray-50/60 opacity-60'
+                            : checked
+                              ? 'cursor-pointer border-blue-300 bg-blue-50/40'
+                              : 'cursor-pointer border-gray-100 hover:bg-gray-50'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={disabled}
+                          onChange={() => {
+                            if (!disabled) toggleDraft(k);
+                          }}
+                          className="mt-0.5 h-4 w-4 rounded border-gray-300 disabled:cursor-not-allowed"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-semibold text-gray-900">
+                              {meta.label}
+                            </p>
+                            <span className="text-xs text-gray-400">
+                              {countLabel}
+                            </span>
+                          </div>
+                          <p className="mt-0.5 text-xs text-gray-500">
+                            {disabled
+                              ? '작성된 항목이 없어 선택할 수 없습니다.'
+                              : meta.hint}
                           </p>
-                          <span className="text-xs text-gray-400">
-                            {countLabel}
-                          </span>
                         </div>
-                        <p className="mt-0.5 text-xs text-gray-500">
-                          {disabled
-                            ? '작성된 항목이 없어 선택할 수 없습니다.'
-                            : meta.hint}
-                        </p>
-                      </div>
-                    </label>
+                      </label>
+
+                      {showProjectsSub && (
+                        <label
+                          className={`mt-1 ml-7 flex items-center gap-2 rounded-lg px-3 py-2 text-xs transition-all ${
+                            featuredOnlyDisabled
+                              ? 'cursor-not-allowed text-gray-400 opacity-60'
+                              : 'cursor-pointer text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={
+                              !featuredOnlyDisabled && draftProjectsFeaturedOnly
+                            }
+                            disabled={featuredOnlyDisabled}
+                            onChange={(e) =>
+                              setDraftProjectsFeaturedOnly(e.target.checked)
+                            }
+                            className="h-3.5 w-3.5 rounded border-gray-300 disabled:cursor-not-allowed"
+                          />
+                          <span>대표 프로젝트만 가져오기</span>
+                          <span className="text-gray-400">
+                            ({featuredProjectCount}건)
+                          </span>
+                          {featuredOnlyDisabled && (
+                            <span className="text-gray-400">
+                              · 대표로 지정된 프로젝트가 없어요
+                            </span>
+                          )}
+                        </label>
+                      )}
+                    </div>
                   );
                 })}
               </div>
@@ -631,6 +734,41 @@ export default function MyProfilePage() {
           </div>
         </div>
       )}
+
+      {/* ─────── 포트폴리오 항목 미리보기 모달 ─────── */}
+      {previewItem && (
+        <div
+          onClick={() => setPreviewItem(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/50 px-4 py-8"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="flex w-full max-w-3xl flex-col rounded-2xl bg-white shadow-xl"
+            style={{ maxHeight: 'calc(100vh - 4rem)' }}
+          >
+            {/* 헤더: 닫기 버튼 — 스크롤 영역 밖에 두어 스크롤바를 가리지 않도록 함 */}
+            <div className="flex shrink-0 items-center justify-end border-b border-gray-100 px-3 py-2">
+              <button
+                type="button"
+                onClick={() => setPreviewItem(null)}
+                aria-label="닫기"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="overflow-y-auto">
+              <PortfolioItemView
+                item={previewItem}
+                details={detailsMap[String(previewItem.id)] ?? null}
+                research={researchMap[String(previewItem.id)] ?? null}
+                study={studyMap[String(previewItem.id)] ?? null}
+                wrapper="plain"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -639,9 +777,11 @@ export default function MyProfilePage() {
 function SectionCardList({
   emptyText,
   items,
+  onSelect,
 }: {
   emptyText: string;
   items: PortfolioItem[];
+  onSelect?: (item: PortfolioItem) => void;
 }) {
   return (
     <div className="card">
@@ -652,10 +792,11 @@ function SectionCardList({
           {items.map((item) => {
             const meta = TYPE_META[item.type];
             return (
-              <Link
+              <button
+                type="button"
                 key={item.id}
-                href="/portfolio"
-                className="block rounded-xl border border-gray-100 p-3 transition-all hover:border-blue-200 hover:shadow-sm"
+                onClick={() => onSelect?.(item)}
+                className="block w-full text-left rounded-xl border border-gray-100 p-3 transition-all hover:border-blue-200 hover:shadow-sm"
               >
                 <div className="flex items-start gap-3">
                   <div className="min-w-0 flex-1">
@@ -690,26 +831,22 @@ function SectionCardList({
                       </div>
                     )}
                   </div>
-                  <div
-                    className={`shrink-0 overflow-hidden rounded-lg border ${
-                      item.thumbnail
-                        ? 'border-gray-200'
-                        : 'border-dashed border-gray-200 bg-gray-50'
-                    }`}
-                    style={{ width: '4rem', height: '4rem' }}
-                    aria-hidden
-                  >
-                    {item.thumbnail && (
-                      // eslint-disable-next-line @next/next/no-img-element
+                  {item.thumbnail && (
+                    <div
+                      className="shrink-0 overflow-hidden rounded-lg border border-gray-200"
+                      style={{ width: '4rem', height: '4rem' }}
+                      aria-hidden
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={item.thumbnail}
                         alt=""
                         className="h-full w-full object-cover"
                       />
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
-              </Link>
+              </button>
             );
           })}
         </div>

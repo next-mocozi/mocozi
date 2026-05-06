@@ -15,11 +15,32 @@ export type AssetStepKey = 'architecture' | 'result' | 'retro';
 
 export type Asset = {
   id: string;
-  alias: string; // stepKey 단위로만 유일 (단계가 다르면 같은 alias 가능)
+  alias: string; // 프로젝트 전체에서 고유 (A, B, C, ..., Z, AA, ...)
   filename: string;
   dataUrl: string;
-  stepKey: AssetStepKey;
+  /** 레거시 — 어느 섹션에 처음 등록됐는지. 없으면 전역 자료. */
+  stepKey?: AssetStepKey;
+  /** 'image' | 'file' — 자료 종류 */
+  kind?: 'image' | 'file';
 };
+
+/** A, B, ..., Z, AA, AB, ... 형태의 다음 alias 생성 */
+export function nextAlias(assets: Asset[]): string {
+  const used = new Set(assets.map((a) => a.alias));
+  let n = 1;
+  while (n < 100000) {
+    let s = '';
+    let m = n;
+    while (m > 0) {
+      m--;
+      s = String.fromCharCode(65 + (m % 26)) + s;
+      m = Math.floor(m / 26);
+    }
+    if (!used.has(s)) return s;
+    n++;
+  }
+  return `X${Date.now()}`;
+}
 
 export type Block = { text: string; assetIds: string[] };
 
@@ -689,14 +710,18 @@ export type BlockText =
 export type BlockImg = {
   id: string;
   type: 'img';
+  /** alias 가 있으면 src 는 비어도 됨 (assets 풀에서 lookup) */
   src: string;
   alt: string;
+  /** assets 풀의 alias 참조. 있으면 직렬화 시 @[alias] 로 출력 */
+  alias?: string;
 };
 export type BlockFile = {
   id: string;
   type: 'file';
   src: string;
   filename: string;
+  alias?: string;
 };
 export type ContentBlock = BlockText | BlockImg | BlockFile;
 
@@ -717,9 +742,20 @@ export function parseBlocks(text: string): ContentBlock[] {
     } else if (line.startsWith('- ')) {
       blocks.push({ id: genBlockId(), type: 'li', text: line.slice(2) });
     } else {
+      const ref = line.match(/^@\[([^\]]+)\]$/);
       const im = line.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
       const fi = line.match(/^📎\[([^\]]+)\]\(([^)]+)\)$/);
-      if (im) {
+      if (ref) {
+        // alias 참조 — 이미지/파일 종류는 render 단계에서 assets 풀로 결정.
+        // 우선 img 블록으로 두되 alias 만 채워둔다 (BlockEditor 가 lookup 해 보정).
+        blocks.push({
+          id: genBlockId(),
+          type: 'img',
+          src: '',
+          alt: '',
+          alias: ref[1],
+        });
+      } else if (im) {
         blocks.push({ id: genBlockId(), type: 'img', src: im[2], alt: im[1] });
       } else if (fi) {
         blocks.push({ id: genBlockId(), type: 'file', filename: fi[1], src: fi[2] });
@@ -744,9 +780,10 @@ export function serializeBlocks(blocks: ContentBlock[]): string {
         case 'li':
           return `- ${b.text}`;
         case 'img':
-          return `![${b.alt}](${b.src})`;
+          // alias 가 있으면 짧은 토큰으로 직렬화 (대화형 textarea 에서 깔끔)
+          return b.alias ? `@[${b.alias}]` : `![${b.alt}](${b.src})`;
         case 'file':
-          return `📎[${b.filename}](${b.src})`;
+          return b.alias ? `@[${b.alias}]` : `📎[${b.filename}](${b.src})`;
       }
     })
     .join('\n\n');
@@ -1432,6 +1469,12 @@ function StepBody({
   setDraft: Dispatch<SetStateAction<Draft>>;
   jumpToStep: (key: StepKey) => void;
 }) {
+  // 텍스트 입력 단계에서 공통으로 쓰는 자료 등록 props
+  const assetProps = {
+    assets: draft.assets,
+    onAddAsset: (a: Asset) =>
+      setDraft((d) => ({ ...d, assets: [...d.assets, a] })),
+  };
   switch (cfg.key) {
     case 'name':
       return (
@@ -1520,6 +1563,7 @@ function StepBody({
           showHint
           example={EXAMPLES.motivation}
           placeholder="해결하고 싶었던 문제, 사용자/맥락을 간결히 적어주세요."
+          {...assetProps}
         />
       );
     case 'techChoice':
@@ -1529,6 +1573,7 @@ function StepBody({
           onChange={(v) => setDraft((d) => ({ ...d, techChoice: v }))}
           example={EXAMPLES.techChoice}
           placeholder="선택한 기술과 대안 대비 장점을 적어주세요."
+          {...assetProps}
         />
       );
     case 'architecture':
@@ -1543,6 +1588,7 @@ function StepBody({
           }
           example={EXAMPLES.architecture}
           placeholder="문제 정의 → 해결 방법 → 트레이드오프 (각 3개 이하)"
+          {...assetProps}
         />
       );
     case 'result':
@@ -1554,6 +1600,7 @@ function StepBody({
           }
           example={EXAMPLES.result}
           placeholder="달성한 지표 (수치화 필수). 예: 응답시간 50% 개선, MAU 300 → 1,200"
+          {...assetProps}
         />
       );
     case 'retro':
@@ -1565,6 +1612,7 @@ function StepBody({
           }
           example={EXAMPLES.retro}
           placeholder="잘된 점 / 아쉬운 점 / 개선할 점"
+          {...assetProps}
         />
       );
     case 'contribution':
@@ -1574,6 +1622,7 @@ function StepBody({
           onChange={(v) => setDraft((d) => ({ ...d, contribution: v }))}
           example={EXAMPLES.contribution}
           placeholder="구체적으로 어떤 부분을 주도했는지, 의사결정·산출물 중심으로 적어주세요."
+          {...assetProps}
         />
       );
     case 'domainCheck':
@@ -1631,6 +1680,7 @@ function StepBody({
           onChange={(v) => setDraft((d) => ({ ...d, domainExpertise: v }))}
           example={EXAMPLES.domainExpertise}
           placeholder="공부한 자료, 정보 출처, 학습 방법 등."
+          {...assetProps}
         />
       );
     case 'domainComm':
@@ -1640,6 +1690,7 @@ function StepBody({
           onChange={(v) => setDraft((d) => ({ ...d, domainComm: v }))}
           example={EXAMPLES.domainComm}
           placeholder="전문가 인터뷰, 협업 방식 등."
+          {...assetProps}
         />
       );
     case 'domainLimits':
@@ -1649,6 +1700,7 @@ function StepBody({
           onChange={(v) => setDraft((d) => ({ ...d, domainLimits: v }))}
           example={EXAMPLES.domainLimits}
           placeholder="현재 결과물의 한계, 향후 보완 방향."
+          {...assetProps}
         />
       );
     case 'deliverables':
@@ -2221,13 +2273,72 @@ function SimpleTextarea({
   placeholder,
   showHint,
   example,
+  assets,
+  onAddAsset,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   showHint?: boolean;
   example?: string;
+  /** 자료 풀 — 새 alias 생성 시 충돌 방지 */
+  assets?: Asset[];
+  /** 자료 등록 + alias 생성. 제공되면 본문 위에 [이미지/파일 첨부] 버튼 노출 */
+  onAddAsset?: (a: Asset) => void;
 }) {
+  const taRef = useRef<HTMLTextAreaElement | null>(null);
+  const imageInputId = useRef(`tx-img-${Math.random().toString(36).slice(2, 8)}`);
+  const fileInputId = useRef(`tx-file-${Math.random().toString(36).slice(2, 8)}`);
+
+  const insertAtCursor = (token: string) => {
+    const ta = taRef.current;
+    if (!ta) {
+      onChange((value ? value + '\n\n' : '') + token);
+      return;
+    }
+    const start = ta.selectionStart ?? value.length;
+    const end = ta.selectionEnd ?? value.length;
+    const before = value.slice(0, start);
+    const after = value.slice(end);
+    // 토큰을 별도 줄로 두고 앞뒤로 빈 줄 보장
+    const sep1 = before && !/\n\n$/.test(before) ? (before.endsWith('\n') ? '\n' : '\n\n') : '';
+    const sep2 = after && !/^\n\n/.test(after) ? (after.startsWith('\n') ? '\n' : '\n\n') : '';
+    const next = `${before}${sep1}${token}${sep2}${after}`;
+    onChange(next);
+    requestAnimationFrame(() => {
+      const t = taRef.current;
+      if (!t) return;
+      const pos = before.length + sep1.length + token.length;
+      t.focus();
+      try {
+        t.setSelectionRange(pos, pos);
+      } catch {
+        // 무시
+      }
+    });
+  };
+
+  const handleUpload = async (file: File | null, kind: 'image' | 'file') => {
+    if (!file) return;
+    if (!onAddAsset) return;
+    if (kind === 'image' && !file.type.startsWith('image/')) return;
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      const alias = nextAlias(assets ?? []);
+      const asset: Asset = {
+        id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+        alias,
+        filename: file.name,
+        dataUrl,
+        kind,
+      };
+      onAddAsset(asset);
+      insertAtCursor(`@[${alias}]`);
+    } catch {
+      // 무시
+    }
+  };
+
   return (
     <div>
       {showHint && (
@@ -2239,7 +2350,46 @@ function SimpleTextarea({
         </p>
       )}
       {example && <TextExample text={example} />}
+
+      {onAddAsset && (
+        <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+          <span>이미지·파일을 첨부하면 본문에 @[A] 형태로 들어갑니다.</span>
+          <input
+            id={imageInputId.current}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              handleUpload(e.target.files?.[0] ?? null, 'image');
+              e.currentTarget.value = '';
+            }}
+          />
+          <label
+            htmlFor={imageInputId.current}
+            className="cursor-pointer rounded-full border border-gray-200 px-3 py-1 text-xs text-gray-600 hover:bg-gray-50"
+          >
+            🖼 이미지 추가
+          </label>
+          <input
+            id={fileInputId.current}
+            type="file"
+            className="hidden"
+            onChange={(e) => {
+              handleUpload(e.target.files?.[0] ?? null, 'file');
+              e.currentTarget.value = '';
+            }}
+          />
+          <label
+            htmlFor={fileInputId.current}
+            className="cursor-pointer rounded-full border border-gray-200 px-3 py-1 text-xs text-gray-600 hover:bg-gray-50"
+          >
+            📎 파일 추가
+          </label>
+        </div>
+      )}
+
       <textarea
+        ref={taRef}
         autoFocus
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -2247,6 +2397,55 @@ function SimpleTextarea({
         placeholder={placeholder}
         className="w-full resize-none rounded-lg border border-gray-200 px-4 py-4 text-sm leading-8 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 field-sizing-content"
       />
+
+      {/* 본문에 참조된 @[A] 토큰의 파일명 미리보기 — 어떤 자료가 들어가 있는지 한눈에 */}
+      {(() => {
+        if (!assets || assets.length === 0) return null;
+        const aliases = Array.from(
+          new Set(
+            Array.from(value.matchAll(/@\[([^\]]+)\]/g)).map((m) => m[1]),
+          ),
+        );
+        if (aliases.length === 0) return null;
+        return (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {aliases.map((al) => {
+              const a = assets.find((x) => x.alias === al);
+              if (!a) {
+                return (
+                  <span
+                    key={al}
+                    className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700"
+                  >
+                    @[{al}] (자료 없음)
+                  </span>
+                );
+              }
+              const isImg = a.kind === 'image';
+              return (
+                <span
+                  key={al}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[11px] text-gray-600"
+                  title={a.filename}
+                >
+                  <span className="font-mono text-gray-500">@[{al}]</span>
+                  {isImg ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={a.dataUrl}
+                      alt=""
+                      className="h-4 w-4 rounded object-cover"
+                    />
+                  ) : (
+                    <span>📎</span>
+                  )}
+                  <span className="max-w-[12rem] truncate">{a.filename}</span>
+                </span>
+              );
+            })}
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -2466,13 +2665,45 @@ function BlockTypeMenu({
 function BlockEditor({
   value,
   onChange,
+  assets,
+  onAddAsset,
 }: {
   value: string;
   onChange: (next: string) => void;
+  /** 자료 풀 — alias 가 있는 블록을 렌더할 때 lookup */
+  assets?: Asset[];
+  /** 새 이미지/파일 업로드 시 자료 풀에 등록 */
+  onAddAsset?: (a: Asset) => void;
 }) {
-  const [blocks, setBlocks] = useState<ContentBlock[]>(() =>
-    ensureNonEmpty(parseBlocks(value)),
-  );
+  const initialAssetsRef = useRef<Asset[]>(assets ?? []);
+  const [blocks, setBlocks] = useState<ContentBlock[]>(() => {
+    // 초기 마운트 시점에 assets 가 이미 있으면 alias 블록을 즉시 resolve
+    const pool = initialAssetsRef.current;
+    const parsed = parseBlocks(value).map((b) => {
+      if ((b.type === 'img' || b.type === 'file') && b.alias && !b.src) {
+        const a = pool.find((x) => x.alias === b.alias);
+        if (!a) return b;
+        if (a.kind === 'file') {
+          return {
+            id: b.id,
+            type: 'file' as const,
+            src: a.dataUrl,
+            filename: a.filename,
+            alias: a.alias,
+          };
+        }
+        return {
+          id: b.id,
+          type: 'img' as const,
+          src: a.dataUrl,
+          alt: a.filename,
+          alias: a.alias,
+        };
+      }
+      return b;
+    });
+    return ensureNonEmpty(parsed);
+  });
   const lastSerializedRef = useRef<string>(serializeBlocks(blocks));
   const blocksRef = useRef<ContentBlock[]>(blocks);
   const [dragId, setDragId] = useState<string | null>(null);
@@ -2502,15 +2733,44 @@ function BlockEditor({
     blocksRef.current = blocks;
   }, [blocks]);
 
+  // alias 블록을 assets 풀로 lookup 해 src/filename/kind 보정
+  const resolveBlocks = (input: ContentBlock[]): ContentBlock[] => {
+    const pool = assets ?? [];
+    return input.map((b) => {
+      if ((b.type === 'img' || b.type === 'file') && b.alias && !b.src) {
+        const a = pool.find((x) => x.alias === b.alias);
+        if (!a) return b;
+        if (a.kind === 'file') {
+          return {
+            id: b.id,
+            type: 'file',
+            src: a.dataUrl,
+            filename: a.filename,
+            alias: a.alias,
+          } as BlockFile;
+        }
+        return {
+          id: b.id,
+          type: 'img',
+          src: a.dataUrl,
+          alt: a.filename,
+          alias: a.alias,
+        } as BlockImg;
+      }
+      return b;
+    });
+  };
+
   // 외부에서 value 가 갈아끼워진 경우만 다시 파싱
   useEffect(() => {
     if (value !== lastSerializedRef.current) {
-      const parsed = ensureNonEmpty(parseBlocks(value));
+      const parsed = ensureNonEmpty(resolveBlocks(parseBlocks(value)));
       setBlocks(parsed);
       blocksRef.current = parsed;
       lastSerializedRef.current = value;
     }
-  }, [value]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, assets]);
 
   const commit = (next: ContentBlock[]) => {
     const safe = ensureNonEmpty(next);
@@ -2715,7 +2975,27 @@ function BlockEditor({
     if (!file || !file.type.startsWith('image/')) return;
     try {
       const dataUrl = await fileToDataUrl(file);
-      addBlock({ id: genBlockId(), type: 'img', src: dataUrl, alt: file.name });
+      // assets 풀이 주입돼있으면 등록 + alias 참조 사용 (텍스트 짧아짐)
+      if (onAddAsset) {
+        const alias = nextAlias(assets ?? []);
+        const asset: Asset = {
+          id: genBlockId(),
+          alias,
+          filename: file.name,
+          dataUrl,
+          kind: 'image',
+        };
+        onAddAsset(asset);
+        addBlock({
+          id: genBlockId(),
+          type: 'img',
+          src: dataUrl,
+          alt: file.name,
+          alias,
+        });
+      } else {
+        addBlock({ id: genBlockId(), type: 'img', src: dataUrl, alt: file.name });
+      }
     } catch {
       // 무시
     }
@@ -2725,12 +3005,31 @@ function BlockEditor({
     if (!file) return;
     try {
       const dataUrl = await fileToDataUrl(file);
-      addBlock({
-        id: genBlockId(),
-        type: 'file',
-        src: dataUrl,
-        filename: file.name,
-      });
+      if (onAddAsset) {
+        const alias = nextAlias(assets ?? []);
+        const asset: Asset = {
+          id: genBlockId(),
+          alias,
+          filename: file.name,
+          dataUrl,
+          kind: 'file',
+        };
+        onAddAsset(asset);
+        addBlock({
+          id: genBlockId(),
+          type: 'file',
+          src: dataUrl,
+          filename: file.name,
+          alias,
+        });
+      } else {
+        addBlock({
+          id: genBlockId(),
+          type: 'file',
+          src: dataUrl,
+          filename: file.name,
+        });
+      }
     } catch {
       // 무시
     }
@@ -3003,6 +3302,8 @@ function BodySection({
   title,
   value,
   onChange,
+  assets,
+  onAddAsset,
   isDragging,
   isDropTarget,
   onPointerDownHandle,
@@ -3011,6 +3312,8 @@ function BodySection({
   title: string;
   value?: string;
   onChange?: (next: string) => void;
+  assets?: Asset[];
+  onAddAsset?: (a: Asset) => void;
   isDragging: boolean;
   isDropTarget: boolean;
   onPointerDownHandle: (e: React.PointerEvent) => void;
@@ -3047,7 +3350,12 @@ function BodySection({
         <span className="text-[11px] text-gray-400">드래그해서 순서 변경</span>
       </div>
       {children ?? (
-        <BlockEditor value={value ?? ''} onChange={onChange ?? (() => {})} />
+        <BlockEditor
+          value={value ?? ''}
+          onChange={onChange ?? (() => {})}
+          assets={assets}
+          onAddAsset={onAddAsset}
+        />
       )}
     </section>
   );
@@ -3176,6 +3484,10 @@ function BodySectionsList({
           title={BODY_SECTION_LABEL[k]}
           value={sectionValue(k)}
           onChange={(v) => setSectionValue(k, v)}
+          assets={draft.assets}
+          onAddAsset={(a) =>
+            setDraft((d) => ({ ...d, assets: [...d.assets, a] }))
+          }
           isDragging={draggingKey === k}
           isDropTarget={
             draggingKey !== null && draggingKey !== k && dropIdx === i
@@ -3331,6 +3643,10 @@ function DomainSubsectionsList({
             <BlockEditor
               value={subValue(k)}
               onChange={(v) => setSubValue(k, v)}
+              assets={draft.assets}
+              onAddAsset={(a) =>
+                setDraft((d) => ({ ...d, assets: [...d.assets, a] }))
+              }
             />
           </section>
         ))}
@@ -3794,7 +4110,7 @@ function SummaryView({
             </div>
           </InlineEditSection>
         </div>
-        {/* 우측 썸네일 — 클릭하면 직접 업로드. 없으면 백지(점선 박스)로 표시. */}
+        {/* 우측 썸네일 — 클릭하면 직접 업로드. 없으면 점선 placeholder 로 표시. */}
         <div className="shrink-0">
           <button
             type="button"
