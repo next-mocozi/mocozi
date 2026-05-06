@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import api from '@/lib/api';
 import {
   PlatformIcon,
   PLATFORM_META,
@@ -11,24 +12,10 @@ import {
   type ProfileLink,
 } from './_platforms';
 
-// TODO: 백엔드 연동 — `GET /api/users/me`, `GET /api/users/me/links`,
-//       `GET /api/portfolios/me` 로 교체 (CLAUDE.md §11). 현재는 mock —
-//       /portfolio 페이지가 저장한 localStorage 값을 그대로 읽어 표시한다.
-
-const LINKS_STORAGE_KEY = 'mock_profile_links';
-const INTRO_STORAGE_KEY = 'mock_portfolio_intro';
-const EXPS_STORAGE_KEY = 'mock_portfolio_experiences';
-const CAREERS_STORAGE_KEY = 'mock_portfolio_career_items';
-const ITEMS_STORAGE_KEY = 'mock_portfolio_items';
 const PROFILE_SECTIONS_KEY = 'mock_profile_portfolio_sections';
 
-const DEFAULT_LINKS: ProfileLink[] = [];
-
-const ROLES_STORAGE_KEY = 'mock_profile_roles';
-
-// /portfolio 페이지와 같은 형태 — 단순 표시 용도라 import 없이 정의
 type Experience = {
-  id: number;
+  id: string;
   company: string;
   team: string;
   role: string;
@@ -37,7 +24,7 @@ type Experience = {
 };
 
 type CareerItem = {
-  id: number;
+  id: string;
   year: string;
   content: string;
 };
@@ -50,7 +37,7 @@ type PortfolioItemType =
   | 'etc';
 
 type PortfolioItem = {
-  id: number;
+  id: string;
   type: PortfolioItemType;
   title: string;
   description: string;
@@ -58,7 +45,7 @@ type PortfolioItem = {
   current: boolean;
   domain?: string;
   tags: string[];
-  /** 미완성 임시저장 — 프로필에는 노출하지 않음 */
+  thumbnail?: string;
   draft?: boolean;
 };
 
@@ -121,13 +108,11 @@ const SECTION_META: Record<SectionKey, { label: string; hint: string }> = {
 /** 내 프로필 페이지 (보기 전용 — 수정은 /profile/edit, /portfolio) */
 export default function MyProfilePage() {
   const { user, loading } = useAuth();
-  const [links, setLinks] = useState<ProfileLink[]>(DEFAULT_LINKS);
+  const [links, setLinks] = useState<ProfileLink[]>([]);
 
-  // 직군 (edit 페이지에서 localStorage에 저장)
   const [mainRole, setMainRole] = useState('');
   const [subRoles, setSubRoles] = useState<string[]>([]);
 
-  // 포트폴리오에서 가져온 데이터
   const [intro, setIntro] = useState('');
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [careers, setCareers] = useState<CareerItem[]>([]);
@@ -151,43 +136,67 @@ export default function MyProfilePage() {
     }
   }, [selected, activeTab]);
 
-  // localStorage 에서 모든 데이터 로드 (edit / portfolio 페이지가 저장한 값)
+  // 포트폴리오 API에서 모든 데이터 로드
   useEffect(() => {
-    const loadJson = <T,>(key: string, fallback: T): T => {
-      try {
-        const raw = localStorage.getItem(key);
-        return raw ? (JSON.parse(raw) as T) : fallback;
-      } catch {
-        return fallback;
-      }
-    };
-    setLinks(loadJson(LINKS_STORAGE_KEY, [] as ProfileLink[]));
-    const roles = loadJson<{ mainRole: string; subRoles: string[] } | null>(
-      ROLES_STORAGE_KEY,
-      null,
-    );
-    if (roles) {
-      setMainRole(roles.mainRole);
-      setSubRoles(roles.subRoles);
-    }
-    setExperiences(loadJson(EXPS_STORAGE_KEY, [] as Experience[]));
-    setCareers(loadJson(CAREERS_STORAGE_KEY, [] as CareerItem[]));
-    setItems(loadJson(ITEMS_STORAGE_KEY, [] as PortfolioItem[]));
+    if (!user) return;
+    api.get('/api/portfolios/me').then((res) => {
+      const p = res.data.data ?? res.data;
+      setIntro(p.intro ?? '');
+      setLinks(
+        (p.links ?? []).map((l: { id: string; url: string; label?: string }) => ({
+          id: l.id,
+          url: l.url,
+          label: l.label,
+        })),
+      );
+      setExperiences(
+        (p.experiences ?? []).map((e: { id: string; company: string; team?: string; role: string; period: string; current: boolean }) => ({
+          id: e.id,
+          company: e.company,
+          team: e.team ?? '',
+          role: e.role,
+          period: e.period,
+          current: e.current,
+        })),
+      );
+      setCareers(
+        (p.careerItems ?? []).map((c: { id: string; year: string; content: string }) => ({
+          id: c.id,
+          year: c.year,
+          content: c.content,
+        })),
+      );
+      setItems(
+        (p.items ?? []).filter((it: { draft?: boolean }) => !it.draft).map(
+          (it: { id: string; type: string; title: string; description: string; period?: string; current: boolean; domain?: string; tags?: string[]; thumbnail?: string }) => ({
+            id: it.id,
+            type: it.type.toLowerCase() as PortfolioItemType,
+            title: it.title,
+            description: it.description,
+            period: it.period ?? '',
+            current: it.current,
+            domain: it.domain,
+            tags: it.tags ?? [],
+            thumbnail: it.thumbnail,
+          }),
+        ),
+      );
+    }).catch(() => { /* API 실패 시 빈 상태 유지 */ });
+
+    // 직군은 user 객체에서
+    setMainRole((user as { mainRole?: string }).mainRole ?? '');
+    setSubRoles((user as { subRoles?: string[] }).subRoles ?? []);
+
+    // 가져오기 섹션 선택 상태는 localStorage 유지
     try {
-      const i = localStorage.getItem(INTRO_STORAGE_KEY);
-      if (i !== null) setIntro(i);
-    } catch {
-      // 무시
-    }
-    const savedSections = loadJson<SectionKey[] | null>(
-      PROFILE_SECTIONS_KEY,
-      null,
-    );
-    if (savedSections) {
-      setSelected(savedSections);
-      setDraftSelected(savedSections);
-    }
-  }, []);
+      const raw = localStorage.getItem(PROFILE_SECTIONS_KEY);
+      if (raw) {
+        const savedSections = JSON.parse(raw) as SectionKey[];
+        setSelected(savedSections);
+        setDraftSelected(savedSections);
+      }
+    } catch { /* 무시 */ }
+  }, [user]);
 
   if (loading)
     return (
@@ -204,8 +213,7 @@ export default function MyProfilePage() {
   const sortedCareers = [...careers].sort((a, b) => {
     const ya = Number(a.year);
     const yb = Number(b.year);
-    if (yb !== ya) return yb - ya;
-    return b.id - a.id;
+    return yb - ya;
   });
 
   // 가져오기 모달 핸들러

@@ -61,8 +61,8 @@ export default function StudyForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editIdParam = searchParams.get('id');
-  const editId = editIdParam ? Number(editIdParam) : null;
-  const isEdit = editId !== null && Number.isFinite(editId);
+  const editId = editIdParam;
+  const isEdit = editId !== null;
 
   const [d, setD] = useState<StudyDetail>(EMPTY_DETAIL);
   const [topicError, setTopicError] = useState('');
@@ -117,7 +117,7 @@ export default function StudyForm() {
       setPeriodError('종료 날짜는 시작 날짜 이후여야 합니다.');
       return;
     }
-    const targetId = isEdit && editId !== null ? editId : Date.now();
+    const targetId = isEdit && editId !== null ? editId : String(Date.now());
     const period = formatPeriod(d);
     const item: PortfolioItem = {
       id: targetId,

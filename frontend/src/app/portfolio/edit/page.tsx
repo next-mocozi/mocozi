@@ -23,28 +23,7 @@ import StudyForm from './_study';
 
 const ITEMS_STORAGE_KEY = 'mock_portfolio_items';
 
-const DEFAULT_ITEMS: PortfolioItem[] = [
-  {
-    id: 1,
-    type: 'project',
-    title: '웹 포트폴리오 사이트',
-    description: '개인 포트폴리오 웹사이트를 제작했습니다.',
-    period: '2024.01 - 2024.03',
-    current: false,
-    domain: '웹',
-    tags: ['Next.js', 'Tailwind'],
-  },
-  {
-    id: 2,
-    type: 'activity',
-    title: '오픈소스 컨트리뷰톤',
-    description: '오픈소스 프로젝트에 기여한 활동입니다.',
-    period: '2024.01 - 현재',
-    current: true,
-    domain: '오픈소스',
-    tags: ['Git', 'TypeScript'],
-  },
-];
+const DEFAULT_ITEMS: PortfolioItem[] = [];
 
 /** 포트폴리오 항목 작성/수정 페이지
  *  - 신규 프로젝트(type=project) 추가 시: 대화형 인터뷰 UI (_interview.tsx)
@@ -55,7 +34,7 @@ export default function PortfolioEditPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editIdParam = searchParams.get('id');
-  const isEdit = editIdParam !== null && Number.isFinite(Number(editIdParam));
+  const isEdit = editIdParam !== null;
   const initialTypeParam = searchParams.get('type');
   const initialType: PortfolioItemType =
     initialTypeParam && initialTypeParam in TYPE_META
@@ -129,8 +108,8 @@ function SimpleForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editIdParam = searchParams.get('id');
-  const editId = editIdParam ? Number(editIdParam) : null;
-  const isEdit = editId !== null && Number.isFinite(editId);
+  const editId = editIdParam;
+  const isEdit = editId !== null;
   const initialTypeParam = searchParams.get('type');
   const initialType: PortfolioItemType =
     initialTypeParam && initialTypeParam in TYPE_META
@@ -193,7 +172,7 @@ function SimpleForm() {
       const raw = localStorage.getItem(ITEMS_STORAGE_KEY);
       const list: PortfolioItem[] = raw ? JSON.parse(raw) : DEFAULT_ITEMS;
       const payload: PortfolioItem = {
-        id: isEdit && editId !== null ? editId : Date.now(),
+        id: isEdit && editId !== null ? editId : String(Date.now()),
         type,
         title: title.trim(),
         description: description.trim(),

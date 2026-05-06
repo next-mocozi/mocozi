@@ -34,28 +34,7 @@ const DETAILS_STORAGE_KEY = 'mock_portfolio_details';
 const RESEARCH_DETAILS_KEY = 'mock_research_details';
 const STUDY_DETAILS_KEY = 'mock_study_details';
 
-const DEFAULT_ITEMS: PortfolioItem[] = [
-  {
-    id: 1,
-    type: 'project',
-    title: '웹 포트폴리오 사이트',
-    description: '개인 포트폴리오 웹사이트를 제작했습니다.',
-    period: '2024.01 - 2024.03',
-    current: false,
-    domain: '웹',
-    tags: ['Next.js', 'Tailwind'],
-  },
-  {
-    id: 2,
-    type: 'activity',
-    title: '오픈소스 컨트리뷰톤',
-    description: '오픈소스 프로젝트에 기여한 활동입니다.',
-    period: '2024.01 - 현재',
-    current: true,
-    domain: '오픈소스',
-    tags: ['Git', 'TypeScript'],
-  },
-];
+const DEFAULT_ITEMS: PortfolioItem[] = [];
 
 /** 포트폴리오 항목 상세 페이지 — 인터뷰 미리보기(SummaryView)와 동일한 양식으로 표시 */
 export default function PortfolioItemPage({
@@ -66,7 +45,7 @@ export default function PortfolioItemPage({
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const { id } = use(params);
-  const itemId = Number(id);
+  const itemId = id;
   const [item, setItem] = useState<PortfolioItem | null>(null);
   const [details, setDetails] = useState<Draft | null>(null);
   const [research, setResearch] = useState<ResearchDetail | null>(null);

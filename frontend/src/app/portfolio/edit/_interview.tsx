@@ -757,17 +757,14 @@ export default function ProjectInterview() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editIdParam = searchParams.get('id');
-  const editId =
-    editIdParam !== null && Number.isFinite(Number(editIdParam))
-      ? Number(editIdParam)
-      : null;
+  const editId = editIdParam;
   const isEdit = editId !== null;
 
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   const [phase, setPhase] = useState<'loading' | 'form'>('loading');
   const [toast, setToast] = useState<string | null>(null);
   /** 신규/수정 양쪽에서 단일 ID로 ITEMS·DETAILS 저장. 신규는 진입 시 1회 발급. */
-  const [projectId, setProjectId] = useState<number | null>(null);
+  const [projectId, setProjectId] = useState<string | null>(null);
   /** 진입 시점의 초기 스냅샷 — "저장하지 않고 나가기" 시 복원에 사용.
    *  편집 모드: 저장된 detail; 신규 모드: null (해당 ID 데이터 자체를 제거). */
   const initialDetailRef = useRef<Draft | null>(null);
@@ -784,7 +781,7 @@ export default function ProjectInterview() {
   const isLastInput = stepIdx === steps.length - 2;
 
   /** draft → PortfolioItem 변환 (저장용) */
-  const buildItem = (id: number, d: Draft): PortfolioItem => ({
+  const buildItem = (id: string, d: Draft): PortfolioItem => ({
     id,
     type: 'project',
     title: d.name.trim() || '(제목 없음)',
@@ -867,7 +864,7 @@ export default function ProjectInterview() {
       return;
     }
     // 신규: 매번 새 ID 발급 (이전 작성 건은 별도 항목으로 보존됨)
-    setProjectId(Date.now());
+    setProjectId(String(Date.now()));
     setPhase('form');
   }, [isEdit, editId, router]);
 
@@ -991,7 +988,7 @@ export default function ProjectInterview() {
       setDraftsList(
         list
           .filter((it) => it.draft && it.id !== projectId)
-          .sort((a, b) => b.id - a.id),
+          .sort((a, b) => b.id.localeCompare(a.id)),
       );
     } catch {
       setDraftsList([]);
@@ -999,7 +996,7 @@ export default function ProjectInterview() {
     setDraftsModalOpen(true);
   };
 
-  const deleteDraftItem = (id: number) => {
+  const deleteDraftItem = (id: string) => {
     if (!confirm('이 임시저장을 삭제하시겠어요?')) return;
     try {
       const raw = localStorage.getItem(ITEMS_STORAGE_KEY);

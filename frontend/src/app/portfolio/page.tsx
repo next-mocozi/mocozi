@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import api from '@/lib/api';
 import {
   PlatformIcon,
   PLATFORM_META,
@@ -12,20 +13,9 @@ import {
   type ProfileLink,
 } from './_platforms';
 
-// TODO: 백엔드 연동 — `GET /api/users/me`, `GET /api/users/me/links`,
-//       `GET /api/portfolios/me` 로 교체 (CLAUDE.md §11).
-//       기본 정보(이름/학교/학과/링크)는 프로필 데이터를 그대로 표시(이 탭에선 수정 X).
-//       자기소개/실무 경험/경력/포트폴리오는 이 탭에서 직접 편집 (각 섹션 "+ 추가"
-//       모달 내부에서 추가/수정/삭제 모두 처리).
-
-const LINKS_STORAGE_KEY = 'mock_profile_links'; // profile 페이지와 공유
-const ROLES_STORAGE_KEY = 'mock_profile_roles'; // profile 페이지와 공유 (mainRole + subRoles)
-const ITEMS_STORAGE_KEY = 'mock_portfolio_items';
-const INTRO_STORAGE_KEY = 'mock_portfolio_intro';
-const CAREERS_STORAGE_KEY = 'mock_portfolio_career_items';
-const EXPS_STORAGE_KEY = 'mock_portfolio_experiences';
 export const VISIBILITY_STORAGE_KEY = 'mock_portfolio_visibility';
 export const OWNER_STORAGE_KEY = 'mock_portfolio_owner';
+const FEATURED_STORAGE_KEY = 'portfolio_featured_ids';
 const INTRO_MAX = 500;
 const CAREER_CONTENT_MAX = 200;
 
@@ -39,7 +29,7 @@ export type PortfolioItemType =
   | 'etc';
 
 export type PortfolioItem = {
-  id: number;
+  id: string;
   type: PortfolioItemType;
   title: string;
   description: string;
@@ -47,13 +37,9 @@ export type PortfolioItem = {
   current: boolean;
   domain?: string;
   tags: string[];
-  /** 대표 프로젝트 (최대 4개). 정렬 시 맨 앞으로. */
   featured?: boolean;
-  /** 카드/미리보기 우측에 표시할 대표 이미지 (data URL) */
   thumbnail?: string;
-  /** 미완성 임시저장 — true 면 메인 목록 대신 "임시저장" 탭에 노출 */
   draft?: boolean;
-  /** 연구 항목용 — 논문 URL (카드에서 바로 이동) */
   paperUrl?: string;
 };
 
@@ -74,7 +60,7 @@ export function parseStartDateNum(period: string): number {
 /** 대표 프로젝트 → 그 외, 각 그룹 내부에선 시작일 내림차순(최신이 위) */
 export function sortPortfolioItems(items: PortfolioItem[]): PortfolioItem[] {
   const byStartDesc = (a: PortfolioItem, b: PortfolioItem) =>
-    parseStartDateNum(b.period) - parseStartDateNum(a.period) || b.id - a.id;
+    parseStartDateNum(b.period) - parseStartDateNum(a.period);
   const featured = items.filter((it) => it.featured).sort(byStartDesc);
   const others = items.filter((it) => !it.featured).sort(byStartDesc);
   return [...featured, ...others];
@@ -92,7 +78,7 @@ export const TYPE_META: Record<
 };
 
 type Experience = {
-  id: number; 
+  id: string;
   company: string;
   team: string;
   role: string;
@@ -101,74 +87,15 @@ type Experience = {
 };
 
 type CareerItem = {
-  id: number;
+  id: string;
   year: string;
   content: string;
 };
 
-// ──────── Mock 데이터 (백엔드 연동 시 교체) ────────
-
-const MOCK_PROFILE = {
-  name: '홍길동',
-  university: 'OO대학교',
-  department: '컴퓨터공학과',
-};
-
-const DEFAULT_INTRO =
-  '풀스택 개발에 관심이 많은 대학생입니다. 0→1 단계의 제품을 직접 설계·구현하는 걸 좋아하고, 사용자 가까이에서 빠르게 학습하며 성장하는 환경을 선호합니다.';
-
-const DEFAULT_CAREERS: CareerItem[] = [
-  { id: 1, year: '2024', content: 'xxxx 해커톤 은상 수상' },
-  { id: 2, year: '2023', content: '0000 부트캠프 참여' },
-];
-
-const DEFAULT_LINKS: ProfileLink[] = [
-  { id: 1, url: 'https://github.com/honggildong' },
-  { id: 2, url: 'https://linkedin.com/in/honggildong' },
-  { id: 3, url: 'https://honggildong.notion.site' },
-];
-
-const DEFAULT_EXPS: Experience[] = [
-  {
-    id: 1,
-    company: 'OpenAI Korea',
-    team: '연구팀',
-    role: '리서치 인턴',
-    period: '2026.03 - 현재',
-    current: true,
-  },
-  {
-    id: 2,
-    company: '삼성 SDI',
-    team: '기획부서',
-    role: '인턴',
-    period: '2025.07 - 2025.08',
-    current: false,
-  },
-];
-
-const DEFAULT_ITEMS: PortfolioItem[] = [
-  {
-    id: 1,
-    type: 'project',
-    title: '웹 포트폴리오 사이트',
-    description: '개인 포트폴리오 웹사이트를 제작했습니다.',
-    period: '2024.01 - 2024.03',
-    current: false,
-    domain: '웹',
-    tags: ['Next.js', 'Tailwind'],
-  },
-  {
-    id: 2,
-    type: 'study',
-    title: '알고리즘 스터디',
-    description: '주 1회 모각코, 백준 골드 문제 풀이.',
-    period: '2024.05 - 현재',
-    current: true,
-    domain: 'CS',
-    tags: ['Python', 'Algorithm'],
-  },
-];
+// 백엔드 대문자 enum → 프론트엔드 소문자
+function toFrontendType(t: string): PortfolioItemType {
+  return t.toLowerCase() as PortfolioItemType;
+}
 
 type ExpFormState = {
   company: string;
@@ -299,22 +226,21 @@ function YearMonthPicker({
 export default function MyPortfolioPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [links, setLinks] = useState<ProfileLink[]>(DEFAULT_LINKS);
+  const [links, setLinks] = useState<ProfileLink[]>([]);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
   }, [loading, user, router]);
-  const [items, setItems] = useState<PortfolioItem[]>(DEFAULT_ITEMS);
-  const [experiences, setExperiences] = useState<Experience[]>(DEFAULT_EXPS);
-  const [careers, setCareers] = useState<CareerItem[]>(DEFAULT_CAREERS);
+  const [items, setItems] = useState<PortfolioItem[]>([]);
+  const [experiences, setExperiences] = useState<Experience[]>([]);
+  const [careers, setCareers] = useState<CareerItem[]>([]);
 
-  // 직군 (profile/edit 에서 localStorage 에 저장)
   const [mainRole, setMainRole] = useState('');
   const [subRoles, setSubRoles] = useState<string[]>([]);
 
   // 자기소개 — draft / saved 분리 (저장 버튼 패턴)
-  const [introSaved, setIntroSaved] = useState(DEFAULT_INTRO);
-  const [introDraft, setIntroDraft] = useState(DEFAULT_INTRO);
+  const [introSaved, setIntroSaved] = useState('');
+  const [introDraft, setIntroDraft] = useState('');
   const [introJustSaved, setIntroJustSaved] = useState(false);
   const introRef = useRef<HTMLTextAreaElement>(null);
 
@@ -328,13 +254,13 @@ export default function MyPortfolioPage() {
 
   // 실무 경험 모달 (폼 + 리스트 통합)
   const [expModalOpen, setExpModalOpen] = useState(false);
-  const [expEditId, setExpEditId] = useState<number | null>(null);
+  const [expEditId, setExpEditId] = useState<string | null>(null);
   const [expForm, setExpForm] = useState<ExpFormState>(EMPTY_EXP_FORM);
   const [expError, setExpError] = useState('');
 
   // 경력 모달 (폼 + 리스트 통합)
   const [careerModalOpen, setCareerModalOpen] = useState(false);
-  const [careerEditId, setCareerEditId] = useState<number | null>(null);
+  const [careerEditId, setCareerEditId] = useState<string | null>(null);
   const [careerForm, setCareerForm] =
     useState<Omit<CareerItem, 'id'>>(EMPTY_CAREER_FORM);
   const [careerError, setCareerError] = useState('');
@@ -349,50 +275,65 @@ export default function MyPortfolioPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
-    const load = <T,>(key: string, fallback: T): T => {
-      try {
-        const raw = localStorage.getItem(key);
-        return raw ? (JSON.parse(raw) as T) : fallback;
-      } catch {
-        return fallback;
-      }
-    };
-    setLinks(load(LINKS_STORAGE_KEY, DEFAULT_LINKS));
-    setItems(load(ITEMS_STORAGE_KEY, DEFAULT_ITEMS));
-    setExperiences(load(EXPS_STORAGE_KEY, DEFAULT_EXPS));
-    setCareers(load(CAREERS_STORAGE_KEY, DEFAULT_CAREERS));
-    const roles = load<{ mainRole: string; subRoles: string[] } | null>(
-      ROLES_STORAGE_KEY,
-      null,
-    );
-    if (roles) {
-      setMainRole(roles.mainRole);
-      setSubRoles(roles.subRoles);
-    }
-    try {
-      const i = localStorage.getItem(INTRO_STORAGE_KEY);
-      if (i !== null) {
-        setIntroSaved(i);
-        setIntroDraft(i);
-      }
-    } catch {
-      // 기본값 유지
-    }
-    const v = load<PortfolioVisibility>(VISIBILITY_STORAGE_KEY, 'private');
-    setVisibility(v === 'public' ? 'public' : 'private');
-  }, []);
-
-  // 현재 로그인 사용자를 이 브라우저 localStorage 의 포트폴리오 소유자로 기록 (mock).
-  // 이미 다른 사용자가 소유자로 박혀 있으면 덮어쓰지 않음 — /portfolio/[id] 와
-  // /portfolio/edit 에서 비소유자 접근을 차단하기 위함.
-  useEffect(() => {
     if (!user) return;
+    api.get('/api/portfolios/me').then((res) => {
+      const p = res.data.data ?? res.data;
+      const intro: string = p.intro ?? '';
+      setIntroSaved(intro);
+      setIntroDraft(intro);
+      setLinks((p.links ?? []).map((l: { id: string; url: string; label?: string }) => ({
+        id: l.id,
+        url: l.url,
+        label: l.label,
+      })));
+      setExperiences(
+        (p.experiences ?? []).map((e: { id: string; company: string; team?: string; role: string; period: string; current: boolean }) => ({
+          id: e.id,
+          company: e.company,
+          team: e.team ?? '',
+          role: e.role,
+          period: e.period,
+          current: e.current,
+        })),
+      );
+      setCareers(
+        (p.careerItems ?? []).map((c: { id: string; year: string; content: string }) => ({
+          id: c.id,
+          year: c.year,
+          content: c.content,
+        })),
+      );
+      // featured 목록은 localStorage에서 overlay
+      let featuredIds: string[] = [];
+      try {
+        const raw = localStorage.getItem(FEATURED_STORAGE_KEY);
+        featuredIds = raw ? (JSON.parse(raw) as string[]) : [];
+      } catch { /* 무시 */ }
+      setItems(
+        (p.items ?? []).map((it: { id: string; type: string; title: string; description: string; period?: string; current: boolean; domain?: string; tags?: string[]; thumbnail?: string; draft?: boolean }) => ({
+          id: it.id,
+          type: toFrontendType(it.type),
+          title: it.title,
+          description: it.description,
+          period: it.period ?? '',
+          current: it.current,
+          domain: it.domain,
+          tags: it.tags ?? [],
+          thumbnail: it.thumbnail,
+          draft: it.draft,
+          featured: featuredIds.includes(it.id),
+        })),
+      );
+    }).catch(() => { /* API 실패 시 빈 상태 유지 */ });
+
+    // 직군은 user 객체에서
+    setMainRole((user as { mainRole?: string }).mainRole ?? '');
+    setSubRoles((user as { subRoles?: string[] }).subRoles ?? []);
+
     try {
-      const existing = localStorage.getItem(OWNER_STORAGE_KEY);
-      if (!existing) localStorage.setItem(OWNER_STORAGE_KEY, user.id);
-    } catch {
-      // 저장 실패 무시
-    }
+      const v = localStorage.getItem(VISIBILITY_STORAGE_KEY);
+      if (v === 'public' || v === 'private') setVisibility(v);
+    } catch { /* 무시 */ }
   }, [user]);
 
   // 로그인 가드 — 모든 훅 호출 이후에 위치
@@ -404,21 +345,10 @@ export default function MyPortfolioPage() {
     );
   if (!user) return null;
 
-  const persist = (key: string, value: unknown) => {
-    try {
-      localStorage.setItem(
-        key,
-        typeof value === 'string' ? value : JSON.stringify(value),
-      );
-    } catch {
-      // 저장 실패 시 무시
-    }
-  };
-
   // ───────── 공개/비공개 설정 ─────────
   const updateVisibility = (v: PortfolioVisibility) => {
     setVisibility(v);
-    persist(VISIBILITY_STORAGE_KEY, v);
+    try { localStorage.setItem(VISIBILITY_STORAGE_KEY, v); } catch { /* 무시 */ }
     setSettingsOpen(false);
   };
 
@@ -431,10 +361,10 @@ export default function MyPortfolioPage() {
     if (introJustSaved) setIntroJustSaved(false);
   };
 
-  const saveIntro = () => {
+  const saveIntro = async () => {
     if (!introDirty) return;
+    await api.patch('/api/portfolios/me/intro', { intro: introDraft });
     setIntroSaved(introDraft);
-    persist(INTRO_STORAGE_KEY, introDraft);
     setIntroJustSaved(true);
     setTimeout(() => setIntroJustSaved(false), 2000);
   };
@@ -469,7 +399,7 @@ export default function MyPortfolioPage() {
     setExpError('');
   };
 
-  const saveExp = () => {
+  const saveExp = async () => {
     if (!expForm.company.trim()) {
       setExpError('회사명을 입력해주세요.');
       return;
@@ -495,29 +425,37 @@ export default function MyPortfolioPage() {
       expForm.endDate,
       expForm.current,
     );
-    const payload: Omit<Experience, 'id'> = {
-      company: expForm.company,
-      team: expForm.team,
-      role: expForm.role,
+    const body = {
+      company: expForm.company.trim(),
+      team: expForm.team.trim() || undefined,
+      role: expForm.role.trim(),
       period,
       current: expForm.current,
     };
-    const next: Experience[] =
-      expEditId === null
-        ? [...experiences, { id: Date.now(), ...payload }]
-        : experiences.map((e) =>
-            e.id === expEditId ? { id: e.id, ...payload } : e,
-          );
-    setExperiences(next);
-    persist(EXPS_STORAGE_KEY, next);
-    resetExpForm(); // 모달은 열린 상태 유지 → 리스트에서 결과 확인
+    if (expEditId === null) {
+      const res = await api.post('/api/portfolios/experiences', body);
+      const created = res.data.data ?? res.data;
+      setExperiences((prev) => [...prev, {
+        id: created.id,
+        company: created.company,
+        team: created.team ?? '',
+        role: created.role,
+        period: created.period,
+        current: created.current,
+      }]);
+    } else {
+      await api.put(`/api/portfolios/experiences/${expEditId}`, body);
+      setExperiences((prev) => prev.map((e) =>
+        e.id === expEditId ? { id: e.id, ...body, team: body.team ?? '' } : e,
+      ));
+    }
+    resetExpForm();
   };
 
-  const deleteExp = (id: number) => {
+  const deleteExp = async (id: string) => {
     if (!confirm('이 항목을 삭제하시겠어요?')) return;
-    const next = experiences.filter((e) => e.id !== id);
-    setExperiences(next);
-    persist(EXPS_STORAGE_KEY, next);
+    await api.delete(`/api/portfolios/experiences/${id}`);
+    setExperiences((prev) => prev.filter((e) => e.id !== id));
     if (expEditId === id) resetExpForm();
   };
 
@@ -541,7 +479,7 @@ export default function MyPortfolioPage() {
     setCareerError('');
   };
 
-  const saveCareer = () => {
+  const saveCareer = async () => {
     const year = careerForm.year.trim();
     const content = careerForm.content.trim();
     if (!year) {
@@ -556,39 +494,34 @@ export default function MyPortfolioPage() {
       setCareerError('내용을 입력해주세요.');
       return;
     }
-    const next: CareerItem[] =
-      careerEditId === null
-        ? [...careers, { id: Date.now(), year, content }]
-        : careers.map((c) =>
-            c.id === careerEditId ? { id: c.id, year, content } : c,
-          );
-    setCareers(next);
-    persist(CAREERS_STORAGE_KEY, next);
+    if (careerEditId === null) {
+      const res = await api.post('/api/portfolios/career-items', { year, content });
+      const created = res.data.data ?? res.data;
+      setCareers((prev) => [...prev, { id: created.id, year: created.year, content: created.content }]);
+    } else {
+      await api.put(`/api/portfolios/career-items/${careerEditId}`, { year, content });
+      setCareers((prev) => prev.map((c) => c.id === careerEditId ? { id: c.id, year, content } : c));
+    }
     resetCareerForm();
   };
 
-  const deleteCareer = (id: number) => {
+  const deleteCareer = async (id: string) => {
     if (!confirm('이 항목을 삭제하시겠어요?')) return;
-    const next = careers.filter((c) => c.id !== id);
-    setCareers(next);
-    persist(CAREERS_STORAGE_KEY, next);
+    await api.delete(`/api/portfolios/career-items/${id}`);
+    setCareers((prev) => prev.filter((c) => c.id !== id));
     if (careerEditId === id) resetCareerForm();
   };
 
   // ───────── 포트폴리오/스터디 항목 (편집은 /portfolio/edit 페이지) ─────────
-  const deleteItem = (id: number) => {
+  const deleteItem = async (id: string) => {
     if (!confirm('이 항목을 삭제하시겠어요?')) return;
-    const next = items.filter((it) => it.id !== id);
-    setItems(next);
-    persist(ITEMS_STORAGE_KEY, next);
+    await api.delete(`/api/portfolios/items/${id}`);
+    setItems((prev) => prev.filter((it) => it.id !== id));
   };
 
   // 연도 내림차순 정렬 (최신이 위)
   const sortedCareers = [...careers].sort((a, b) => {
-    const ya = Number(a.year);
-    const yb = Number(b.year);
-    if (yb !== ya) return yb - ya;
-    return b.id - a.id;
+    return Number(b.year) - Number(a.year);
   });
 
   // 임시저장(draft) 항목은 포트폴리오 탭에 노출하지 않음
@@ -604,22 +537,23 @@ export default function MyPortfolioPage() {
   const studyItems = items.filter((it) => it.type === 'study' && !it.draft);
   const featuredCount = portfolioItems.filter((it) => it.featured).length;
 
-  /** 대표 프로젝트 토글 — 최대 MAX_FEATURED 개 제한 */
-  const toggleFeatured = (id: number) => {
+  /** 대표 프로젝트 토글 — 최대 MAX_FEATURED 개 제한 (localStorage에 id 목록 저장) */
+  const toggleFeatured = (id: string) => {
     const target = items.find((it) => it.id === id);
     if (!target) return;
     const willBeFeatured = !target.featured;
     if (willBeFeatured && featuredCount >= MAX_FEATURED) {
-      alert(
-        `대표 프로젝트는 최대 ${MAX_FEATURED}개까지만 지정할 수 있어요.`,
-      );
+      alert(`대표 프로젝트는 최대 ${MAX_FEATURED}개까지만 지정할 수 있어요.`);
       return;
     }
     const next = items.map((it) =>
       it.id === id ? { ...it, featured: willBeFeatured } : it,
     );
     setItems(next);
-    persist(ITEMS_STORAGE_KEY, next);
+    try {
+      const ids = next.filter((it) => it.featured).map((it) => it.id);
+      localStorage.setItem(FEATURED_STORAGE_KEY, JSON.stringify(ids));
+    } catch { /* 무시 */ }
   };
 
   return (
@@ -1715,7 +1649,7 @@ function ItemMgrModal({
   addLabel: string;
   addHref: string;
   onClose: () => void;
-  onDelete: (id: number) => void;
+  onDelete: (id: string) => void;
 }) {
   return (
     <div
