@@ -8,9 +8,9 @@ export default function HomePage() {
       <section className="bg-gradient-to-b from-primary-50 to-white py-20">
         <div className="mx-auto max-w-7xl px-4 text-center">
           <h1 className="text-4xl font-bold text-gray-900 md:text-5xl">
-            IT 대학생을 위한
+            모든 순간 코만하게
             <br />
-            <span className="text-primary-600">팀 빌딩 플랫폼</span>
+            <span className="text-primary-600">지내시오</span>
           </h1>
           <p className="mt-6 text-lg text-gray-600">
             대학교 메일 인증 기반의 신뢰할 수 있는 프로젝트/해커톤/스터디 구인
