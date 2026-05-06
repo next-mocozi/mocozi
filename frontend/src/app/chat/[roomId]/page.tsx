@@ -528,7 +528,7 @@ export default function ChatRoomPage({ params }: PageProps) {
   };
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] flex-col">
+    <div className="mx-auto flex h-[calc(100vh-11rem)] max-w-2xl flex-col border-x border-gray-200">
       {/* 헤더 */}
       <div className="flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-3">
         <Link href="/chat" className="text-gray-500 hover:text-gray-700">
