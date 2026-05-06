@@ -17,7 +17,10 @@ import {
   renderMarkdown,
   DEFAULT_BODY_ORDER,
   BODY_SECTION_LABEL,
+  DEFAULT_DOMAIN_SUB_ORDER,
+  DOMAIN_SUB_LABEL,
   type BodySectionKey,
+  type DomainSubKey,
   type Draft,
 } from '../edit/_interview';
 import type { ResearchDetail } from '../edit/_research';
@@ -224,7 +227,6 @@ export default function PortfolioItemPage({
   const visibleTagGroups = tagGroups.filter((g) => g.values.length > 0);
 
   // ─── 본문 섹션 순서 (저장된 순서 우선, 누락된 키는 기본 순서로 보충) ───
-  // 도메인이 있을 땐 회고를 항상 마지막으로 이동시키고, 도메인을 회고 바로 위에 노출.
   const sectionOrder: BodySectionKey[] = details
     ? (() => {
         const ordered = (
@@ -232,13 +234,6 @@ export default function PortfolioItemPage({
         ).filter((k): k is BodySectionKey => k in BODY_SECTION_LABEL);
         for (const k of DEFAULT_BODY_ORDER) {
           if (!ordered.includes(k)) ordered.push(k);
-        }
-        if (details.hasDomain) {
-          const ri = ordered.indexOf('retro');
-          if (ri >= 0) {
-            ordered.splice(ri, 1);
-            ordered.push('retro');
-          }
         }
         return ordered;
       })()
@@ -270,6 +265,30 @@ export default function PortfolioItemPage({
         return renderBody(details.contribution);
     }
   };
+
+  const domainSubValue = (k: DomainSubKey): string => {
+    if (!details) return '';
+    switch (k) {
+      case 'expertise':
+        return details.domainExpertise;
+      case 'comm':
+        return details.domainComm;
+      case 'limits':
+        return details.domainLimits;
+    }
+  };
+
+  const domainSubOrder: DomainSubKey[] = details
+    ? (() => {
+        const ordered = (
+          details.domainSubOrder ?? DEFAULT_DOMAIN_SUB_ORDER
+        ).filter((k): k is DomainSubKey => k in DOMAIN_SUB_LABEL);
+        for (const k of DEFAULT_DOMAIN_SUB_ORDER) {
+          if (!ordered.includes(k)) ordered.push(k);
+        }
+        return ordered;
+      })()
+    : [];
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-4">
@@ -346,81 +365,70 @@ export default function PortfolioItemPage({
             )}
           </header>
 
-          {/* ── 본문 섹션 — 미리보기와 동일한 순서/타이틀 ── */}
+          {/* ── 본문 섹션 — 미리보기와 동일한 순서/타이틀 (도메인 포함) ── */}
           {/* details 는 프로젝트 인터뷰 전용이므로 type=project 일 때만 사용.
            *  과거 버그로 연구·스터디 항목에 stale details 가 남아 있어도 무시됨. */}
           {item.type === 'project' && details ? (
             <>
-              {(() => {
-                const domainNode = details.hasDomain ? (
-                  <section>
-                    <h2
-                      style={{ marginBottom: '0.5rem' }}
-                      className="text-sm font-bold text-gray-800"
-                    >
-                      도메인
-                    </h2>
-                    <div className="space-y-3 text-sm leading-7 text-gray-700">
-                      {details.domainTags.length > 0 && (
-                        <p>
-                          <span className="font-medium">영역:</span>{' '}
-                          {details.domainTags.join(', ')}
-                        </p>
-                      )}
-                      {details.domainExpertise && (
-                        <p>
-                          <span className="font-medium">전문성:</span>{' '}
-                          {details.domainExpertise}
-                        </p>
-                      )}
-                      {details.domainComm && (
-                        <p>
-                          <span className="font-medium">소통:</span>{' '}
-                          {details.domainComm}
-                        </p>
-                      )}
-                      {details.domainLimits && (
-                        <p>
-                          <span className="font-medium">한계:</span>{' '}
-                          {details.domainLimits}
-                        </p>
-                      )}
-                    </div>
-                  </section>
-                ) : null;
-                const hasRetro = sectionOrder.includes('retro');
+              {sectionOrder.map((k) => {
+                const body = renderSectionFor(k);
+                if (!body) return null;
                 return (
-                  <>
-                    {sectionOrder.map((k) => {
-                      const body = renderSectionFor(k);
-                      const sectionNode = body ? (
-                        <section>
-                          <h2
+                  <Fragment key={k}>
+                    <section>
+                      <h2
+                        style={{ marginBottom: '0.5rem' }}
+                        className="text-sm font-bold text-gray-800"
+                      >
+                        {BODY_SECTION_LABEL[k]}
+                      </h2>
+                      <div className="whitespace-pre-wrap text-sm leading-7 text-gray-700">
+                        {body}
+                      </div>
+                    </section>
+                  </Fragment>
+                );
+              })}
+
+              {/* 도메인 그룹 — 헤더 + sub-question (저장된 도메인 내부 순서 적용) */}
+              {details.hasDomain && (
+                <section className="rounded-xl border border-gray-200 bg-gray-50/40 p-4">
+                  <h2
+                    style={{ marginBottom: '0.75rem' }}
+                    className="text-base font-bold text-gray-900"
+                  >
+                    도메인
+                  </h2>
+                  {details.domainTags.length > 0 && (
+                    <p
+                      style={{ marginBottom: '0.75rem' }}
+                      className="text-sm leading-7 text-gray-700"
+                    >
+                      <span className="font-medium">영역:</span>{' '}
+                      {details.domainTags.join(', ')}
+                    </p>
+                  )}
+                  <div className="space-y-3">
+                    {domainSubOrder.map((k) => {
+                      const v = domainSubValue(k);
+                      if (!v?.trim()) return null;
+                      return (
+                        <section key={k}>
+                          <h3
                             style={{ marginBottom: '0.5rem' }}
                             className="text-sm font-bold text-gray-800"
                           >
-                            {BODY_SECTION_LABEL[k]}
-                          </h2>
+                            {DOMAIN_SUB_LABEL[k]}
+                          </h3>
                           <div className="whitespace-pre-wrap text-sm leading-7 text-gray-700">
-                            {body}
+                            {renderBody(v)}
                           </div>
                         </section>
-                      ) : null;
-                      const before =
-                        domainNode && k === 'retro' ? domainNode : null;
-                      if (!before && !sectionNode) return null;
-                      return (
-                        <Fragment key={k}>
-                          {before}
-                          {sectionNode}
-                        </Fragment>
                       );
                     })}
-                    {/* 회고 섹션이 아예 없을 경우의 폴백 — 도메인은 그래도 노출 */}
-                    {domainNode && !hasRetro && domainNode}
-                  </>
-                );
-              })()}
+                  </div>
+                </section>
+              )}
 
               {(details.deliverableUrl ||
                 details.deliverableFiles.length > 0) && (

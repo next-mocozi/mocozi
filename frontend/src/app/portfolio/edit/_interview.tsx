@@ -70,12 +70,29 @@ export const BODY_SECTION_LABEL: Record<BodySectionKey, string> = {
   contribution: '본인 참여 활동',
 };
 
+/** 도메인 그룹 내부의 sub-question 키 — 도메인 안에서만 reorder */
+export type DomainSubKey = 'expertise' | 'comm' | 'limits';
+
+export const DEFAULT_DOMAIN_SUB_ORDER: DomainSubKey[] = [
+  'expertise',
+  'comm',
+  'limits',
+];
+
+export const DOMAIN_SUB_LABEL: Record<DomainSubKey, string> = {
+  expertise: '전문성 확보 방법',
+  comm: '전문가와의 소통',
+  limits: '한계와 향후 개선 방향',
+};
+
 export type Draft = {
   name: string;
   /** 카드/미리보기에 표시할 대표 이미지 (data URL). 없으면 빈 문자열 */
   thumbnail: string;
   /** 본문 섹션의 표시 순서. 사용자가 위/아래로 옮긴 결과를 저장. */
   bodySectionOrder?: BodySectionKey[];
+  /** 도메인 그룹 내부 sub-question 순서. */
+  domainSubOrder?: DomainSubKey[];
   period: ProjectPeriod;
   activityTypes: string[];
   fieldTags: string[];
@@ -295,26 +312,6 @@ const EXAMPLES: Partial<Record<StepKey, string>> = {
 };
 
 // ─────── Helpers ───────
-const aliasForIndex = (i: number): string => {
-  // 0=A, 1=B, ..., 25=Z, 26=AA, 27=AB...
-  let s = '';
-  let n = i;
-  while (true) {
-    s = String.fromCharCode(65 + (n % 26)) + s;
-    n = Math.floor(n / 26) - 1;
-    if (n < 0) break;
-  }
-  return s;
-};
-
-const findNextAlias = (assets: Asset[]) => {
-  const used = new Set(assets.map((a) => a.alias));
-  for (let i = 0; i < 1000; i++) {
-    const c = aliasForIndex(i);
-    if (!used.has(c)) return c;
-  }
-  return `X${Date.now()}`;
-};
 
 const fileToDataUrl = (file: File) =>
   new Promise<string>((resolve, reject) => {
@@ -1539,37 +1536,37 @@ function StepBody({
       );
     case 'architecture':
       return (
-        <AssetTextarea
-          block={draft.architecture}
-          onBlockChange={(b) => setDraft((d) => ({ ...d, architecture: b }))}
-          assets={draft.assets}
-          onAssetsChange={(a) => setDraft((d) => ({ ...d, assets: a }))}
+        <SimpleTextarea
+          value={draft.architecture.text}
+          onChange={(v) =>
+            setDraft((d) => ({
+              ...d,
+              architecture: { ...d.architecture, text: v },
+            }))
+          }
           example={EXAMPLES.architecture}
-          stepKey="architecture"
           placeholder="문제 정의 → 해결 방법 → 트레이드오프 (각 3개 이하)"
         />
       );
     case 'result':
       return (
-        <AssetTextarea
-          block={draft.result}
-          onBlockChange={(b) => setDraft((d) => ({ ...d, result: b }))}
-          assets={draft.assets}
-          onAssetsChange={(a) => setDraft((d) => ({ ...d, assets: a }))}
+        <SimpleTextarea
+          value={draft.result.text}
+          onChange={(v) =>
+            setDraft((d) => ({ ...d, result: { ...d.result, text: v } }))
+          }
           example={EXAMPLES.result}
-          stepKey="result"
           placeholder="달성한 지표 (수치화 필수). 예: 응답시간 50% 개선, MAU 300 → 1,200"
         />
       );
     case 'retro':
       return (
-        <AssetTextarea
-          block={draft.retro}
-          onBlockChange={(b) => setDraft((d) => ({ ...d, retro: b }))}
-          assets={draft.assets}
-          onAssetsChange={(a) => setDraft((d) => ({ ...d, assets: a }))}
+        <SimpleTextarea
+          value={draft.retro.text}
+          onChange={(v) =>
+            setDraft((d) => ({ ...d, retro: { ...d.retro, text: v } }))
+          }
           example={EXAMPLES.retro}
-          stepKey="retro"
           placeholder="잘된 점 / 아쉬운 점 / 개선할 점"
         />
       );
@@ -2251,202 +2248,8 @@ function SimpleTextarea({
         onChange={(e) => onChange(e.target.value)}
         rows={4}
         placeholder={placeholder}
-        className="w-full resize-y rounded-lg border border-gray-200 px-4 py-4 text-sm leading-8 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+        className="w-full resize-none rounded-lg border border-gray-200 px-4 py-4 text-sm leading-8 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 field-sizing-content"
       />
-    </div>
-  );
-}
-
-function AssetTextarea({
-  block,
-  onBlockChange,
-  assets,
-  onAssetsChange,
-  placeholder,
-  example,
-  stepKey,
-}: {
-  block: Block;
-  onBlockChange: (b: Block) => void;
-  assets: Asset[];
-  onAssetsChange: (a: Asset[]) => void;
-  placeholder?: string;
-  example?: string;
-  /** 이 단계에 속한 자료만 표시·관리한다. 다른 단계에 속한 자료는 그대로 보존. */
-  stepKey: AssetStepKey;
-}) {
-  const taRef = useRef<HTMLTextAreaElement>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [mentionOpen, setMentionOpen] = useState(false);
-  const [mentionQuery, setMentionQuery] = useState('');
-
-  // 이 단계에 속한 자료만 노출 — 다른 단계의 업로드는 보이지 않음
-  const myAssets = assets.filter((a) => a.stepKey === stepKey);
-  const otherAssets = assets.filter((a) => a.stepKey !== stepKey);
-
-  const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
-    const text = e.target.value;
-    onBlockChange({ ...block, text });
-    const cursor = e.target.selectionStart;
-    const before = text.slice(0, cursor);
-    const m = before.match(/@([^\s@]*)$/);
-    if (m) {
-      setMentionQuery(m[1]);
-      setMentionOpen(true);
-    } else {
-      setMentionOpen(false);
-    }
-  };
-
-  const insertMention = (asset: Asset) => {
-    const ta = taRef.current;
-    if (!ta) return;
-    const cursor = ta.selectionStart;
-    const before = block.text.slice(0, cursor);
-    const after = block.text.slice(cursor);
-    const newBefore = before.replace(/@[^\s@]*$/, `@[${asset.alias}] `);
-    const newText = newBefore + after;
-    const newAssetIds = block.assetIds.includes(asset.id)
-      ? block.assetIds
-      : [...block.assetIds, asset.id];
-    onBlockChange({ text: newText, assetIds: newAssetIds });
-    setMentionOpen(false);
-    requestAnimationFrame(() => {
-      const pos = newBefore.length;
-      ta.focus();
-      ta.setSelectionRange(pos, pos);
-    });
-  };
-
-  const handleAddAsset = async (e: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    e.target.value = '';
-    const nextMyAssets = myAssets.slice();
-    for (const file of files) {
-      try {
-        const dataUrl = await fileToDataUrl(file);
-        // alias 는 stepKey 단위에서만 유일하면 충분 (단계가 다르면 같은 A 가능)
-        const alias = findNextAlias(nextMyAssets);
-        nextMyAssets.push({
-          id: `${Date.now()}-${stepKey}-${alias}-${Math.random()
-            .toString(36)
-            .slice(2, 6)}`,
-          alias,
-          filename: file.name,
-          dataUrl,
-          stepKey,
-        });
-      } catch {
-        // 개별 실패 무시
-      }
-    }
-    onAssetsChange([...otherAssets, ...nextMyAssets]);
-  };
-
-  const removeAsset = (id: string) =>
-    onAssetsChange(assets.filter((x) => x.id !== id));
-
-  const filteredAssets = myAssets.filter((a) =>
-    `${a.alias} ${a.filename}`
-      .toLowerCase()
-      .includes(mentionQuery.toLowerCase()),
-  );
-
-  return (
-    <div>
-      {example && <TextExample text={example} />}
-      <div className="relative">
-        <textarea
-          ref={taRef}
-          value={block.text}
-          onChange={handleChange}
-          onBlur={() => setTimeout(() => setMentionOpen(false), 150)}
-          rows={4}
-          placeholder={placeholder}
-          className="w-full resize-y rounded-lg border border-gray-200 px-4 py-4 text-sm leading-8 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-        />
-        {mentionOpen && filteredAssets.length > 0 && (
-          <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
-            {filteredAssets.map((a) => (
-              <button
-                key={a.id}
-                type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  insertMention(a);
-                }}
-                className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-blue-50"
-              >
-                <img
-                  src={a.dataUrl}
-                  alt=""
-                  className="h-8 w-8 shrink-0 rounded object-cover"
-                />
-                <div className="flex-1 truncate">
-                  <span className="font-medium text-gray-700">
-                    @{a.filename}
-                  </span>
-                  <span className="ml-2 font-mono text-xs text-gray-400">
-                    [{a.alias}]
-                  </span>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div
-        style={{ marginTop: '1rem', rowGap: '1rem', columnGap: '0.625rem' }}
-        className="flex flex-wrap items-center"
-      >
-        <button
-          type="button"
-          onClick={() => fileRef.current?.click()}
-          className="rounded-full border border-dashed border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-100"
-        >
-          + 시각자료 추가
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/png,image/jpeg,image/gif"
-          multiple
-          onChange={handleAddAsset}
-          className="hidden"
-        />
-        {myAssets.map((a) => (
-          <span
-            key={a.id}
-            className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-700"
-            title={a.filename}
-          >
-            <img
-              src={a.dataUrl}
-              alt=""
-              className="h-4 w-4 rounded-sm object-cover"
-            />
-            <span className="max-w-[140px] truncate">{a.filename}</span>
-            <span className="font-mono text-gray-400">→ [{a.alias}]</span>
-            <button
-              type="button"
-              onClick={() => removeAsset(a.id)}
-              className="text-gray-400 hover:text-red-500"
-              aria-label={`${a.filename} 제거`}
-            >
-              ✕
-            </button>
-          </span>
-        ))}
-      </div>
-
-      <p
-        style={{ marginTop: '1rem' }}
-        className="text-xs leading-7 text-gray-400"
-      >
-        텍스트에서 <span className="font-mono">@</span> 를 입력하면 업로드한 자료를
-        인용할 수 있어요. 예: <span className="font-mono">@[A]</span>
-      </p>
     </div>
   );
 }
@@ -2666,16 +2469,9 @@ function BlockTypeMenu({
 function BlockEditor({
   value,
   onChange,
-  assets,
-  onAssetsChange,
-  stepKey,
 }: {
   value: string;
   onChange: (next: string) => void;
-  /** 자료 풀 — 제공되면 이미지 업로드를 @[A] 자료 참조로 처리한다 */
-  assets?: Asset[];
-  onAssetsChange?: (a: Asset[]) => void;
-  stepKey?: AssetStepKey;
 }) {
   const [blocks, setBlocks] = useState<ContentBlock[]>(() =>
     ensureNonEmpty(parseBlocks(value)),
@@ -2690,16 +2486,6 @@ function BlockEditor({
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const useAssets = !!(stepKey && assets && onAssetsChange);
-  const myAssets = useAssets
-    ? (assets as Asset[]).filter((a) => a.stepKey === stepKey)
-    : [];
-
-  // 활성 textarea 의 @멘션 드롭다운 상태
-  const [mention, setMention] = useState<{
-    blockId: string;
-    query: string;
-  } | null>(null);
   const textareaRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
   const setTextareaRef = (id: string) => (el: HTMLTextAreaElement | null) => {
     if (el) textareaRefs.current.set(id, el);
@@ -2932,138 +2718,10 @@ function BlockEditor({
     if (!file || !file.type.startsWith('image/')) return;
     try {
       const dataUrl = await fileToDataUrl(file);
-      if (useAssets && stepKey && assets && onAssetsChange) {
-        // 자료 풀에 등록 → 본문에는 @[alias] 만 남겨 텍스트 길이를 짧게 유지
-        const myCurrent = assets.filter((a) => a.stepKey === stepKey);
-        const alias = findNextAlias(myCurrent);
-        const newAsset: Asset = {
-          id: `${Date.now()}-${stepKey}-${alias}-${Math.random()
-            .toString(36)
-            .slice(2, 6)}`,
-          alias,
-          filename: file.name,
-          dataUrl,
-          stepKey,
-        };
-        onAssetsChange([...assets, newAsset]);
-        const cur = blocksRef.current;
-        let target = -1;
-        for (let i = cur.length - 1; i >= 0; i--) {
-          const b = cur[i];
-          if (b.type === 'p' || b.type === 'li') {
-            target = i;
-            break;
-          }
-        }
-        if (target >= 0) {
-          const lb = cur[target] as BlockText;
-          const sep =
-            lb.text && !/\s$/.test(lb.text) ? ' ' : '';
-          const next = cur.slice();
-          next[target] = {
-            ...lb,
-            text: `${lb.text}${sep}@[${alias}] `,
-          } as ContentBlock;
-          commit(next);
-        } else {
-          addBlock({ id: genBlockId(), type: 'p', text: `@[${alias}] ` });
-        }
-      } else {
-        addBlock({ id: genBlockId(), type: 'img', src: dataUrl, alt: file.name });
-      }
+      addBlock({ id: genBlockId(), type: 'img', src: dataUrl, alt: file.name });
     } catch {
       // 무시
     }
-  };
-
-  // ─── @ 멘션 ───
-  const handleTextareaChange = (
-    i: number,
-    blockId: string,
-    e: ChangeEvent<HTMLTextAreaElement>,
-  ) => {
-    const text = e.target.value;
-    updateAt(i, { text });
-    if (!useAssets) return;
-    const cursor = e.target.selectionStart;
-    const before = text.slice(0, cursor);
-    const m = before.match(/@([^\s@\]]*)$/);
-    if (m) setMention({ blockId, query: m[1] });
-    else setMention(null);
-  };
-
-  const insertMention = (asset: Asset) => {
-    if (!mention) return;
-    const ta = textareaRefs.current.get(mention.blockId);
-    if (!ta) return;
-    const idx = blocksRef.current.findIndex((b) => b.id === mention.blockId);
-    if (idx < 0) return;
-    const cur = blocksRef.current[idx];
-    if (cur.type !== 'p' && cur.type !== 'li') return;
-    const cursor = ta.selectionStart;
-    const before = cur.text.slice(0, cursor);
-    const after = cur.text.slice(cursor);
-    const newBefore = before.replace(/@[^\s@\]]*$/, `@[${asset.alias}] `);
-    const newText = newBefore + after;
-    updateAt(idx, { text: newText });
-    setMention(null);
-    requestAnimationFrame(() => {
-      const pos = newBefore.length;
-      ta.focus();
-      ta.setSelectionRange(pos, pos);
-    });
-  };
-
-  const filteredMentionAssets = mention
-    ? myAssets.filter((a) =>
-        `${a.alias} ${a.filename}`
-          .toLowerCase()
-          .includes(mention.query.toLowerCase()),
-      )
-    : [];
-
-  const removeAsset = (id: string) => {
-    if (!useAssets || !assets || !onAssetsChange) return;
-    onAssetsChange(assets.filter((x) => x.id !== id));
-  };
-
-  const renderMentionDropdown = (blockId: string, posClass: string) => {
-    if (
-      !useAssets ||
-      mention?.blockId !== blockId ||
-      filteredMentionAssets.length === 0
-    )
-      return null;
-    return (
-      <div
-        className={`absolute ${posClass} top-full z-10 mt-1 max-h-48 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg`}
-      >
-        {filteredMentionAssets.map((a) => (
-          <button
-            key={a.id}
-            type="button"
-            onMouseDown={(e) => {
-              e.preventDefault();
-              insertMention(a);
-            }}
-            className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-blue-50"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={a.dataUrl}
-              alt=""
-              className="h-8 w-8 shrink-0 rounded object-cover"
-            />
-            <div className="flex-1 truncate">
-              <span className="font-medium text-gray-700">@{a.filename}</span>
-              <span className="ml-2 font-mono text-xs text-gray-400">
-                [{a.alias}]
-              </span>
-            </div>
-          </button>
-        ))}
-      </div>
-    );
   };
 
   const addAttachmentFile = async (file: File | null) => {
@@ -3219,21 +2877,45 @@ function BlockEditor({
           {/* 본문 */}
           <div className="min-w-0 flex-1">
             {b.type === 'img' ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={b.src}
-                alt={b.alt}
-                className="max-w-full rounded-lg border border-gray-200"
-              />
+              <div className="relative inline-block max-w-full">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={b.src}
+                  alt={b.alt}
+                  draggable={false}
+                  className="block max-w-full rounded-lg border border-gray-200"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeAt(i)}
+                  aria-label="이미지 삭제"
+                  title="삭제"
+                  className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-sm leading-none text-gray-500 shadow-sm ring-1 ring-gray-200 hover:bg-red-50 hover:text-red-500"
+                >
+                  ✕
+                </button>
+              </div>
             ) : b.type === 'file' ? (
-              <a
-                href={b.src}
-                download={b.filename}
-                className="inline-flex max-w-full items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              >
-                <span>📎</span>
-                <span className="truncate">{b.filename}</span>
-              </a>
+              <div className="inline-flex max-w-full items-center gap-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                <a
+                  href={b.src}
+                  download={b.filename}
+                  draggable={false}
+                  className="inline-flex min-w-0 items-center gap-2 hover:text-blue-600"
+                >
+                  <span>📎</span>
+                  <span className="truncate">{b.filename}</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => removeAt(i)}
+                  aria-label="파일 삭제"
+                  title="삭제"
+                  className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full text-gray-400 hover:bg-red-50 hover:text-red-500"
+                >
+                  ✕
+                </button>
+              </div>
             ) : b.type === 'h2' || b.type === 'h3' ? (
               <input
                 ref={setHeadingRef(b.id)}
@@ -3249,37 +2931,27 @@ function BlockEditor({
                 }`}
               />
             ) : b.type === 'li' ? (
-              <div className="relative flex items-start gap-2">
+              <div className="flex items-start gap-2">
                 <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-gray-400" />
                 <textarea
                   ref={setTextareaRef(b.id)}
                   value={b.text}
-                  onChange={(e) => handleTextareaChange(i, b.id, e)}
+                  onChange={(e) => updateAt(i, { text: e.target.value })}
                   onKeyDown={(e) => onTextKeyDown(i, e)}
-                  onBlur={() => setTimeout(() => setMention(null), 150)}
-                  rows={Math.max(1, b.text.split('\n').length)}
-                  className="w-full resize-none border-0 bg-transparent px-0 text-sm leading-7 text-gray-700 outline-none"
+                  rows={1}
+                  className="w-full resize-none border-0 bg-transparent px-0 text-sm leading-7 text-gray-700 outline-none field-sizing-content"
                 />
-                {renderMentionDropdown(b.id, 'left-4 right-0')}
               </div>
             ) : (
-              <div className="relative">
-                <textarea
-                  ref={setTextareaRef(b.id)}
-                  value={b.text}
-                  onChange={(e) => handleTextareaChange(i, b.id, e)}
-                  onKeyDown={(e) => onTextKeyDown(i, e)}
-                  onBlur={() => setTimeout(() => setMention(null), 150)}
-                  rows={Math.max(1, b.text.split('\n').length)}
-                  placeholder={
-                    useAssets
-                      ? 'Enter 로 새 줄 · 좌측 + 로 형식·스타일 · @ 로 자료 인용'
-                      : 'Enter 로 새 줄 · 좌측 + 로 형식·스타일'
-                  }
-                  className="w-full resize-none border-0 bg-transparent px-0 text-sm leading-7 text-gray-700 outline-none"
-                />
-                {renderMentionDropdown(b.id, 'left-0 right-0')}
-              </div>
+              <textarea
+                ref={setTextareaRef(b.id)}
+                value={b.text}
+                onChange={(e) => updateAt(i, { text: e.target.value })}
+                onKeyDown={(e) => onTextKeyDown(i, e)}
+                rows={1}
+                placeholder="Enter 로 새 줄 · 좌측 + 로 형식·스타일"
+                className="w-full resize-none border-0 bg-transparent px-0 text-sm leading-7 text-gray-700 outline-none field-sizing-content"
+              />
             )}
           </div>
         </div>
@@ -3325,41 +2997,6 @@ function BlockEditor({
         />
       </div>
 
-      {useAssets && myAssets.length > 0 && (
-        <div className="mt-2 flex flex-wrap items-center gap-1.5 pl-1">
-          {myAssets.map((a) => (
-            <span
-              key={a.id}
-              className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-700"
-              title={a.filename}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={a.dataUrl}
-                alt=""
-                className="h-4 w-4 rounded-sm object-cover"
-              />
-              <span className="max-w-[140px] truncate">{a.filename}</span>
-              <span className="font-mono text-gray-400">→ [{a.alias}]</span>
-              <button
-                type="button"
-                onClick={() => removeAsset(a.id)}
-                className="text-gray-400 hover:text-red-500"
-                aria-label={`${a.filename} 제거`}
-              >
-                ✕
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
-      {useAssets && (
-        <p className="mt-1 pl-1 text-[11px] leading-6 text-gray-400">
-          텍스트에서 <span className="font-mono">@</span> 를 입력하면 업로드한
-          자료를 인용할 수 있어요. 예{' '}
-          <span className="font-mono">@[A]</span>
-        </p>
-      )}
     </div>
   );
 }
@@ -3372,19 +3009,16 @@ function BodySection({
   isDragging,
   isDropTarget,
   onPointerDownHandle,
-  assets,
-  onAssetsChange,
-  stepKey,
+  children,
 }: {
   title: string;
-  value: string;
-  onChange: (next: string) => void;
+  value?: string;
+  onChange?: (next: string) => void;
   isDragging: boolean;
   isDropTarget: boolean;
   onPointerDownHandle: (e: React.PointerEvent) => void;
-  assets?: Asset[];
-  onAssetsChange?: (a: Asset[]) => void;
-  stepKey?: AssetStepKey;
+  /** 제공되면 BlockEditor 대신 이 컨텐츠를 렌더 (예: 도메인 섹션) */
+  children?: ReactNode;
 }) {
   return (
     <section
@@ -3415,13 +3049,9 @@ function BodySection({
         <h4 className="text-sm font-bold text-gray-800">{title}</h4>
         <span className="text-[11px] text-gray-400">드래그해서 순서 변경</span>
       </div>
-      <BlockEditor
-        value={value}
-        onChange={onChange}
-        assets={assets}
-        onAssetsChange={onAssetsChange}
-        stepKey={stepKey}
-      />
+      {children ?? (
+        <BlockEditor value={value ?? ''} onChange={onChange ?? (() => {})} />
+      )}
     </section>
   );
 }
@@ -3543,31 +3173,172 @@ function BodySectionsList({
 
   return (
     <div ref={containerRef} className="space-y-4">
-      {order.map((k, i) => {
-        const hasAssets =
-          k === 'architecture' || k === 'result' || k === 'retro';
-        return (
-          <BodySection
-            key={k}
-            title={BODY_SECTION_LABEL[k]}
-            value={sectionValue(k)}
-            onChange={(v) => setSectionValue(k, v)}
-            isDragging={draggingKey === k}
-            isDropTarget={
-              draggingKey !== null && draggingKey !== k && dropIdx === i
-            }
-            onPointerDownHandle={(e) => startSectionDrag(k, e)}
-            assets={hasAssets ? draft.assets : undefined}
-            onAssetsChange={
-              hasAssets
-                ? (a) => setDraft((d) => ({ ...d, assets: a }))
-                : undefined
-            }
-            stepKey={hasAssets ? (k as AssetStepKey) : undefined}
-          />
-        );
-      })}
+      {order.map((k, i) => (
+        <BodySection
+          key={k}
+          title={BODY_SECTION_LABEL[k]}
+          value={sectionValue(k)}
+          onChange={(v) => setSectionValue(k, v)}
+          isDragging={draggingKey === k}
+          isDropTarget={
+            draggingKey !== null && draggingKey !== k && dropIdx === i
+          }
+          onPointerDownHandle={(e) => startSectionDrag(k, e)}
+        />
+      ))}
     </div>
+  );
+}
+
+// ─────── 도메인 sub-question 그룹 ───────
+/** 도메인 안에서만 reorder. "도메인" 헤더 + 3개 BlockEditor 섹션. */
+function DomainSubsectionsList({
+  draft,
+  setDraft,
+}: {
+  draft: Draft;
+  setDraft: Dispatch<SetStateAction<Draft>>;
+}) {
+  const order = (draft.domainSubOrder ?? DEFAULT_DOMAIN_SUB_ORDER).filter(
+    (k): k is DomainSubKey => k in DOMAIN_SUB_LABEL,
+  );
+  for (const k of DEFAULT_DOMAIN_SUB_ORDER) {
+    if (!order.includes(k)) order.push(k);
+  }
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const orderRef = useRef<DomainSubKey[]>(order);
+  const [draggingKey, setDraggingKey] = useState<DomainSubKey | null>(null);
+  const [dropIdx, setDropIdx] = useState<number | null>(null);
+  const dropIdxRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    orderRef.current = order;
+  });
+
+  const moveTo = (from: number, to: number) => {
+    if (from === to) return;
+    const next = orderRef.current.slice();
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    orderRef.current = next;
+    setDraft((d) => ({ ...d, domainSubOrder: next }));
+  };
+
+  const startSectionDrag = (key: DomainSubKey, e: React.PointerEvent) => {
+    e.preventDefault();
+    setDraggingKey(key);
+    const fromIdx = orderRef.current.indexOf(key);
+    dropIdxRef.current = fromIdx;
+    setDropIdx(fromIdx);
+
+    const onMove = (ev: PointerEvent) => {
+      const root = containerRef.current;
+      if (!root) return;
+      const rows = root.querySelectorAll<HTMLElement>('[data-domain-sub-row]');
+      let target = -1;
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i].getBoundingClientRect();
+        if (ev.clientY >= r.top && ev.clientY <= r.bottom) {
+          target = i;
+          break;
+        }
+      }
+      if (target >= 0) {
+        dropIdxRef.current = target;
+        setDropIdx(target);
+      }
+    };
+
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+      const finalDrop = dropIdxRef.current;
+      const cur = orderRef.current.indexOf(key);
+      if (cur >= 0 && finalDrop !== null && finalDrop !== cur) {
+        moveTo(cur, finalDrop);
+      }
+      dropIdxRef.current = null;
+      setDraggingKey(null);
+      setDropIdx(null);
+    };
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+  };
+
+  const subValue = (k: DomainSubKey): string => {
+    switch (k) {
+      case 'expertise':
+        return draft.domainExpertise;
+      case 'comm':
+        return draft.domainComm;
+      case 'limits':
+        return draft.domainLimits;
+    }
+  };
+
+  const setSubValue = (k: DomainSubKey, v: string) => {
+    setDraft((d) => {
+      switch (k) {
+        case 'expertise':
+          return { ...d, domainExpertise: v };
+        case 'comm':
+          return { ...d, domainComm: v };
+        case 'limits':
+          return { ...d, domainLimits: v };
+      }
+    });
+  };
+
+  return (
+    <section className="rounded-xl border border-gray-200 bg-gray-50/40 p-4">
+      <h3 className="mb-3 text-base font-bold text-gray-900">도메인</h3>
+      <div ref={containerRef} className="space-y-3">
+        {order.map((k, i) => (
+          <section
+            key={k}
+            data-domain-sub-row
+            className={`group/sec rounded-lg p-1 transition-colors ${
+              draggingKey === k
+                ? 'opacity-50'
+                : draggingKey !== null && draggingKey !== k && dropIdx === i
+                  ? 'bg-blue-50 ring-2 ring-blue-300'
+                  : ''
+            }`}
+          >
+            <div
+              style={{ marginBottom: '0.5rem' }}
+              className="flex items-center gap-2"
+            >
+              <div
+                role="button"
+                tabIndex={0}
+                aria-label="도메인 안에서 순서 변경"
+                title="드래그해서 순서 변경 (도메인 내부)"
+                onPointerDown={(e) => startSectionDrag(k, e)}
+                className="cursor-grab select-none rounded px-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 active:cursor-grabbing"
+                style={{ touchAction: 'none' }}
+              >
+                ⋮⋮
+              </div>
+              <h4 className="text-sm font-bold text-gray-800">
+                {DOMAIN_SUB_LABEL[k]}
+              </h4>
+              <span className="text-[11px] text-gray-400">
+                드래그해서 순서 변경
+              </span>
+            </div>
+            <BlockEditor
+              value={subValue(k)}
+              onChange={(v) => setSubValue(k, v)}
+            />
+          </section>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -3669,9 +3440,9 @@ function EditableMarkdownSection({
         ref={taRef}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        rows={Math.max(4, value.split('\n').length)}
+        rows={4}
         placeholder="자유롭게 작성하세요. ## 제목, **굵게**, 이미지를 사용할 수 있어요."
-        className="w-full resize-y rounded-lg border border-gray-200 px-4 py-3 text-sm leading-7 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+        className="w-full resize-none rounded-lg border border-gray-200 px-4 py-3 text-sm leading-7 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 field-sizing-content"
       />
       {value.trim() && (
         <div
@@ -3691,187 +3462,6 @@ function EditableMarkdownSection({
 }
 
 // ─────── Summary view ───────
-/** 도메인 섹션 — hasDomain 토글과 4개의 sub-question 을 미리보기에서 인라인 편집.
- *  하위 질문은 "수정" 토글 없이 항상 텍스트 영역으로 노출 (질문이 명확하므로). */
-function DomainEditableSection({
-  draft,
-  setDraft,
-}: {
-  draft: Draft;
-  setDraft: Dispatch<SetStateAction<Draft>>;
-}) {
-  const [editing, setEditing] = useState(false);
-  const hasAny =
-    draft.hasDomain === true ||
-    draft.domainTags.length > 0 ||
-    !!draft.domainExpertise.trim() ||
-    !!draft.domainComm.trim() ||
-    !!draft.domainLimits.trim();
-
-  const labelClass =
-    'mb-1 block text-[11px] font-semibold uppercase tracking-wider text-gray-400';
-  const inputClass =
-    'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm leading-relaxed outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100';
-
-  return (
-    <div
-      className={`rounded-lg p-1 transition-colors ${
-        editing ? 'bg-blue-50/40 ring-1 ring-blue-100' : ''
-      }`}
-    >
-      <div
-        style={{ marginBottom: '0.5rem' }}
-        className="flex items-center justify-between gap-2"
-      >
-        <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-          도메인
-        </span>
-        <button
-          type="button"
-          onClick={() => setEditing((v) => !v)}
-          className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-all ${
-            editing
-              ? 'bg-blue-600 text-white shadow-sm hover:bg-blue-700'
-              : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:text-blue-600'
-          }`}
-        >
-          {editing ? '✓ 완료' : '✎ 수정'}
-        </button>
-      </div>
-
-      {editing ? (
-        <div className="space-y-3 px-1 pb-1">
-          {/* 도메인 포함 여부 */}
-          <div>
-            <span className={labelClass}>도메인 포함 여부</span>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setDraft((d) => ({ ...d, hasDomain: true }))}
-                className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
-                  draft.hasDomain === true
-                    ? 'border-blue-500 bg-blue-50 text-blue-700'
-                    : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                예
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  setDraft((d) => ({
-                    ...d,
-                    hasDomain: false,
-                    domainTags: [],
-                    domainExpertise: '',
-                    domainComm: '',
-                    domainLimits: '',
-                  }))
-                }
-                className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
-                  draft.hasDomain === false
-                    ? 'border-blue-500 bg-blue-50 text-blue-700'
-                    : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                아니오
-              </button>
-            </div>
-          </div>
-
-          {/* hasDomain === true 일 때만 하위 질문 노출 */}
-          {draft.hasDomain === true && (
-            <>
-              <div>
-                <span className={labelClass}>도메인 영역 (드래그·태그 선택)</span>
-                <TagSelect
-                  options={DOMAIN_OPTIONS}
-                  selected={draft.domainTags}
-                  onChange={(v) => setDraft((d) => ({ ...d, domainTags: v }))}
-                  allowCustom
-                />
-              </div>
-              <div>
-                <span className={labelClass}>전문성 확보 방법</span>
-                <textarea
-                  value={draft.domainExpertise}
-                  onChange={(e) =>
-                    setDraft((d) => ({
-                      ...d,
-                      domainExpertise: e.target.value,
-                    }))
-                  }
-                  rows={3}
-                  placeholder="공부한 자료, 정보 출처, 학습 방법 등."
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <span className={labelClass}>전문가와의 소통</span>
-                <textarea
-                  value={draft.domainComm}
-                  onChange={(e) =>
-                    setDraft((d) => ({ ...d, domainComm: e.target.value }))
-                  }
-                  rows={3}
-                  placeholder="전문가 인터뷰, 협업 방식 등."
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <span className={labelClass}>한계와 향후 개선 방향</span>
-                <textarea
-                  value={draft.domainLimits}
-                  onChange={(e) =>
-                    setDraft((d) => ({ ...d, domainLimits: e.target.value }))
-                  }
-                  rows={3}
-                  placeholder="현재 결과물의 한계, 향후 보완 방향."
-                  className={inputClass}
-                />
-              </div>
-            </>
-          )}
-        </div>
-      ) : hasAny ? (
-        draft.hasDomain === true ? (
-          <div className="space-y-2 px-1 text-sm leading-7 text-gray-700">
-            {draft.domainTags.length > 0 && (
-              <p>
-                <span className="font-medium">영역:</span>{' '}
-                {draft.domainTags.join(', ')}
-              </p>
-            )}
-            {draft.domainExpertise && (
-              <p>
-                <span className="font-medium">전문성:</span>{' '}
-                {draft.domainExpertise}
-              </p>
-            )}
-            {draft.domainComm && (
-              <p>
-                <span className="font-medium">소통:</span> {draft.domainComm}
-              </p>
-            )}
-            {draft.domainLimits && (
-              <p>
-                <span className="font-medium">한계:</span> {draft.domainLimits}
-              </p>
-            )}
-          </div>
-        ) : (
-          <p className="px-1 text-xs text-gray-400">
-            특정 도메인 없음으로 설정됨
-          </p>
-        )
-      ) : (
-        <p className="px-1 text-xs text-gray-400">
-          (도메인 정보 미입력 — &ldquo;✎ 수정&rdquo; 으로 추가)
-        </p>
-      )}
-    </div>
-  );
-}
 
 /** 미리보기 안에서 한 메타 섹션을 "읽기 ↔ 인라인 편집" 으로 토글하는 래퍼 */
 function InlineEditSection({
@@ -4137,6 +3727,75 @@ function SummaryView({
               onChange={(v) => setDraft((d) => ({ ...d, roles: v }))}
             />
           </InlineEditSection>
+
+          {/* 도메인 — 활동/분야와 동일한 InlineEditSection 패턴 */}
+          <InlineEditSection
+            label="도메인"
+            hasValue={draft.hasDomain !== null}
+            emptyText="(도메인 미설정)"
+            preview={
+              <div className="flex flex-wrap items-center gap-2 text-sm text-gray-700">
+                {draft.hasDomain === true ? (
+                  <>
+                    <span className="rounded-full bg-blue-50 px-3 py-1 text-xs leading-relaxed text-blue-700">
+                      포함
+                    </span>
+                    {draft.domainTags.length > 0 && tagChips(draft.domainTags)}
+                  </>
+                ) : draft.hasDomain === false ? (
+                  <span className="rounded-full bg-gray-100 px-3 py-1 text-xs leading-relaxed text-gray-600">
+                    포함 안 함
+                  </span>
+                ) : null}
+              </div>
+            }
+          >
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDraft((d) => ({ ...d, hasDomain: true }))}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
+                    draft.hasDomain === true
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  예
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setDraft((d) => ({
+                      ...d,
+                      hasDomain: false,
+                      domainTags: [],
+                      domainExpertise: '',
+                      domainComm: '',
+                      domainLimits: '',
+                    }))
+                  }
+                  className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
+                    draft.hasDomain === false
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  아니오
+                </button>
+              </div>
+              {draft.hasDomain === true && (
+                <TagSelect
+                  options={DOMAIN_OPTIONS}
+                  selected={draft.domainTags}
+                  onChange={(v) =>
+                    setDraft((d) => ({ ...d, domainTags: v }))
+                  }
+                  allowCustom
+                />
+              )}
+            </div>
+          </InlineEditSection>
         </div>
         {/* 우측 썸네일 — 클릭하면 직접 업로드. 없으면 백지(점선 박스)로 표시. */}
         <div className="shrink-0">
@@ -4189,8 +3848,10 @@ function SummaryView({
       {/* 본문 섹션 — 드래그로 순서 변경 */}
       <BodySectionsList draft={draft} setDraft={setDraft} />
 
-      {/* 도메인 — 항상 노출, 인라인 편집 */}
-      <DomainEditableSection draft={draft} setDraft={setDraft} />
+      {/* 도메인 sub-question 그룹 — hasDomain일 때만 노출, 그룹 내부에서만 reorder */}
+      {draft.hasDomain === true && (
+        <DomainSubsectionsList draft={draft} setDraft={setDraft} />
+      )}
 
       {/* 결과물 / 배포물 — 항상 노출, 인라인 편집 */}
       <InlineEditSection
