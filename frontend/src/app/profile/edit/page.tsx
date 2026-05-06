@@ -267,10 +267,12 @@ export default function ProfileEditPage() {
           <label className="mb-1 block text-sm font-medium text-gray-700">한줄 소개</label>
           <textarea
             value={bio}
-            onChange={(e) => setBio(e.target.value)}
+            onChange={(e) => setBio(e.target.value.slice(0, 100))}
+            maxLength={100}
             rows={3}
             className="w-full resize-none rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
           />
+          <p className="mt-1 text-right text-xs text-gray-400">{bio.length}/100</p>
         </div>
 
         {/* 메인 직군 */}

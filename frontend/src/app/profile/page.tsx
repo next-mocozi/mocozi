@@ -308,9 +308,7 @@ export default function MyProfilePage() {
       <div className="card mb-6">
         <h2 className="mb-4 text-lg font-semibold">한 줄 소개</h2>
         {user.bio ? (
-          <div className="flex flex-wrap gap-2">
-            <span className="font-medium">{user.bio}</span>
-          </div>
+          <p className="font-medium whitespace-pre-wrap break-words">{user.bio}</p>
         ) : (
           <p className="text-sm text-gray-500">
             아직 등록된 한 줄 소개가 없습니다.{' '}
@@ -422,7 +420,7 @@ export default function MyProfilePage() {
             {selected.includes(activeTab) && activeTab === 'intro' && (
               <div className="card">
                 {intro.trim() ? (
-                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-700">
+                  <p className="font-medium whitespace-pre-wrap break-words">
                     {intro}
                   </p>
                 ) : (
