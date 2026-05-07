@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AttachmentButton } from '@/components/chat/AttachmentButton';
 import RoomList from '@/components/chat/RoomList';
 import { RoleSelector } from '@/components/chat/RoleSelector';
 import { SlidingPanel } from '@/components/chat/SlidingPanel';
@@ -12,6 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import {
   ensureProfileAttachment,
+  parseAttachmentMarker,
   renderTemplate,
   type TemplateVars,
 } from '@/lib/messageTemplate';
@@ -992,9 +994,24 @@ function MessageItem({
             {message.sender.name}
           </p>
         )}
-        <p className="whitespace-pre-wrap break-words text-sm">
-          {message.content}
-        </p>
+        {/* 메시지 본문 + attachment 마커 파싱 — 마커는 본문에서 제거되고 둥근사각형 버튼으로 별도 렌더 */}
+        {(() => {
+          const parsed = parseAttachmentMarker(message.content);
+          return (
+            <>
+              <p className="whitespace-pre-wrap break-words text-sm">
+                {parsed.cleanContent}
+              </p>
+              {parsed.attachments.map((a, i) => (
+                <AttachmentButton
+                  key={`${a.type}-${a.target}-${i}`}
+                  attachment={a}
+                  isMine={isMine}
+                />
+              ))}
+            </>
+          );
+        })()}
 
         {/* 반응 표시 — emoji별 그룹 */}
         {groupedReactions.length > 0 && (
