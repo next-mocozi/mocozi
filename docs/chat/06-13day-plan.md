@@ -220,6 +220,32 @@ Phase A 운영 환경에서 메시지 전송 1-2초 → 0.5-0.7초로 단축한 
     3. **강퇴 시 socket 강제 disconnect** — leftAt 갱신 후 그 사용자의 모든 socket 종료. 가장 단순
   - 강퇴 기능 구현 PR과 함께 결정
 
+### 메시지 삭제 정책 강화 (PR #14·#15 후속)
+
+Phase A에서는 **카카오톡 스타일 익명 placeholder** (UI만)로 마감. 시간 제한·내 화면에서만 삭제 등 추가 정책은 사용자 피드백 후 도입 검토.
+
+- [ ] **시간 제한 5분 도입 검토 (옵션 B)**
+  - 현재: 무제한 삭제 가능 (Phase A 단순성 우선 — `01-decisions.md` §3)
+  - 카카오톡 정책: 전송 후 5분 이내만 모두에게 삭제. 그 후엔 회수 불가
+  - **도입 시 변경**:
+    - backend `chat.service.deleteMessage` — `Date.now() - createdAt > 5min`이면 BadRequestException
+    - frontend — 5분 지난 메시지의 삭제 버튼 hide 또는 disable
+  - **결정 트리거**: 사용자가 옛 메시지 대량 삭제로 대화 맥락 깨는 사례 발생 시
+  - **반대 의견**: 학생 팀 데모 환경에선 자유로운 삭제가 사용자 학습 비용 낮음
+
+- [ ] **\"내 화면에서만 삭제\" 분기 도입 검토 (옵션 C)**
+  - 현재: 삭제 = 모두에게 삭제 (소프트 삭제 broadcast)
+  - 카카오톡 정책: 두 옵션 분기
+    1. \"모두에게 삭제\" — 5분 이내, 모든 참여자 placeholder
+    2. \"내 화면에서만 삭제\" — 시간 무관, 본인 디바이스에서만 hide
+  - **도입 시 변경 (큰 작업)**:
+    - DB: `user_hidden_messages` 테이블 신설 (`userId`, `messageId`, `hiddenAt`)
+    - backend: GET /messages 응답에서 본인 hidden 항목 필터링
+    - frontend: 우클릭 메뉴에 두 옵션 분기 + UI
+    - broadcast 영향 없음 (로컬 hide니까)
+  - **결정 트리거**: 사용자가 \"옛 메시지를 내 화면에서만 정리하고 싶다\" 요청 발생 시
+  - **반대 의견**: DB 부담 + 동기화 복잡도 증가, Phase B 인프라 부담
+
 ---
 
 ## 일정 위험 지표 (DAILY 모니터링)
