@@ -16,7 +16,8 @@ RUN pnpm build
 # Railway가 PORT 환경변수를 주입 — main.ts가 process.env.PORT 사용 중
 EXPOSE 8080
 
-# 시작 시 schema 동기화 + node 실행
-# - migrations/ 가 있어도 db push 사용 (팀 워크플로우 일치)
-# - --accept-data-loss: 빈 DB나 unique constraint 추가 시 prisma 보수적 abort 우회
-CMD ["sh", "-c", "pnpm exec prisma db push --skip-generate --accept-data-loss && node dist/main"]
+# 시작 시 node 실행만 — schema 동기화는 Supabase SQL Editor에서 수동
+# - 옛날: prisma db push로 자동 동기화 → Supabase pooler session mode (15 connection 한도) 초과로 EMAXCONNSESSION 에러
+# - 지금: schema 변경 시 backend/prisma/migrations/*.sql을 Supabase SQL Editor에서 수동 실행
+# - 이유: dev Dockerfile도 같은 문제로 db push 제거된 바 있음 (commit b6d9a81)
+CMD ["sh", "-c", "node dist/main"]
