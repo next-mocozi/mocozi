@@ -65,18 +65,50 @@ export default function ChatListPage() {
 
     void load();
 
-    // socket 재연결 시 다시 fetch (누락된 동안의 사이드바 동기화)
-    if (socket) {
-      const onConnect = () => void load();
-      socket.on('connect', onConnect);
+    if (!socket) {
       return () => {
         cancelled = true;
-        socket.off('connect', onConnect);
       };
     }
 
+    // socket 재연결 시 다시 fetch (누락된 동안의 사이드바 동기화)
+    const onConnect = () => void load();
+    socket.on('connect', onConnect);
+
+    // 새 메시지 도착 시 — lastMessage / lastMessageAt 즉시 갱신해 리스트 화면 동기화.
+    // (unreadCount는 SocketProvider의 useNotifications가 별도로 처리 — 여기선 미리보기만)
+    // 사용자 시나리오: "상대방이 채팅을 작성하면 새로고침 전까지 새 내용 안 보임" 버그 fix
+    const onNewMessage = (n: {
+      roomId: string;
+      preview: string;
+      // backend가 createdAt을 안 보내는 경우엔 클라이언트 시각으로 fallback
+      createdAt?: string;
+    }) => {
+      const ts = n.createdAt ?? new Date().toISOString();
+      setRooms((prev) => {
+        const idx = prev.findIndex((r) => r.id === n.roomId);
+        if (idx === -1) {
+          // 새로 만들어진 방의 알림이면 GET 다시 — 정렬·멤버 정보 일관성 위해
+          void load();
+          return prev;
+        }
+        const updated = {
+          ...prev[idx],
+          lastMessage: n.preview,
+          lastMessageAt: ts,
+        };
+        // 최신 활동 순 정렬 (lastMessageAt desc) — 가장 위로 끌어올림
+        const next = [updated, ...prev.filter((_, i) => i !== idx)];
+        return next;
+      });
+    };
+
+    socket.on('notification:newMessage', onNewMessage);
+
     return () => {
       cancelled = true;
+      socket.off('connect', onConnect);
+      socket.off('notification:newMessage', onNewMessage);
     };
   }, [socket, initFromRooms]);
 
