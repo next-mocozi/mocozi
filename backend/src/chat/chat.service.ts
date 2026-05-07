@@ -317,25 +317,33 @@ export class ChatService {
       }
     }
 
-    // 트랜잭션: 메시지 INSERT + 방 lastMessage 갱신을 원자 처리
-    const [message] = await this.prisma.$transaction([
-      this.prisma.chatMessage.create({
-        data: {
-          roomId,
-          senderId,
-          content,
-          parentId: parentId ?? null,
-        },
-        include: this.messageInclude(),
-      }),
-      this.prisma.chatRoom.update({
+    // 메시지 INSERT만 await — ack/broadcast critical path
+    const message = await this.prisma.chatMessage.create({
+      data: {
+        roomId,
+        senderId,
+        content,
+        parentId: parentId ?? null,
+      },
+      include: this.messageInclude(),
+    });
+
+    // 방 lastMessage 갱신은 fire-and-forget — 사용자 응답 latency에서 제외
+    // (broadcast 페이로드에 메시지 정보 이미 들어가 사이드바도 즉시 갱신됨)
+    // 실패해도 다음 메시지에서 자동 동기화. 로그만 남김
+    void this.prisma.chatRoom
+      .update({
         where: { id: roomId },
         data: {
           lastMessage: this.preview(content),
           lastMessageAt: new Date(),
         },
-      }),
-    ]);
+      })
+      .catch((err) => {
+        // 실패 무시 — lastMessage는 다음 메시지 또는 GET /rooms 시 자동 일관성 회복
+        // eslint-disable-next-line no-console
+        console.error('chatRoom.lastMessage update failed', err);
+      });
 
     return message;
   }

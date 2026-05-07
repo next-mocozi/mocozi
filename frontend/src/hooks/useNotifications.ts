@@ -42,12 +42,16 @@ export function useNotifications(socket: ChatSocket | null) {
     if (!socket) return;
 
     const onNewMessage = (n: NewMessageNotification) => {
+      // eslint-disable-next-line no-console
+      console.info('[ws] notification:newMessage', n);
       setUnreadByRoom((prev) => ({ ...prev, [n.roomId]: n.unreadCount }));
       // 가장 최근 알림 갱신 — UI는 dismissLatest 또는 다음 알림 도착 시 교체
       setLatestNotification(n);
     };
 
     const onUnreadChanged = (n: UnreadCountChangedNotification) => {
+      // eslint-disable-next-line no-console
+      console.info('[ws] notification:unreadCountChanged', n);
       setUnreadByRoom((prev) => ({ ...prev, [n.roomId]: n.unreadCount }));
     };
 

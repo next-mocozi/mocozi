@@ -154,10 +154,17 @@ export default function ChatRoomPage({ params }: PageProps) {
       if (msg.roomId !== roomId) return; // 다른 방 broadcast는 무시 (방어적)
       setMessages((prev) => {
         // 낙관적 UI race 처리:
-        //  - ack가 먼저 도달해서 이미 real id로 교체됐으면 중복 방지 (id로 dedup)
-        //  - broadcast가 ack보다 먼저 도달했으면 그냥 append (이후 ack 핸들러가 tempId만 제거)
+        //  - 이미 같은 real id 있으면 중복 방지 (ack가 broadcast보다 먼저 도착한 케이스)
+        //  - 본인이 보낸 메시지 broadcast는 자기 __pending tempId를 즉시 제거 (UX: "전송중..." + 완료 메시지가 동시에 보이는 현상 해소)
+        //    이전엔 ack 핸들러에서만 tempId 제거 → 3초+ latency 환경에서 두 메시지가 동시 표시되던 문제 fix
         if (prev.some((m) => m.id === msg.id)) return prev;
-        return [...prev, msg];
+        let next = prev;
+        if (msg.senderId === user?.id) {
+          next = prev.filter(
+            (m) => !(m.__pending && m.content === msg.content),
+          );
+        }
+        return [...next, msg];
       });
       // Phase A 읽음 정책 ② — 사용자가 방에 머무는 동안 새 메시지 도착 시 즉시 읽음 처리
       // (정책 ①은 conversation:join에서 처리. ②가 빠지면 머무는 동안 도착한 메시지가

@@ -89,8 +89,11 @@ export function useSocket(options: UseSocketOptions = {}) {
     const socketUrl =
       process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:8080';
 
+    // Railway 같은 호스팅에서 wss 핸드셰이크 실패 시 polling으로 fallback
+    // 순서: websocket 먼저 시도 → 실패 시 polling으로 자동 전환
     const socket: ChatSocket = io(socketUrl, {
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
+      upgrade: true,
       auth: { token },
       autoConnect: true,
       reconnection: true,
@@ -98,15 +101,24 @@ export function useSocket(options: UseSocketOptions = {}) {
       reconnectionDelay: 1000,
     });
 
+    // transport upgrade 추적 (polling → websocket)
+    socket.io.engine?.on('upgrade', (transport: { name: string }) => {
+      // eslint-disable-next-line no-console
+      console.info('[ws] transport upgraded to', transport.name);
+    });
+
     socket.on('connect', () => {
       setIsConnected(true);
       const isReconnect = hasConnectedOnceRef.current;
       hasConnectedOnceRef.current = true;
-      // 콘솔 디버그 — 재연결 발생 시점 추적 용이
-      if (isReconnect) {
-        // eslint-disable-next-line no-console
-        console.info('[ws] reconnected');
-      }
+      const transport = socket.io.engine?.transport?.name ?? 'unknown';
+      // eslint-disable-next-line no-console
+      console.info(
+        '[ws]',
+        isReconnect ? 'reconnected' : 'connected',
+        'via',
+        transport,
+      );
       if (onConnect) onConnect({ reconnect: isReconnect });
     });
     socket.on('disconnect', (reason) => {
