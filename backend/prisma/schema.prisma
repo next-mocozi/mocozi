@@ -44,6 +44,10 @@ model User {
   createdChatRooms ChatRoom[]        @relation("CreatedChatRooms")
   reactions        MessageReaction[]
 
+  // 채팅 양식 + 팀 contact 역참조
+  messageTemplates UserMessageTemplate[]
+  contactedTeams   Team[]                @relation("TeamContact")
+
   @@map("users")
 }
 
@@ -52,6 +56,12 @@ enum TeamType {
   COMPETITION
   HACKATHON
   PROJECT
+}
+
+enum ApplicationContactType {
+  LEADER     // 팀장 1명에게 DIRECT
+  MEMBER     // 지정된 팀원 1명에게 DIRECT
+  TEAM_CHAT  // 팀원 전체 GROUP 채팅
 }
 
 // 팀 모델
@@ -66,12 +76,17 @@ model Team {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  // 지원 받을 사람 라우팅 — 양식 시스템 (Phase A)
+  applicationContactType   ApplicationContactType @default(LEADER)
+  applicationContactUserId String?
+
   // 관계
-  leader      User         @relation("TeamLeader", fields: [leaderId], references: [id])
-  members     TeamMember[]
-  proposal    TeamProposal?
-  applications Application[]
-  scouts      Scout[]
+  leader            User         @relation("TeamLeader", fields: [leaderId], references: [id])
+  applicationContact User?       @relation("TeamContact", fields: [applicationContactUserId], references: [id])
+  members           TeamMember[]
+  proposal          TeamProposal?
+  applications      Application[]
+  scouts            Scout[]
 
   @@map("teams")
 }
@@ -313,4 +328,43 @@ model MessageReaction {
   @@unique([messageId, userId, emoji])   // 같은 사람·같은 메시지·같은 이모지 중복 방지
   @@index([messageId])
   @@map("message_reactions")
+}
+
+// =====================================================
+// 그룹 ⑤ 채팅 양식 (컨텍스트별 첫 메시지 양식)
+// =====================================================
+
+enum MessageContext {
+  // Phase A
+  RECRUIT_INDIVIDUAL          // 개인 → 개인 (recruit 페이지)
+  RECRUIT_TEAM                // 개인 → 팀 (team 상세)
+
+  // Phase B
+  PORTFOLIO_COFFEE_CHAT       // 포트폴리오 — 커피챗
+  PORTFOLIO_FRIENDSHIP        // 포트폴리오 — 친해지고 싶어요
+  PORTFOLIO_INQUIRY           // 포트폴리오 — 문의
+  PORTFOLIO_COLLAB            // 포트폴리오 — 협업
+  PORTFOLIO_PRAISE            // 포트폴리오 — 칭찬
+  COMMUNITY_PRIVATE_NOTE      // 커뮤니티 — 익명 쪽지
+  RANDOM_MATCH                // 랜덤 매칭
+}
+
+// -----------------------------------------------------
+// 사용자별·컨텍스트별 메시지 양식 (Phase A에선 RECRUIT_*만 사용)
+// 컨텍스트가 곧 양식의 종류 — 사용자가 별도 라벨링 X
+// (userId, context) UNIQUE — 같은 컨텍스트 내 다중 양식 X
+// -----------------------------------------------------
+model UserMessageTemplate {
+  id        String         @id @default(uuid())
+  userId    String
+  context   MessageContext
+  content   String         @db.Text  // {senderName} 등 placeholder 포함 raw text
+  updatedAt DateTime       @updatedAt
+  createdAt DateTime       @default(now())
+
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, context])
+  @@index([userId])
+  @@map("user_message_templates")
 }

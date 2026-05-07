@@ -1,4 +1,5 @@
 import { Controller, Post, Get, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { ApplicationContactType } from '@prisma/client';
 import { TeamService } from './team.service';
 import { CreateTeamDto } from './dto/create-team.dto';
 import { UpdateTeamDto } from './dto/update-team.dto';
@@ -99,5 +100,30 @@ export class TeamController {
     @Body('role') role: string,
   ) {
     return this.teamService.updateMemberRole(teamId, user.id, targetUserId, role);
+  }
+
+  // -------------------------------------------------------
+  // 지원 라우팅 (양식 시스템 — Phase A)
+  // -------------------------------------------------------
+
+  /** 지원 시 누구에게 연락 갈지 + 모집 직군 — 채팅 양식 시스템 사용처 */
+  @Get(':id/contact')
+  async getApplicationContact(@Param('id') teamId: string) {
+    return this.teamService.resolveApplicationContact(teamId);
+  }
+
+  /** 지원 contact 갱신 — 팀장만 */
+  @Patch(':id/contact')
+  async updateApplicationContact(
+    @Param('id') teamId: string,
+    @CurrentUser() user: { id: string },
+    @Body() body: { type: ApplicationContactType; contactUserId?: string | null },
+  ) {
+    return this.teamService.updateApplicationContact(
+      teamId,
+      user.id,
+      body.type,
+      body.contactUserId ?? null,
+    );
   }
 }

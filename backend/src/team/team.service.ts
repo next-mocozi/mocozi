@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ApplicationContactType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { CreateTeamDto } from './dto/create-team.dto';
@@ -226,6 +227,111 @@ export class TeamService {
     return this.prisma.teamMember.update({
       where: { teamId_userId: { teamId, userId: targetUserId } },
       data: { role },
+    });
+  }
+
+  // -------------------------------------------------------
+  // 지원 라우팅 (Phase A — 채팅 양식 시스템과 통합)
+  // -------------------------------------------------------
+
+  /**
+   * 팀 지원 시 누구에게 연락 가야 하는지 결정.
+   *
+   * - LEADER (default): 팀장 1명 → DIRECT 방
+   * - MEMBER: 지정된 팀원 1명 → DIRECT (null이면 LEADER fallback)
+   * - TEAM_CHAT: 팀원 전체 → GROUP 방
+   *
+   * 모집 직군(recruitingRoles)도 함께 반환 — 양식 직군 선택 단계에서 사용.
+   */
+  async resolveApplicationContact(teamId: string) {
+    const team = await this.prisma.team.findUnique({
+      where: { id: teamId },
+      include: {
+        members: { select: { userId: true } },
+        proposal: { select: { recruitingRoles: true } },
+      },
+    });
+    if (!team) throw new NotFoundException('팀을 찾을 수 없습니다.');
+
+    const teamName = team.name;
+    const recruitingRoles = team.proposal?.recruitingRoles ?? [];
+
+    if (
+      team.applicationContactType === ApplicationContactType.MEMBER &&
+      team.applicationContactUserId
+    ) {
+      return {
+        type: 'DIRECT' as const,
+        recipientUserIds: [team.applicationContactUserId],
+        teamName,
+        recruitingRoles,
+      };
+    }
+
+    if (team.applicationContactType === ApplicationContactType.TEAM_CHAT) {
+      return {
+        type: 'GROUP' as const,
+        recipientUserIds: team.members.map((m) => m.userId),
+        suggestedRoomName: `${teamName} 지원 문의`,
+        teamName,
+        recruitingRoles,
+      };
+    }
+
+    // LEADER (default + MEMBER fallback)
+    return {
+      type: 'DIRECT' as const,
+      recipientUserIds: [team.leaderId],
+      teamName,
+      recruitingRoles,
+    };
+  }
+
+  /**
+   * 팀 contact 설정 갱신 — 팀장만 가능.
+   * MEMBER 선택 시 contactUserId가 실제 활성 팀원이어야.
+   */
+  async updateApplicationContact(
+    teamId: string,
+    leaderId: string,
+    type: ApplicationContactType,
+    contactUserId: string | null,
+  ) {
+    const team = await this.prisma.team.findUnique({
+      where: { id: teamId },
+      include: { members: { select: { userId: true } } },
+    });
+    if (!team) throw new NotFoundException('팀을 찾을 수 없습니다.');
+    if (team.leaderId !== leaderId) {
+      throw new BadRequestException('팀장만 지원 라우팅을 변경할 수 있습니다.');
+    }
+
+    if (type === ApplicationContactType.MEMBER) {
+      if (!contactUserId) {
+        throw new BadRequestException(
+          'MEMBER 선택 시 contactUserId 필수입니다.',
+        );
+      }
+      const isMember = team.members.some((m) => m.userId === contactUserId);
+      if (!isMember) {
+        throw new BadRequestException(
+          'contactUserId는 활성 팀원이어야 합니다.',
+        );
+      }
+    }
+
+    return this.prisma.team.update({
+      where: { id: teamId },
+      data: {
+        applicationContactType: type,
+        applicationContactUserId:
+          type === ApplicationContactType.MEMBER ? contactUserId : null,
+      },
+      select: {
+        id: true,
+        applicationContactType: true,
+        applicationContactUserId: true,
+      },
     });
   }
 
