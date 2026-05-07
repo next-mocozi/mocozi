@@ -389,7 +389,13 @@ export class ChatService {
   async deleteMessage(messageId: string, userId: string) {
     const existing = await this.prisma.chatMessage.findUnique({
       where: { id: messageId },
-      select: { id: true, senderId: true, deletedAt: true, roomId: true },
+      select: {
+        id: true,
+        senderId: true,
+        deletedAt: true,
+        roomId: true,
+        createdAt: true,
+      },
     });
     if (!existing) {
       throw new NotFoundException('메시지를 찾을 수 없습니다.');
@@ -399,14 +405,85 @@ export class ChatService {
     }
     if (existing.deletedAt !== null) {
       // 이미 소프트 삭제된 경우 멱등 처리 (재호출 시 별도 update 없이 그대로 반환)
-      return { messageId, roomId: existing.roomId };
+      return {
+        messageId,
+        roomId: existing.roomId,
+        roomLastMessage: null as null | {
+          lastMessage: string | null;
+          lastMessageAt: Date | null;
+        },
+      };
     }
 
     await this.prisma.chatMessage.update({
       where: { id: messageId },
       data: { deletedAt: new Date() },
     });
-    return { messageId, roomId: existing.roomId };
+
+    // 사이드바 lastMessage 일관성: 삭제한 메시지가 그 방의 lastMessage였다면 재계산
+    // - 다른 메시지가 있으면 그 중 가장 최신(deletedAt is null)으로 set
+    // - 모두 삭제됐으면 null
+    // 사용자 응답 critical path 밖. 실패해도 broadcast/ack는 정상
+    const roomLastMessage = await this.recomputeRoomLastMessageIfNeeded(
+      existing.roomId,
+      existing.createdAt,
+    );
+
+    return { messageId, roomId: existing.roomId, roomLastMessage };
+  }
+
+  /**
+   * chat_rooms.lastMessage 재계산 — 삭제된 메시지가 lastMessage였던 케이스용.
+   *
+   * - 비교 기준: room.lastMessageAt === deletedMessage.createdAt 이면 그 메시지가 lastMessage
+   * - 일치 시 chat_messages 중 deletedAt is null인 가장 최신 메시지로 재set
+   * - 일치 안 함(삭제된 게 옛 메시지) 또는 활성 메시지 0건이면 명확히 처리
+   *
+   * 반환: 갱신된 { lastMessage, lastMessageAt } 또는 null (no-op 케이스)
+   *       Gateway가 message:deleted broadcast에 포함시켜 frontend 사이드바도 즉시 갱신.
+   */
+  private async recomputeRoomLastMessageIfNeeded(
+    roomId: string,
+    deletedMessageCreatedAt: Date,
+  ): Promise<{ lastMessage: string | null; lastMessageAt: Date | null } | null> {
+    try {
+      const room = await this.prisma.chatRoom.findUnique({
+        where: { id: roomId },
+        select: { lastMessageAt: true },
+      });
+      // lastMessageAt이 정확히 일치할 때만 재계산 — 삭제된 게 옛 메시지면 영향 없음
+      if (
+        !room?.lastMessageAt ||
+        room.lastMessageAt.getTime() !== deletedMessageCreatedAt.getTime()
+      ) {
+        return null;
+      }
+
+      // 활성 메시지 중 가장 최신 1개 (자기 자신은 이미 deletedAt 됨)
+      const fallback = await this.prisma.chatMessage.findFirst({
+        where: { roomId, deletedAt: null },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        select: { content: true, createdAt: true },
+      });
+
+      const lastMessage = fallback ? this.preview(fallback.content) : null;
+      const lastMessageAt = fallback?.createdAt ?? null;
+
+      await this.prisma.chatRoom.update({
+        where: { id: roomId },
+        data: { lastMessage, lastMessageAt },
+      });
+
+      return { lastMessage, lastMessageAt };
+    } catch (err) {
+      // 실패해도 핵심 동작(소프트 삭제) 정상. 다음 메시지 도착 시 자동 회복
+      // eslint-disable-next-line no-console
+      console.error(
+        `recomputeRoomLastMessage failed for room ${roomId}`,
+        err,
+      );
+      return null;
+    }
   }
 
   // ---------------------------------------------------------
@@ -484,6 +561,18 @@ export class ChatService {
    * 멤버별로 unreadCount가 다르므로 개별 계산 필요 (N+1 쿼리, Phase A 트래픽엔 OK).
    * 송신자도 포함됨 — 본인의 다른 디바이스 사이드바 갱신 위해 (preview/lastMessageAt).
    */
+  /**
+   * 방의 활성 멤버 ID 목록 — message:deleted 등에서 user:<id> broadcast 대상 산출용.
+   * leftAt is null인 멤버만 반환 (Phase A에선 leftAt 갱신 기능 없어 사실상 모든 멤버).
+   */
+  async getActiveMemberIds(roomId: string): Promise<string[]> {
+    const members = await this.prisma.chatRoomMember.findMany({
+      where: { roomId, leftAt: null },
+      select: { userId: true },
+    });
+    return members.map((m) => m.userId);
+  }
+
   async buildNewMessageNotifications(
     roomId: string,
     senderName: string,
