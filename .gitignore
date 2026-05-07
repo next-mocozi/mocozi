@@ -18,6 +18,9 @@ out/
 .env.test.local
 .env.production.local
 
+# 로컬 개발자별 docker-compose override (Railway 가리키기 등 — 팀 공유 X)
+docker-compose.override.yml
+
 
 # IDE
 .idea/
