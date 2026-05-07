@@ -1,15 +1,28 @@
 'use client';
 
 import Link from 'next/link';
-import { use, useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import RoomList from '@/components/chat/RoomList';
+import { RoleSelector } from '@/components/chat/RoleSelector';
+import { SlidingPanel } from '@/components/chat/SlidingPanel';
+import { TemplatePreview } from '@/components/chat/TemplatePreview';
+import { TemplateTrigger } from '@/components/chat/TemplateTrigger';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
+import {
+  ensureProfileAttachment,
+  renderTemplate,
+  type TemplateVars,
+} from '@/lib/messageTemplate';
 import { useChatNotifications, useChatSocket } from '@/providers/SocketProvider';
 import type {
   ChatMessageWithSender,
   ChatRoomWithMembers,
+  MessageContext,
   MessagesPageResponse,
+  MessageTemplate,
+  TeamApplicationContact,
 } from '@/types/chat';
 
 interface PageProps {
@@ -96,6 +109,111 @@ export default function ChatRoomPage({ params }: PageProps) {
   const lastMessageIdRef = useRef<string | null>(null);
   /** 첫 로드 시 무조건 맨 아래로 한 번 — 그 이후에만 가드 적용 */
   const initialScrolledRef = useRef(false);
+
+  // ---------------------------------------------------------
+  // 양식 시스템 (Phase A)
+  // ---------------------------------------------------------
+  const searchParams = useSearchParams();
+  const context = searchParams.get('context') as MessageContext | null;
+  const teamIdParam = searchParams.get('teamId');
+
+  /** 슬라이딩 패널 열림 여부 */
+  const [panelOpen, setPanelOpen] = useState(false);
+  /** 패널 단계 — RECRUIT_TEAM은 직군 선택부터 / 그 외엔 미리보기 직접 */
+  const [panelStep, setPanelStep] = useState<'role-select' | 'preview'>(
+    'preview',
+  );
+  /** 직군 선택 결과 (RECRUIT_TEAM) */
+  const [selectedRole, setSelectedRole] = useState<string | null>(null);
+  /** Backend에서 받은 raw 양식 본문 */
+  const [templateContent, setTemplateContent] = useState<string | null>(null);
+  /** 팀 contact 정보 (RECRUIT_TEAM) — 모집 직군 + 받는 사람 이름 */
+  const [teamContact, setTeamContact] = useState<TeamApplicationContact | null>(
+    null,
+  );
+
+  // 패널 열릴 때 양식 fetch (이미 있으면 재사용)
+  useEffect(() => {
+    if (!context || templateContent !== null) return;
+    void api
+      .get<{ data: MessageTemplate }>(`/api/templates?context=${context}`)
+      .then((res) => setTemplateContent(res.data.data.content))
+      .catch(() => {
+        // 실패해도 default 합성 백엔드 fallback 동작 — 그래도 실패하면 빈 양식
+        setTemplateContent('안녕하세요, 잘 부탁드립니다.');
+      });
+  }, [context, templateContent]);
+
+  // 팀 contact (RECRUIT_TEAM) — 모집 직군 + 팀 이름
+  useEffect(() => {
+    if (context !== 'RECRUIT_TEAM' || !teamIdParam || teamContact) return;
+    void api
+      .get<{ data: TeamApplicationContact }>(
+        `/api/teams/${teamIdParam}/contact`,
+      )
+      .then((res) => setTeamContact(res.data.data))
+      .catch(() => setTeamContact(null));
+  }, [context, teamIdParam, teamContact]);
+
+  // 컨텍스트 + 메시지 0건일 때만 양식 트리거 노출
+  const shouldShowTemplateTrigger = !!context && messages.length === 0 && !loading;
+
+  /** 받는 사람 이름 — DIRECT면 상대 멤버, GROUP이면 방 이름 또는 첫 멤버 */
+  const recipientName = useMemo(() => {
+    if (!room || !user) return '';
+    const others = room.members
+      .filter((m) => m.userId !== user.id)
+      .map((m) => m.user?.name)
+      .filter((n): n is string => !!n);
+    if (others.length === 0) return room.name ?? '';
+    if (room.type === 'GROUP') return room.name ?? others.join(', ');
+    return others[0] ?? '';
+  }, [room, user]);
+
+  /** 변수 치환된 양식 본문 (preview / 보내기 공통) */
+  const renderedTemplate = useMemo(() => {
+    if (!templateContent || !user) return '';
+    const profileUrl =
+      typeof window !== 'undefined'
+        ? `${window.location.origin}/profile/${user.id}`
+        : `/profile/${user.id}`;
+    const vars: TemplateVars = {
+      senderName: user.name,
+      senderId: user.id,
+      recipientName,
+      role: selectedRole ?? undefined,
+      teamName: teamContact?.teamName,
+      profileUrl,
+    };
+    return renderTemplate(templateContent, vars);
+  }, [templateContent, user, recipientName, selectedRole, teamContact]);
+
+  /** 양식 트리거 클릭 — 패널 열고 첫 단계 결정 */
+  const openTemplatePanel = useCallback(() => {
+    if (context === 'RECRUIT_TEAM' && !selectedRole) {
+      setPanelStep('role-select');
+    } else {
+      setPanelStep('preview');
+    }
+    setPanelOpen(true);
+  }, [context, selectedRole]);
+
+  const handleRoleSelect = useCallback((role: string) => {
+    setSelectedRole(role);
+    setPanelStep('preview');
+  }, []);
+
+  /** [보내기] — 양식 본문에 attachment 마커 보장 후 sendMessage 호출 */
+  const handleTemplateSend = useCallback(async () => {
+    if (!user || !room) return;
+    const finalContent = ensureProfileAttachment(
+      renderedTemplate,
+      user.id,
+      user.name,
+    );
+    await sendMessage({ roomId: room.id, content: finalContent });
+    setPanelOpen(false);
+  }, [renderedTemplate, room, sendMessage, user]);
 
   // ---------------------------------------------------------
   // 초기 로드 — 방 정보 + 메시지
@@ -628,6 +746,11 @@ export default function ChatRoomPage({ params }: PageProps) {
         </div>
       )}
 
+      {/* 양식 트리거 — 메시지 0건 + context query 있을 때만 노출 (Phase A) */}
+      {shouldShowTemplateTrigger && (
+        <TemplateTrigger onClick={openTemplatePanel} />
+      )}
+
       {/* 입력 */}
       <form
         onSubmit={handleSend}
@@ -656,6 +779,29 @@ export default function ChatRoomPage({ params }: PageProps) {
         </button>
       </form>
       </div>
+
+      {/* 양식 슬라이딩 패널 (Phase A) — RECRUIT_TEAM은 직군 선택부터 / 그 외 컨텍스트는 미리보기 직접 */}
+      <SlidingPanel
+        open={panelOpen}
+        onClose={() => setPanelOpen(false)}
+        title={
+          panelStep === 'role-select' ? '지원 분야 선택' : '인사 양식 미리보기'
+        }
+      >
+        {panelStep === 'role-select' && (
+          <RoleSelector
+            roles={teamContact?.recruitingRoles ?? []}
+            onSelect={handleRoleSelect}
+          />
+        )}
+        {panelStep === 'preview' && (
+          <TemplatePreview
+            rendered={renderedTemplate}
+            onSend={handleTemplateSend}
+            disabled={!isConnected}
+          />
+        )}
+      </SlidingPanel>
     </div>
   );
 }
