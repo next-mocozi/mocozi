@@ -347,6 +347,14 @@ export default function RecruitListPage() {
                     >
                       프로필 보기
                     </Link>
+                    {isAuthenticated && (
+                      <Link
+                        href={`/chat?userId=${person.id}&context=RECRUIT_INDIVIDUAL`}
+                        className="rounded-xl border border-indigo-600 bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white transition-all hover:bg-indigo-700"
+                      >
+                        채팅하기
+                      </Link>
+                    )}
                   </div>
                 </div>
 

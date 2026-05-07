@@ -453,18 +453,22 @@ export default function TeamDetailPage({
             </div>
           )}
 
-          {/* 지원 버튼 */}
-          <button
-            disabled={applyBtn.disabled}
-            onClick={() => !applyBtn.disabled && setApplyOpen(true)}
-            className={`w-full rounded-xl py-3.5 text-sm font-semibold transition-all ${
-              applyBtn.disabled
-                ? 'cursor-not-allowed bg-slate-100 text-slate-400'
-                : 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-200 hover:shadow-lg hover:shadow-indigo-300 hover:scale-[1.02]'
-            }`}
-          >
-            {applyBtn.label}
-          </button>
+          {/* 지원 버튼 — 채팅 양식 진입 (Phase A) */}
+          {applyBtn.disabled ? (
+            <button
+              disabled
+              className="w-full cursor-not-allowed rounded-xl bg-slate-100 py-3.5 text-sm font-semibold text-slate-400"
+            >
+              {applyBtn.label}
+            </button>
+          ) : (
+            <Link
+              href={`/chat?teamId=${team.id}&context=RECRUIT_TEAM`}
+              className="block w-full rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 py-3.5 text-center text-sm font-semibold text-white shadow-md shadow-indigo-200 transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-indigo-300"
+            >
+              {applyBtn.label}
+            </Link>
+          )}
         </div>
       </div>
 

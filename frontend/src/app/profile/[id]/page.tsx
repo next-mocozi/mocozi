@@ -140,7 +140,7 @@ export default function UserProfilePage({
           </div>
 
           <Link
-            href={`/chat?userId=${id}`}
+            href={`/chat?userId=${id}&context=RECRUIT_INDIVIDUAL`}
             className="flex-shrink-0 rounded-full bg-blue-600 px-5 py-2 text-sm text-white shadow-md hover:bg-blue-700"
           >
             채팅하기
