@@ -202,7 +202,83 @@
 
 ---
 
-## 12. 결정 변경 이력
+## 13. 채팅 latency 최적화 (Phase A 후반)
+
+Railway(싱가포르) + Supabase(서울) 환경에서 메시지 전송 ack 1-2초 → ~0.5-0.7초로 단축. PR #10·#11·#12 누적.
+
+### 문제
+
+운영 환경에서 한 메시지 전송 시 클라이언트가 ack 받기까지 1-2초 — 사용자가 "전송중..." 상태로 길게 머묾. 분해:
+
+```
+클라 → Railway(싱가포르)         ~130ms
+Railway → Supabase(서울) RTT × 3
+  ① assertMembership                ~130ms
+  ② chatMessage.create (with include) ~150ms
+  ③ chatRoom.update (lastMessage)   ~130ms
+Railway → 클라 (ack/broadcast)    ~130ms
+─────────────────────────────────
+합계                               ~670ms+
+```
+
+### 결정 1 — `chatRoom.update` fire-and-forget (PR #10)
+
+**선택**: 트랜잭션에서 분리. INSERT만 await, lastMessage는 background 비동기 처리.
+
+**근거**:
+- 사용자 ack에 critical 아님 — broadcast 페이로드에 메시지 정보 이미 포함, 사이드바도 즉시 갱신
+- 갱신 실패 시 다음 메시지 또는 GET /rooms 시점에 자동 일관성 회복
+- ack에서 RTT 1개(~130ms) 제거
+
+**대안 검토**:
+- 트랜잭션 유지 (atomicity 강화) — latency 증가
+- chatRoom.update를 별도 background job으로 큐에 — 인프라 추가, 학생 환경 부담
+
+**안전망 (PR #12)**:
+- exponential backoff retry (1s → 2s → 4s, 최대 3회)
+- `updateMany` + `WHERE lastMessageAt < messageCreatedAt` 조건부 — out-of-order 보호 (옛 retry가 새 메시지 덮어쓰기 방지)
+- 최종 실패 시 `logger.error` — 운영에서 모니터링 알람 설정
+
+**Phase B 재검토 항목**:
+- 트랜잭션 복원 vs fire-and-forget 유지 — 운영 부하 측정 후 결정
+- nightly 동기화 background job 추가 검토
+
+### 결정 2 — `assertMembership` socket 단위 캐싱 (PR #11)
+
+**선택**: Socket connection에 `Map<roomId, joinedAtMs>` 캐시. `conversation:join` 통과 시 timestamp 기록, `message:send`에서 cache hit이면 DB 검증 skip.
+
+**근거**:
+- 사용자가 한 번 conversation:join 통과하면 그 socket 동안 활성 멤버 (Phase A에서 강퇴/leftAt 갱신 기능 없음)
+- 매 메시지마다 chat_room_members 조회는 redundant
+- ack에서 RTT 1개(~130ms) 제거
+
+**대안 검토**:
+- Redis cache — 인프라 추가, 학생 환경 부담
+- 짧은 in-memory cache (1분 TTL) — 효과 작음
+
+**안전망 (PR #12)**:
+- 5분 TTL — Phase B에서 강퇴 기능 도입 시 stale 윈도우 최대 5분으로 제한
+- Cache miss 또는 TTL 만료 시 자동 DB fallback
+
+**Phase B 재검토 항목**:
+- 강퇴/leftAt 도입 시 stale 윈도우 5분이 허용 가능한지 평가
+- 후보 1: TTL 단축 (30초)
+- 후보 2: Redis pub/sub 기반 cross-socket invalidate
+- 후보 3: 강퇴 시 socket 강제 disconnect (가장 단순)
+
+### 누적 측정
+
+| 단계 | ack latency |
+|---|---|
+| PR #10 전 | ~1초+ |
+| PR #10 후 | ~0.85초 |
+| PR #11 후 (현재) | **~0.5-0.7초** |
+
+PR #12는 안전망이라 latency 영향 0.
+
+---
+
+## 14. 결정 변경 이력
 
 | 날짜 | 결정 | 변경 사유 |
 |---|---|---|

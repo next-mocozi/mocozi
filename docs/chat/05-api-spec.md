@@ -291,7 +291,7 @@ socket.on('connect_error', (err) => {
 
 | 이벤트 | 페이로드 | 동작 |
 |---|---|---|
-| `conversation:join` | `{ roomId }` | 해당 방 room 참여 + **lastReadMessageId 자동 갱신** + `notification:unreadCountChanged` broadcast (Phase A 정책 — `01-decisions.md` §12) |
+| `conversation:join` | `{ roomId }` | 해당 방 room 참여 + **lastReadMessageId 자동 갱신** + `notification:unreadCountChanged` broadcast (Phase A 정책 — `01-decisions.md` §11) |
 | `conversation:leave` | `{ roomId }` | room 떠나기 (논리적 leftAt 갱신은 별도 REST) |
 | `message:send` | `{ roomId, content, parentId? }` | 메시지 저장 + 두 종류 broadcast |
 | `message:edit` | `{ messageId, content }` | 메시지 수정 + `message:edited` 브로드캐스트 |

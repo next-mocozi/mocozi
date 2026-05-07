@@ -200,6 +200,26 @@
 - [ ] Rate limiting
 - [ ] 메시지 신고/관리자 검토
 
+### Phase A 후반 latency fix 안전성 재검토 (PR #10·#11·#12 결과)
+
+Phase A 운영 환경에서 메시지 전송 1-2초 → 0.5-0.7초로 단축한 두 fix가 안전성 트레이드오프를 동반함. 강퇴/leftAt 등 Phase B 기능 도입 시 재검토 필요.
+
+- [ ] **`chatRoom.lastMessage` fire-and-forget + retry (PR #10·#12) 재평가**
+  - 현재: INSERT만 await, lastMessage는 background + 1s/2s/4s exponential backoff 3회 재시도
+  - 트랜잭션 atomicity 약화 → 3회 모두 실패 시 chat_rooms.lastMessage stale (다음 메시지가 자동 회복)
+  - **운영 시 액션**: `logger.error('chatRoom.lastMessage update final failure ...')` 모니터링 알람 설정
+  - **대안**: 운영 부하가 충분히 낮으면 fire-and-forget 해제하고 트랜잭션 복원 (latency +130ms vs 강한 일관성)
+  - **혹은**: nightly background job으로 chat_rooms.lastMessage = (가장 최신 chat_messages) 동기화 추가
+
+- [ ] **socket 멤버십 캐시 cross-socket invalidate (PR #11·#12)**
+  - 현재: socket 단위 5분 TTL 캐시. message:send 시 DB 검증 skip
+  - **Phase B에서 강퇴/leftAt 갱신 도입 시 위험**: 강퇴된 사용자의 socket이 최대 5분 동안 메시지 보낼 수 있음 (TTL 안전망이 최대 윈도우 제한)
+  - **해결 옵션**:
+    1. **TTL 단축** — 5분 → 30초. 강퇴 인지 윈도우 짧아짐, DB 쿼리는 약간 늘어남
+    2. **Redis pub/sub** — leftAt 갱신 시 모든 backend 인스턴스에 invalidate 발사. 정밀하지만 인프라 추가
+    3. **강퇴 시 socket 강제 disconnect** — leftAt 갱신 후 그 사용자의 모든 socket 종료. 가장 단순
+  - 강퇴 기능 구현 PR과 함께 결정
+
 ---
 
 ## 일정 위험 지표 (DAILY 모니터링)
