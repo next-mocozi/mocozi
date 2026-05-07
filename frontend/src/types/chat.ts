@@ -154,7 +154,15 @@ export interface ServerToClientEvents {
   // 방 단위 broadcast
   'message:new': (msg: ChatMessageWithSender) => void;
   'message:edited': (msg: ChatMessageWithSender) => void;
-  'message:deleted': (data: { messageId: string; roomId: string }) => void;
+  'message:deleted': (data: {
+    messageId: string;
+    roomId: string;
+    // 삭제로 lastMessage가 갱신된 경우만 포함. null이면 사이드바 갱신 X
+    roomLastMessage?: {
+      lastMessage: string | null;
+      lastMessageAt: string | null;
+    } | null;
+  }) => void;
   'reaction:added': (r: MessageReaction & { roomId?: string }) => void;
   'reaction:removed': (data: {
     messageId: string;
@@ -172,6 +180,12 @@ export interface ServerToClientEvents {
   // 사용자 글로벌 broadcast (인앱 알림)
   'notification:newMessage': (n: NewMessageNotification) => void;
   'notification:unreadCountChanged': (n: UnreadCountChangedNotification) => void;
+  // 메시지 삭제 등으로 방의 lastMessage가 변경됐을 때 — 사이드바(RoomList) 동기화용
+  'notification:roomLastMessageChanged': (n: {
+    roomId: string;
+    lastMessage: string | null;
+    lastMessageAt: string | null;
+  }) => void;
 
   // 에러
   exception: (err: { code: string; message: string; payload?: unknown }) => void;

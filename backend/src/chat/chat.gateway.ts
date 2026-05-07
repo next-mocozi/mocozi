@@ -247,9 +247,28 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (!data?.messageId) throw new WsException('messageId가 필요합니다.');
     const userId = this.requireUserId(client);
     const result = await this.chatService.deleteMessage(data.messageId, userId);
-    this.server
-      .to(`room:${result.roomId}`)
-      .emit('message:deleted', { messageId: result.messageId, roomId: result.roomId });
+
+    // message:deleted broadcast — 같은 방 사용자에게 메시지 삭제 알림
+    // roomLastMessage가 null이 아니면 사이드바 lastMessage도 함께 갱신 가능
+    this.server.to(`room:${result.roomId}`).emit('message:deleted', {
+      messageId: result.messageId,
+      roomId: result.roomId,
+      // 삭제로 lastMessage가 갱신됐을 때만 포함 (옛 메시지 삭제면 null → 클라가 무시)
+      roomLastMessage: result.roomLastMessage,
+    });
+
+    // 다른 방을 보고 있는 멤버들의 사이드바도 동기화 — user:<id> room으로 broadcast
+    if (result.roomLastMessage) {
+      const memberIds = await this.chatService.getActiveMemberIds(result.roomId);
+      for (const memberId of memberIds) {
+        this.server.to(`user:${memberId}`).emit('notification:roomLastMessageChanged', {
+          roomId: result.roomId,
+          lastMessage: result.roomLastMessage.lastMessage,
+          lastMessageAt: result.roomLastMessage.lastMessageAt,
+        });
+      }
+    }
+
     return { ok: true, ...result };
   }
 

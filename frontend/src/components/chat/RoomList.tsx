@@ -85,10 +85,36 @@ export default function RoomList() {
 
     socket.on('notification:newMessage', onNewMessage);
 
+    // 메시지 삭제 시 — 그게 방의 lastMessage였으면 backend가 재계산해 broadcast.
+    // user:<id> 글로벌 room으로 오는 notification:roomLastMessageChanged를 받아 사이드바 동기화.
+    // (방 안에서만 보이는 message:deleted 이벤트와는 별개. RoomList는 방 밖에서도 동작해야 함)
+    const onRoomLastMessageChanged = (n: {
+      roomId: string;
+      lastMessage: string | null;
+      lastMessageAt: string | null;
+    }) => {
+      setRooms((prev) =>
+        prev.map((r) =>
+          r.id === n.roomId
+            ? {
+                ...r,
+                lastMessage: n.lastMessage,
+                lastMessageAt: n.lastMessageAt,
+              }
+            : r,
+        ),
+      );
+    };
+    socket.on('notification:roomLastMessageChanged', onRoomLastMessageChanged);
+
     return () => {
       cancelled = true;
       socket.off('connect', onConnect);
       socket.off('notification:newMessage', onNewMessage);
+      socket.off(
+        'notification:roomLastMessageChanged',
+        onRoomLastMessageChanged,
+      );
     };
   }, [socket, initFromRooms]);
 
