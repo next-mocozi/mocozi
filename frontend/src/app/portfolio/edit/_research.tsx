@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import type { PortfolioItem } from '../page';
+import { getMyPortfolioPath, type PortfolioItem } from '../_lib';
 
 // ─────── Storage keys ───────
 const ITEMS_STORAGE_KEY = 'mock_portfolio_items';
@@ -89,8 +89,8 @@ export default function ResearchForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editIdParam = searchParams.get('id');
-  const editId = editIdParam;
-  const isEdit = editId !== null;
+  const editId = editIdParam ? Number(editIdParam) : null;
+  const isEdit = editId !== null && Number.isFinite(editId);
 
   const [d, setD] = useState<ResearchDetail>(EMPTY_DETAIL);
   const [topicError, setTopicError] = useState('');
@@ -184,7 +184,7 @@ export default function ResearchForm() {
       setPeriodError('종료 날짜는 시작 날짜 이후여야 합니다.');
       return;
     }
-    const targetId = isEdit && editId !== null ? editId : String(Date.now());
+    const targetId = isEdit && editId !== null ? editId : Date.now();
     const period = formatPeriod(d);
     const item: PortfolioItem = {
       id: targetId,
@@ -215,7 +215,7 @@ export default function ResearchForm() {
     } catch {
       // 무시
     }
-    router.push('/portfolio');
+    router.push(getMyPortfolioPath());
   };
 
   const handleDelete = () => {
@@ -238,7 +238,7 @@ export default function ResearchForm() {
     } catch {
       // 무시
     }
-    router.push('/portfolio');
+    router.push(getMyPortfolioPath());
   };
 
   // ─────── Styling shared classes ───────

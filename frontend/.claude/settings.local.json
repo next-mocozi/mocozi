@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm exec *)",
+      "Bash(git log *)",
+      "Bash(git diff *)",
+      "Read(//c/Temp/**)"
+    ]
+  }
+}

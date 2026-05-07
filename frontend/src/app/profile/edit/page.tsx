@@ -13,7 +13,6 @@ import {
   type PlatformKey,
   type ProfileLink,
 } from '../_platforms';
-import { UNIVERSITIES } from '@/lib/universities';
 
 /** 아직 직군을 정하지 않은 사용자를 위한 특수 옵션. 메인으로 선택 시 서브 직군은 숨김. */
 const EXPLORING_ROLE = '탐색 중';
@@ -36,6 +35,9 @@ const ROLE_OPTIONS = [
 
 /** 메인 직군 선택지 — 일반 옵션 + "탐색 중" */
 const MAIN_ROLE_OPTIONS = [...ROLE_OPTIONS, EXPLORING_ROLE];
+
+const LINKS_STORAGE_KEY = 'mock_profile_links';
+const ROLES_STORAGE_KEY = 'mock_profile_roles';
 
 /** 구인 페이지와 동일한 기술 스택 카테고리 — 사용자가 클릭으로 추가/제거 */
 const SKILL_GROUPS: { label: string; skills: string[] }[] = [
@@ -81,14 +83,6 @@ export default function ProfileEditPage() {
   const [skillInput, setSkillInput] = useState('');
   const [skillSearch, setSkillSearch] = useState('');
 
-  const [uniQuery, setUniQuery] = useState('');
-  const [uniOpen, setUniOpen] = useState(false);
-  const uniRef = useRef<HTMLDivElement>(null);
-
-  const filteredUnis = uniQuery.trim()
-    ? UNIVERSITIES.filter((u) => u.includes(uniQuery.trim()))
-    : UNIVERSITIES;
-
   const [links, setLinks] = useState<ProfileLink[]>([]);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [newUrl, setNewUrl] = useState('');
@@ -99,16 +93,6 @@ export default function ProfileEditPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
 
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (uniRef.current && !uniRef.current.contains(e.target as Node)) {
-        setUniOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
-
   // API에서 초기값 로드
   useEffect(() => {
     if (!user) return;
@@ -118,25 +102,28 @@ export default function ProfileEditPage() {
     setGrade(user.grade ?? '');
     setBio(user.bio ?? '');
     setSkills(user.skills ?? []);
-    const roles = user.roles ?? [];
-    setMainRole(roles[0] ?? '');
-    setSubRoles(roles.slice(1));
   }, [user]);
 
-  // 포트폴리오 API에서 links 로드
+  // localStorage에서 roles, links 로드
   useEffect(() => {
-    if (!user) return;
-    api.get('/api/portfolios/me').then((res) => {
-      const p = res.data.data ?? res.data;
-      setLinks(
-        (p.links ?? []).map((l: { id: string; url: string; label?: string }) => ({
-          id: l.id,
-          url: l.url,
-          label: l.label,
-        })),
-      );
-    }).catch(() => { /* API 실패 시 빈 상태 유지 */ });
-  }, [user]);
+    const loadJson = <T,>(key: string, fallback: T): T => {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? (JSON.parse(raw) as T) : fallback;
+      } catch {
+        return fallback;
+      }
+    };
+    const roles = loadJson<{ mainRole: string; subRoles: string[] } | null>(
+      ROLES_STORAGE_KEY,
+      null,
+    );
+    if (roles) {
+      setMainRole(roles.mainRole);
+      setSubRoles(roles.subRoles);
+    }
+    setLinks(loadJson(LINKS_STORAGE_KEY, [] as ProfileLink[]));
+  }, []);
 
   const toggleSubRole = (role: string) => {
     if (role === mainRole) return;
@@ -199,27 +186,20 @@ export default function ProfileEditPage() {
       setUrlError(`이미 ${PLATFORM_META[newKey].label} 링크가 등록되어 있어요.`);
       return;
     }
-    api.post('/api/portfolios/links', { url, label: newLabel.trim() || undefined })
-      .then((res) => {
-        const created = res.data.data ?? res.data;
-        setLinks((prev) => [...prev, { id: created.id, url: created.url, label: created.label }]);
-      })
-      .catch(() => { /* 실패 무시 */ });
+    setLinks((prev) => [...prev, { id: Date.now(), url, label: newLabel.trim() || undefined }]);
     resetLinkForm();
     setIsAddOpen(false);
   };
 
-  const handleRemoveLink = (id: string) => {
-    api.delete(`/api/portfolios/links/${id}`).catch(() => { /* 실패 무시 */ });
-    setLinks((prev) => prev.filter((l) => l.id !== id));
-  };
+  const handleRemoveLink = (id: number) => setLinks((prev) => prev.filter((l) => l.id !== id));
 
   const handleSave = async () => {
     setSaving(true);
     setSaveError('');
     try {
-      const roles = mainRole ? [mainRole, ...subRoles] : [];
-      await api.put('/api/users/me', { name, university, department, grade, bio, skills, roles });
+      await api.put('/api/users/me', { name, university, department, grade, bio, skills });
+      localStorage.setItem(LINKS_STORAGE_KEY, JSON.stringify(links));
+      localStorage.setItem(ROLES_STORAGE_KEY, JSON.stringify({ mainRole, subRoles }));
       await refreshUser();
       router.push('/profile');
     } catch {
@@ -260,41 +240,15 @@ export default function ProfileEditPage() {
 
         {/* 학교 / 학과 / 학년 */}
         <div className="grid gap-4 md:grid-cols-3">
-          <div ref={uniRef} className="relative">
+          <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">학교</label>
             <input
               type="text"
-              value={uniQuery || university}
-              onChange={(e) => {
-                setUniQuery(e.target.value);
-                setUniversity('');
-                setUniOpen(true);
-              }}
-              onFocus={() => setUniOpen(true)}
-              placeholder="대학교명을 검색하세요"
+              value={university}
+              onChange={(e) => setUniversity(e.target.value)}
+              placeholder="예: 고려대학교"
               className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-              autoComplete="off"
             />
-            {uniOpen && filteredUnis.length > 0 && (
-              <ul className="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg">
-                {filteredUnis.map((u) => (
-                  <li
-                    key={u}
-                    onMouseDown={() => {
-                      setUniversity(u);
-                      setUniQuery('');
-                      setUniOpen(false);
-                    }}
-                    className="cursor-pointer px-4 py-2 text-sm hover:bg-indigo-50 hover:text-indigo-700"
-                  >
-                    {u}
-                  </li>
-                ))}
-              </ul>
-            )}
-            {university && (
-              <p className="mt-1 text-xs text-indigo-600">선택됨: {university}</p>
-            )}
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">학과</label>

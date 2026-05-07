@@ -2,6 +2,8 @@ import axios from 'axios';
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080',
+  // 백엔드 미연동/응답없음 상황에서 무한 로딩 방지 (8초)
+  timeout: 8000,
   headers: {
     'Content-Type': 'application/json',
   },
