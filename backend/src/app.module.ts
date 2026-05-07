@@ -8,6 +8,7 @@ import { ApplyModule } from './apply/apply.module';
 import { ScoutModule } from './scout/scout.module';
 import { ChatModule } from './chat/chat.module';
 import { SearchModule } from './search/search.module';
+import { TemplateModule } from './template/template.module';
 
 /** 루트 앱 모듈 - 모든 기능 모듈 통합 */
 @Module({
@@ -21,6 +22,7 @@ import { SearchModule } from './search/search.module';
     ScoutModule,
     ChatModule,
     SearchModule,
+    TemplateModule,
   ],
 })
 export class AppModule {}
