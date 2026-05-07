@@ -238,3 +238,39 @@ export interface ClientToServerEvents {
     }) => void,
   ) => void;
 }
+
+// =====================================================
+// 채팅 첫 메시지 양식 시스템 (Phase A)
+// =====================================================
+
+/** Backend Prisma enum과 일치 */
+export type MessageContext =
+  | 'RECRUIT_INDIVIDUAL'
+  | 'RECRUIT_TEAM'
+  | 'PORTFOLIO_COFFEE_CHAT'
+  | 'PORTFOLIO_FRIENDSHIP'
+  | 'PORTFOLIO_INQUIRY'
+  | 'PORTFOLIO_COLLAB'
+  | 'PORTFOLIO_PRAISE'
+  | 'COMMUNITY_PRIVATE_NOTE'
+  | 'RANDOM_MATCH';
+
+export type ApplicationContactType = 'LEADER' | 'MEMBER' | 'TEAM_CHAT';
+
+/** GET /api/templates 응답 */
+export interface MessageTemplate {
+  context: MessageContext;
+  content: string;
+  /** false면 default 합성, true면 사용자가 PUT으로 영구화한 양식 */
+  isPersisted: boolean;
+}
+
+/** GET /api/teams/:id/contact 응답 */
+export interface TeamApplicationContact {
+  type: 'DIRECT' | 'GROUP';
+  recipientUserIds: string[];
+  teamName: string;
+  recruitingRoles: string[];
+  /** TEAM_CHAT일 때만 */
+  suggestedRoomName?: string;
+}
