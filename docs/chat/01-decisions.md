@@ -278,7 +278,67 @@ PR #12는 안전망이라 latency 영향 0.
 
 ---
 
-## 14. 결정 변경 이력
+## 14. 메시지 삭제 placeholder 익명화 (카카오톡 스타일)
+
+삭제된 메시지를 채팅창에 표시할 때 누가 보낸/삭제한 메시지인지 위치·이름으로 노출하지 않음. 단체방에서 삭제 시 사회적 부담 감소가 주 목적.
+
+### 결정
+
+**선택**: 채팅 흐름 가운데 정렬 + 시스템 메시지 스타일 + 익명 placeholder.
+
+```tsx
+if (message.deletedAt) {
+  return (
+    <div className="flex justify-center">
+      <div className="rounded-full bg-gray-100 px-3 py-1 text-xs italic text-gray-400">
+        삭제된 메시지입니다
+      </div>
+    </div>
+  );
+}
+```
+
+### 카카오톡 정책 비교
+
+| 항목 | 카카오톡 | Phase A 채택 |
+|---|---|---|
+| 익명 placeholder | ✅ | ✅ 채택 |
+| 가운데 정렬 (위치 익명화) | ✅ | ✅ 채택 |
+| **시간 제한 5분** | ✅ | ❌ 미채택 (옵션 B로 이연) |
+| **\"내 화면에서만 삭제\" 분기** | ✅ | ❌ 미채택 (옵션 C로 이연) |
+| 답글 인용에서도 \"(삭제된 메시지)\" | ✅ | ✅ 이미 구현 |
+
+### 옵션 B (시간 제한 5분) 미채택 근거
+
+- Phase A는 단순성 우선 — `01-decisions.md` §3 \"수정/삭제 정책: 시간 제한 없음\"
+- 학생 팀 데모 환경 — 사용자 학습 비용 낮추는 게 우선
+- 옛 메시지 대량 삭제로 대화 맥락 파괴되는 사례 관찰되면 Phase B에서 도입
+
+**도입 시 변경**:
+- backend `chat.service.deleteMessage`에 `Date.now() - createdAt > 5min` 체크
+- frontend: 5분 지난 메시지 삭제 버튼 hide
+
+### 옵션 C (\"내 화면에서만 삭제\") 미채택 근거
+
+- DB 부담 — `user_hidden_messages` 테이블 신설 필요
+- 동기화 복잡도 — 멀티 디바이스에서 hidden 상태 일관성 유지 비용
+- Phase A 트래픽엔 사용자별 hide 요구 발생 가능성 낮음
+
+**도입 시 변경**:
+- DB: `user_hidden_messages (userId, messageId, hiddenAt)` 테이블 신설
+- backend: GET /messages 응답에서 본인 hidden 필터링
+- frontend: 우클릭 메뉴에 \"모두에게 삭제\" / \"내 화면에서만 삭제\" 분기
+- broadcast 영향 없음 (로컬 hide)
+
+### Phase B 재검토 트리거
+
+- B: \"옛 메시지를 5분 후에도 삭제해서 대화 맥락이 깨진다\"는 사용자 피드백
+- C: \"내 화면에서만 정리하고 싶다\"는 사용자 피드백
+- 둘 다 `docs/chat/06-13day-plan.md` Phase B 이연 항목에 등록됨
+
+---
+
+## 15. 결정 변경 이력
 
 | 날짜 | 결정 | 변경 사유 |
 |---|---|---|

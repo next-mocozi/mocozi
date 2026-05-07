@@ -700,9 +700,12 @@ function MessageItem({
   const time = formatTime(message.createdAt);
 
   if (message.deletedAt) {
+    // 삭제된 메시지는 채팅 흐름 가운데 시스템 메시지 형태로 표시 — 누가 삭제했는지
+    // 위치/이름으로 노출되지 않도록 익명화 (카카오톡 스타일).
+    // 단체방에서 삭제 시 사회적 부담(추측·추궁) 감소가 주 목적.
     return (
-      <div className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-        <div className="max-w-[70%] rounded-2xl border border-dashed border-gray-300 px-4 py-2 text-sm italic text-gray-400">
+      <div className="flex justify-center">
+        <div className="rounded-full bg-gray-100 px-3 py-1 text-xs italic text-gray-400">
           삭제된 메시지입니다
         </div>
       </div>
