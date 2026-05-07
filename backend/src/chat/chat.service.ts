@@ -299,8 +299,11 @@ export class ChatService {
     senderId: string,
     content: string,
     parentId?: string,
+    options?: { skipMembershipCheck?: boolean },
   ) {
-    await this.assertMembership(roomId, senderId);
+    if (!options?.skipMembershipCheck) {
+      await this.assertMembership(roomId, senderId);
+    }
 
     if (!content || content.trim().length === 0) {
       throw new BadRequestException('메시지 내용이 비어 있습니다.');
