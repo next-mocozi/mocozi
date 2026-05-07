@@ -72,8 +72,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       );
       client.data.user = { id: payload.sub, email: payload.email };
       // socket 단위 멤버십 캐시 — message:send마다 DB 조회 안 하기 위해
-      // conversation:join 시 검증 통과한 roomId를 추가, leave 시 제거
-      client.data.activeRoomIds = new Set<string>();
+      // Map<roomId, joinedAtMs> — 5분 TTL 후 자동 stale로 처리되어 DB 재검증
+      // (Phase B에서 강퇴/leftAt 기능 추가 시 cache invalidate 안전망)
+      client.data.activeRoomIds = new Map<string, number>();
 
       // 인앱 알림 수신용 — 본인 ID 글로벌 room. message:send 시 멤버별로 broadcast됨 (Day 5)
       await client.join(`user:${payload.sub}`);
@@ -113,8 +114,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     await this.chatService.assertMembership(data.roomId, userId);
     await client.join(`room:${data.roomId}`);
-    // 캐시 — message:send 시 DB 조회 회피
-    (client.data.activeRoomIds as Set<string>).add(data.roomId);
+    // 캐시 — message:send 시 DB 조회 회피. timestamp 기록해 TTL 체크용
+    (client.data.activeRoomIds as Map<string, number>).set(
+      data.roomId,
+      Date.now(),
+    );
 
     // 자동 읽음 처리 — 입장한 사용자만 영향. 멤버십 검증은 이미 위에서 통과
     const unreadCount = await this.chatService.markRoomAsReadToLatest(
@@ -139,7 +143,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     if (!data?.roomId) throw new WsException('roomId가 필요합니다.');
     await client.leave(`room:${data.roomId}`);
-    (client.data.activeRoomIds as Set<string> | undefined)?.delete(data.roomId);
+    (client.data.activeRoomIds as Map<string, number> | undefined)?.delete(
+      data.roomId,
+    );
     return { ok: true, roomId: data.roomId };
   }
 
@@ -167,13 +173,21 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     const senderId = this.requireUserId(client);
 
-    // 캐시 hit 시 assertMembership DB 쿼리 1개 절감 (~130ms RTT)
-    // 캐시 miss(에지: socket이 conversation:join 안 거치고 message:send) 시 안전 fallback
-    const cache = client.data.activeRoomIds as Set<string> | undefined;
-    let skipMembershipCheck = cache?.has(dto.roomId) ?? false;
-    if (!skipMembershipCheck) {
+    // 캐시 hit + TTL valid 시 assertMembership DB 쿼리 1개 절감 (~130ms RTT)
+    // TTL: 5분. Phase B에서 강퇴/leftAt 도입 시 stale 안전망
+    // 캐시 miss(에지: socket이 conversation:join 안 거치고 message:send) 시 fallback
+    const CACHE_TTL_MS = 5 * 60 * 1000;
+    const cache = client.data.activeRoomIds as
+      | Map<string, number>
+      | undefined;
+    const cachedAt = cache?.get(dto.roomId);
+    const isCacheFresh =
+      cachedAt !== undefined && Date.now() - cachedAt < CACHE_TTL_MS;
+
+    let skipMembershipCheck = isCacheFresh;
+    if (!isCacheFresh) {
       await this.chatService.assertMembership(dto.roomId, senderId);
-      cache?.add(dto.roomId);
+      cache?.set(dto.roomId, Date.now());
       skipMembershipCheck = true;
     }
 
