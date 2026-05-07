@@ -313,13 +313,21 @@ export default function RecruitListPage() {
                 className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_2px_12px_-2px_rgba(0,0,0,0.07)] transition-all hover:shadow-[0_8px_24px_-4px_rgba(99,102,241,0.12)] hover:-translate-y-0.5"
               >
                 {/* 학교 컬러 헤더 */}
-                <div className="h-20" style={{ backgroundColor: schoolColor }} aria-hidden="true" />
+                <div
+                  className="relative h-20 overflow-hidden z-10"
+                  style={{
+                    background: `linear-gradient(135deg, ${schoolColor} 0%, color-mix(in oklch, ${schoolColor} 75%, #000) 100%)`,
+                  }}
+                  aria-hidden="true"
+                >
+                  <div className="absolute inset-x-0 bottom-0 h-px bg-white/10" />
+                </div>
 
                 {/* 아바타 + 버튼 */}
-                <div className="-mt-10 flex items-end justify-between px-5">
+                <div className="-mt-10 flex items-end justify-between px-5 z-20">
                   <div className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-white bg-slate-100 text-2xl font-bold text-slate-500 shadow-md">
                     {person.profileImage ? (
-                      <img src={person.profileImage} alt={person.name} className="h-full w-full rounded-full object-cover" />
+                      <img src={person.profileImage} alt={person.name} className="h-full w-full rounded-full object-cover z-30" />
                     ) : (
                       person.name[0]
                     )}
@@ -348,33 +356,46 @@ export default function RecruitListPage() {
                   <p className="mb-1 text-sm text-slate-400">{person.university} · {person.department}</p>
 
                   <div className="mb-2 flex min-h-[1.75rem] flex-wrap items-center gap-1.5">
-                    {mainRole && (
-                      <span className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
-                        {mainRole}
-                      </span>
-                    )}
-                    {subRoles.slice(0, 2).map((role) => (
-                      <span key={role} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-500">
-                        {role}
-                      </span>
-                    ))}
-                    {subRoles.length > 2 && (
-                      <span className="rounded-full border border-slate-200 px-3 py-1 text-xs text-slate-400">
-                        +{subRoles.length - 2}
+                    {mainRole ? (
+                      <>
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700">
+                          <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" aria-hidden="true" />
+                          {mainRole}
+                        </span>
+                        {subRoles.slice(0, 2).map((role) => (
+                          <span key={role} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-500">
+                            {role}
+                          </span>
+                        ))}
+                        {subRoles.length > 2 && (
+                          <span className="rounded-full border border-slate-200 px-3 py-1 text-xs text-slate-400">
+                            +{subRoles.length - 2}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <span className="rounded-full border border-dotted border-slate-200 px-3 py-1 text-xs font-medium text-slate-300">
+                        직군 미등록
                       </span>
                     )}
                   </div>
 
                   <div className="mb-2 flex min-h-[1.25rem] flex-wrap gap-1.5">
-                    {(person.skills ?? []).slice(0, 4).map((skill) => (
-                      <span key={skill} className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{skill}</span>
-                    ))}
-                    {(person.skills ?? []).length > 4 && (
-                      <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs text-slate-400">+{person.skills.length - 4}</span>
+                    {(person.skills ?? []).length > 0 ? (
+                      <>
+                        {(person.skills ?? []).slice(0, 4).map((skill) => (
+                          <span key={skill} className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{skill}</span>
+                        ))}
+                        {(person.skills ?? []).length > 4 && (
+                          <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs text-slate-400">+{person.skills.length - 4}</span>
+                        )}
+                      </>
+                    ) : (
+                      <span className="rounded-lg border border-dotted border-slate-200 px-2 py-0.5 text-xs text-slate-300">스킬 미등록</span>
                     )}
                   </div>
 
-                  <p className="line-clamp-3 min-h-[4.5rem] text-sm leading-relaxed text-slate-500">{person.bio ?? '소개가 없습니다.'}</p>
+                  <p className="line-clamp-3 min-h-[4.5rem] text-sm leading-relaxed text-slate-500">{person.bio?.trim() || '소개가 없습니다.'}</p>
                 </div>
               </div>
             );
