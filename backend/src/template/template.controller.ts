@@ -22,7 +22,7 @@ import { TemplateService } from './template.service';
  * - PUT /api/templates — upsert (body에 context + content)
  * - DELETE /api/templates/:context — 삭제 (다음 GET 시 default 합성으로 fallback)
  */
-@Controller('api/templates')
+@Controller('templates')
 @UseGuards(JwtAuthGuard)
 export class TemplateController {
   constructor(private templateService: TemplateService) {}
