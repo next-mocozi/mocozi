@@ -333,20 +333,8 @@ export class ChatService {
 
     // 방 lastMessage 갱신은 fire-and-forget — 사용자 응답 latency에서 제외
     // (broadcast 페이로드에 메시지 정보 이미 들어가 사이드바도 즉시 갱신됨)
-    // 실패해도 다음 메시지에서 자동 동기화. 로그만 남김
-    void this.prisma.chatRoom
-      .update({
-        where: { id: roomId },
-        data: {
-          lastMessage: this.preview(content),
-          lastMessageAt: new Date(),
-        },
-      })
-      .catch((err) => {
-        // 실패 무시 — lastMessage는 다음 메시지 또는 GET /rooms 시 자동 일관성 회복
-        // eslint-disable-next-line no-console
-        console.error('chatRoom.lastMessage update failed', err);
-      });
+    // 실패 시 exponential backoff로 최대 3회 재시도 → 일관성 보장 강화
+    this.updateLastMessageWithRetry(roomId, content, message.createdAt);
 
     return message;
   }
@@ -655,6 +643,65 @@ export class ChatService {
   private preview(content: string, max = 100) {
     const trimmed = content.trim();
     return trimmed.length > max ? `${trimmed.slice(0, max)}…` : trimmed;
+  }
+
+  /**
+   * 방 lastMessage / lastMessageAt 갱신 with exponential backoff retry.
+   * - 사용자 응답 critical path 밖에서 실행 (fire-and-forget)
+   * - 실패 시 1s → 2s → 4s 간격으로 최대 3회 재시도
+   * - lastMessageAt에 메시지의 실제 createdAt을 사용 — retry 동안 다른 메시지가
+   *   먼저 갱신해도 시간 비교로 더 최신 것만 적용 (out-of-order 방지)
+   *
+   * Phase A 트레이드오프: 트랜잭션 atomicity 일부 약화 대신 ack latency -130ms.
+   * 실패가 누적되면 다음 메시지에서 자동 회복되거나 재시도가 처리.
+   */
+  private updateLastMessageWithRetry(
+    roomId: string,
+    content: string,
+    messageCreatedAt: Date,
+    attempt = 0,
+  ): void {
+    const MAX_ATTEMPTS = 3;
+
+    // updateMany로 조건부 갱신 — 더 늦은 lastMessageAt이 이미 있으면 no-op (out-of-order 방지)
+    void this.prisma.chatRoom
+      .updateMany({
+        where: {
+          id: roomId,
+          OR: [
+            { lastMessageAt: null },
+            { lastMessageAt: { lt: messageCreatedAt } },
+          ],
+        },
+        data: {
+          lastMessage: this.preview(content),
+          lastMessageAt: messageCreatedAt,
+        },
+      })
+      .catch((err) => {
+        if (attempt < MAX_ATTEMPTS - 1) {
+          const delayMs = Math.pow(2, attempt) * 1000;
+          // eslint-disable-next-line no-console
+          console.warn(
+            `chatRoom.lastMessage update failed (attempt ${attempt + 1}/${MAX_ATTEMPTS}), retrying in ${delayMs}ms`,
+            err,
+          );
+          setTimeout(() => {
+            this.updateLastMessageWithRetry(
+              roomId,
+              content,
+              messageCreatedAt,
+              attempt + 1,
+            );
+          }, delayMs);
+        } else {
+          // eslint-disable-next-line no-console
+          console.error(
+            `chatRoom.lastMessage update final failure after ${MAX_ATTEMPTS} attempts. Room ${roomId} will recover on next message.`,
+            err,
+          );
+        }
+      });
   }
 
   /**
