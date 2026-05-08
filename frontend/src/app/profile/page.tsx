@@ -375,7 +375,7 @@ export default function MyProfilePage() {
             <button
               type="button"
               onClick={openImport}
-              className="rounded-full bg-blue-600 px-4 py-1.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-blue-700"
+              className="btn-secondary bg-blue-600 px-4 py-1.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-blue-700"
             >
               + 가져오기
             </button>
@@ -397,7 +397,7 @@ export default function MyProfilePage() {
             <div
               role="tablist"
               aria-label="포트폴리오 섹션"
-              className="inline-flex flex-wrap gap-1 rounded-full bg-gray-100 p-1"
+              className="inline-flex flex-wrap gap-1 rounded-2xl bg-gray-100 p-1"
             >
               {SECTION_ORDER.filter((k) => selected.includes(k)).map((k) => {
                 const isActive = activeTab === k;
@@ -408,7 +408,7 @@ export default function MyProfilePage() {
                     role="tab"
                     aria-selected={isActive}
                     onClick={() => setActiveTab(k)}
-                    className={`rounded-full px-4 py-1.5 text-sm font-medium transition-all ${
+                    className={`rounded-xl px-4 py-1.5 text-sm font-medium transition-all ${
                       isActive
                         ? 'bg-white text-gray-900 shadow-sm'
                         : 'text-gray-500 hover:text-gray-700'
