@@ -145,16 +145,36 @@ export class ChatService {
    */
   async getUserRooms(
     userId: string,
-    opts: { type?: ChatRoomType; limit?: number; cursor?: string } = {},
+    opts: {
+      type?: ChatRoomType;
+      limit?: number;
+      cursor?: string;
+      /** true면 hiddenAt 있는 방도 포함 (default: false — 숨긴 채팅 제외) */
+      includeHidden?: boolean;
+      /** true면 hidden인 방만 반환 (숨김 채팅 보기 전용 화면) */
+      onlyHidden?: boolean;
+    } = {},
   ) {
     const limit = Math.min(opts.limit ?? ROOM_PAGE_DEFAULT, ROOM_PAGE_MAX);
     const decoded = opts.cursor
       ? this.decodeCursor<RoomCursor>(opts.cursor)
       : null;
 
+    // 멤버십 필터 — 항상 leftAt: null (나간 방 제외)
+    // hiddenAt: includeHidden / onlyHidden 옵션에 따라 분기
+    const memberFilter = {
+      userId,
+      leftAt: null,
+      ...(opts.onlyHidden
+        ? { hiddenAt: { not: null } }
+        : opts.includeHidden
+          ? {}
+          : { hiddenAt: null }),
+    };
+
     const rooms = await this.prisma.chatRoom.findMany({
       where: {
-        members: { some: { userId, leftAt: null } },
+        members: { some: memberFilter },
         ...(opts.type ? { type: opts.type } : {}),
         ...(decoded
           ? {
@@ -571,6 +591,63 @@ export class ChatService {
       select: { userId: true },
     });
     return members.map((m) => m.userId);
+  }
+
+  // -----------------------------------------------------
+  // 방 멤버십 관리 — 나가기 / 숨기기 / 숨김 해제
+  // -----------------------------------------------------
+
+  /**
+   * 방에서 영구 나가기. leftAt 갱신.
+   * - 이후 message:send broadcast 대상에서 제외
+   * - 옛 메시지는 보존 (작성자 row 그대로)
+   * - 다시 들어가려면 다른 멤버가 invite (Phase B) — 또는 같은 사용자 다시 추가
+   * - 멱등 — 이미 나간 멤버면 no-op
+   */
+  async leaveRoom(roomId: string, userId: string) {
+    const membership = await this.prisma.chatRoomMember.findUnique({
+      where: { roomId_userId: { roomId, userId } },
+      select: { leftAt: true },
+    });
+    if (!membership) {
+      throw new NotFoundException('방 멤버가 아닙니다.');
+    }
+    if (membership.leftAt !== null) {
+      return { ok: true, alreadyLeft: true };
+    }
+    await this.prisma.chatRoomMember.update({
+      where: { roomId_userId: { roomId, userId } },
+      data: { leftAt: new Date() },
+    });
+    return { ok: true, alreadyLeft: false };
+  }
+
+  /**
+   * 방을 목록에서 숨기기. hiddenAt 갱신.
+   * - 메시지는 정상 수신 (broadcast 그대로)
+   * - GET /rooms 기본 응답에서 제외 (?includeHidden=true 또는 ?onlyHidden=true로 조회 가능)
+   * - 멤버십 유지 (leftAt 영향 없음)
+   */
+  async hideRoom(roomId: string, userId: string) {
+    await this.assertMembership(roomId, userId);
+    await this.prisma.chatRoomMember.update({
+      where: { roomId_userId: { roomId, userId } },
+      data: { hiddenAt: new Date() },
+    });
+    return { ok: true };
+  }
+
+  /**
+   * 방 숨김 해제. hiddenAt = null.
+   * - 다시 GET /rooms 기본 응답에 노출
+   */
+  async unhideRoom(roomId: string, userId: string) {
+    await this.assertMembership(roomId, userId);
+    await this.prisma.chatRoomMember.update({
+      where: { roomId_userId: { roomId, userId } },
+      data: { hiddenAt: null },
+    });
+    return { ok: true };
   }
 
   async buildNewMessageNotifications(
