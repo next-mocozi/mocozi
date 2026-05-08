@@ -268,7 +268,8 @@ model ChatRoomMember {
   lastReadMessageId String?
 
   joinedAt          DateTime            @default(now())
-  leftAt            DateTime?           // null: 활성 멤버, 값: 나간 멤버
+  leftAt            DateTime?           // null: 활성 멤버, 값: 나간 멤버 (영구 — 메시지 수신 X)
+  hiddenAt          DateTime?           // null: 표시 / 값: 목록에서 숨김 (메시지 수신은 정상)
 
   // onDelete: Cascade — 채팅방 삭제 시 멤버십 정리 (안전장치)
   // 다른 모델 컨벤션과 다른 예외. "방 폭파" 시 데이터 무결성 위해 채팅 영역만 적용

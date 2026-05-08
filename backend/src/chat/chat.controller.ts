@@ -52,7 +52,44 @@ export class ChatController {
       type: query.type,
       limit: query.limit,
       cursor: query.cursor,
+      includeHidden: query.includeHidden,
+      onlyHidden: query.onlyHidden,
     });
+  }
+
+  /**
+   * POST /api/chat/rooms/:roomId/hide — 방 목록에서 숨기기
+   * 메시지는 정상 수신, 표시만 hidden. 멤버십 유지.
+   */
+  @Post('rooms/:roomId/hide')
+  @HttpCode(204)
+  async hideRoom(
+    @CurrentUser() user: { id: string },
+    @Param('roomId') roomId: string,
+  ) {
+    await this.chatService.hideRoom(roomId, user.id);
+  }
+
+  /** POST /api/chat/rooms/:roomId/unhide — 숨김 해제 */
+  @Post('rooms/:roomId/unhide')
+  @HttpCode(204)
+  async unhideRoom(
+    @CurrentUser() user: { id: string },
+    @Param('roomId') roomId: string,
+  ) {
+    await this.chatService.unhideRoom(roomId, user.id);
+  }
+
+  /**
+   * POST /api/chat/rooms/:roomId/leave — 방에서 영구 나가기
+   * leftAt 갱신. 이후 메시지 수신 X. 옛 메시지 보존.
+   */
+  @Post('rooms/:roomId/leave')
+  async leaveRoom(
+    @CurrentUser() user: { id: string },
+    @Param('roomId') roomId: string,
+  ) {
+    return this.chatService.leaveRoom(roomId, user.id);
   }
 
   /** GET /api/chat/rooms/:roomId — 채팅방 상세 (멤버십 검증 포함) */

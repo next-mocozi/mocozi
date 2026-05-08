@@ -1,5 +1,5 @@
-import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 
 /**
  * GET /api/chat/rooms 쿼리 파라미터
@@ -25,4 +25,16 @@ export class ListRoomsQuery {
   @IsOptional()
   @IsString()
   cursor?: string;
+
+  /** 숨긴 채팅도 포함 (default: false) */
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  includeHidden?: boolean;
+
+  /** 숨긴 채팅만 (숨김 채팅 보기 화면 전용) */
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  onlyHidden?: boolean;
 }
