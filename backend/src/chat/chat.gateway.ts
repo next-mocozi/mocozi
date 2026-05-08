@@ -120,19 +120,32 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       Date.now(),
     );
 
-    // 자동 읽음 처리 — 입장한 사용자만 영향. 멤버십 검증은 이미 위에서 통과
-    const unreadCount = await this.chatService.markRoomAsReadToLatest(
-      data.roomId,
-      userId,
-    );
-    if (unreadCount !== null) {
-      this.server.to(`user:${userId}`).emit('notification:unreadCountChanged', {
-        roomId: data.roomId,
-        unreadCount,
+    // 자동 읽음 처리 — 입장 즉시 unreadCount=0이라는 사실은 정책상 결정됨 (Phase A ①).
+    // 따라서 ack는 즉시 0으로 반환하고 DB 갱신은 background로 분리:
+    //  - 사용자 응답 latency: ~150ms → ~10ms (DB 4 query 제거)
+    //  - 빠른 join/leave 반복 시 connection 한도 초과 방지
+    //  - skipMembershipCheck로 위에서 이미 통과한 검증 중복 호출 제거 (5 → 3 query)
+    void this.chatService
+      .markRoomAsReadToLatest(data.roomId, userId, {
+        skipMembershipCheck: true,
+      })
+      .then((unreadCount) => {
+        if (unreadCount !== null) {
+          this.server
+            .to(`user:${userId}`)
+            .emit('notification:unreadCountChanged', {
+              roomId: data.roomId,
+              unreadCount,
+            });
+        }
+      })
+      .catch((err) => {
+        this.logger.warn(
+          `[conversation:join] background mark-as-read failed: ${(err as Error).message}`,
+        );
       });
-    }
 
-    return { ok: true, roomId: data.roomId, unreadCount: unreadCount ?? 0 };
+    return { ok: true, roomId: data.roomId, unreadCount: 0 };
   }
 
   /** 채팅방 떠남 — Socket room leave (논리적 leftAt 갱신은 별도 REST) */
