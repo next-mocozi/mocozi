@@ -698,8 +698,11 @@ export class ChatService {
   async markRoomAsReadToLatest(
     roomId: string,
     userId: string,
+    options?: { skipMembershipCheck?: boolean },
   ): Promise<number | null> {
-    await this.assertMembership(roomId, userId);
+    if (!options?.skipMembershipCheck) {
+      await this.assertMembership(roomId, userId);
+    }
 
     const lastMessage = await this.prisma.chatMessage.findFirst({
       where: { roomId, deletedAt: null },
