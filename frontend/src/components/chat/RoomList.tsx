@@ -227,13 +227,13 @@ export default function RoomList() {
             return (
               <div
                 key={room.id}
-                className={`relative flex items-center gap-1 ${
+                className={`relative flex min-w-0 items-center gap-1 ${
                   isActive ? 'bg-primary-50' : 'hover:bg-gray-50'
                 }`}
               >
                 <Link
                   href={`/chat/${room.id}`}
-                  className="flex flex-1 items-center gap-3 p-3 transition-colors"
+                  className="flex min-w-0 flex-1 items-center gap-3 p-3 transition-colors"
                 >
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-100 text-base text-primary-600">
                     {room.type === 'DIRECT' ? '👤' : '👥'}
@@ -246,7 +246,9 @@ export default function RoomList() {
                       )}
                     </div>
                     <p className="truncate text-xs text-gray-500">
-                      {room.lastMessage ?? '메시지가 없습니다.'}
+                      {/* 미리보기 — 메시지 본문이 multi-line이거나 attachment 마커
+                          ([[link:...]])를 포함할 수 있어 한 줄로 요약 + 마커 제거 */}
+                      {sanitizePreview(room.lastMessage)}
                     </p>
                   </div>
                   {unread > 0 && (
@@ -389,6 +391,19 @@ export default function RoomList() {
       )}
     </div>
   );
+}
+
+/**
+ * 사이드바 미리보기 텍스트 정제.
+ * - 줄바꿈 → 공백 (truncate가 nowrap이라도 multi-line이 시각적으로 어색하게 보일 수 있음)
+ * - attachment 마커 [[link:type:target|label]] → label만 남김 (또는 제거)
+ * - 연속 공백 압축
+ */
+function sanitizePreview(raw: string | null | undefined): string {
+  if (!raw) return '메시지가 없습니다.';
+  const noMarker = raw.replace(/\[\[link:[^|\]]+\|([^\]]+)\]\]/g, '$1');
+  const oneLine = noMarker.replace(/\s+/g, ' ').trim();
+  return oneLine || '메시지가 없습니다.';
 }
 
 function roomDisplayName(
