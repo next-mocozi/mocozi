@@ -24,6 +24,17 @@ export default function PortfolioFeedPage() {
   const { user, loading } = useAuth();
   const { status } = useMyPortfolioStatus();
   const [target, setTarget] = useState<FeedDetailTarget | null>(null);
+  // 슬라이드 인/아웃 애니메이션을 위해 target 이 사라져도 잠시 유지한다.
+  const [renderedTarget, setRenderedTarget] = useState<FeedDetailTarget | null>(null);
+  useEffect(() => {
+    if (target) {
+      setRenderedTarget(target);
+      return;
+    }
+    if (!renderedTarget) return;
+    const t = setTimeout(() => setRenderedTarget(null), 320);
+    return () => clearTimeout(t);
+  }, [target, renderedTarget]);
 
   // 게이트
   useEffect(() => {
@@ -68,12 +79,12 @@ export default function PortfolioFeedPage() {
       </div>
 
       <div className="relative">
-        {/* 좌측: 피드 컬럼 — 패널 열림 시 transform 으로 왼쪽 슬라이드 */}
+        {/* 좌측: 피드 컬럼 — 크기 유지한 채 좌측으로 슬라이드만 한다. */}
         <div
-          className={`relative z-20 mx-auto transition-all duration-300 ease-out ${
+          className={`relative z-20 mx-auto max-w-2xl transition-transform duration-300 ease-out ${
             detailOpen
-              ? 'lg:mx-0 lg:max-w-[36rem] lg:-translate-x-4'
-              : 'max-w-2xl translate-x-0'
+              ? 'lg:-translate-x-56 xl:-translate-x-64'
+              : 'translate-x-0'
           }`}
         >
           <header className="mb-4">
@@ -95,14 +106,26 @@ export default function PortfolioFeedPage() {
                   key={post.postId}
                   post={post}
                   selected={post.postId === selectedPostId}
-                  onOpenDetail={(p) => setTarget({ mode: 'post', post: p })}
+                  onOpenDetail={(p) => {
+                    // 같은 게시물을 다시 누르면 패널 닫기 (토글)
+                    setTarget((prev) =>
+                      prev?.mode === 'post' && prev.post.postId === p.postId
+                        ? null
+                        : { mode: 'post', post: p },
+                    );
+                  }}
                   onOpenAuthor={(uid) => {
                     // 본인 작성자 클릭 → 본인 종합 페이지로 이동(패널 모드 X)
                     if (user && uid === user.id) {
                       router.push(`/portfolio/${uid}`);
-                    } else {
-                      setTarget({ mode: 'author', userId: uid });
+                      return;
                     }
+                    // 같은 작성자를 다시 누르면 패널 닫기 (토글)
+                    setTarget((prev) =>
+                      prev?.mode === 'author' && prev.userId === uid
+                        ? null
+                        : { mode: 'author', userId: uid },
+                    );
                   }}
                 />
               ))}
@@ -110,28 +133,46 @@ export default function PortfolioFeedPage() {
           )}
         </div>
 
-        {/* 우측: 상세 패널 — lg 이상에서 sticky split-pane, 그 미만에서 fixed overlay */}
-        {target && (
-          <>
-            {/* 모바일 — 풀스크린 오버레이 */}
+        {/* 데스크톱 — 우측 sticky 패널. translate-x 로 우측에서 슬라이드 인/아웃.
+            target 이 null 이 된 뒤에도 renderedTarget 으로 잠깐 남아 슬라이드 아웃 표시. */}
+        <div
+          aria-hidden={!detailOpen}
+          className={`pointer-events-none absolute inset-y-0 right-0 hidden w-[28rem] xl:w-[32rem] lg:block transition-transform duration-300 ease-out ${
+            detailOpen ? 'translate-x-0' : 'translate-x-full'
+          }`}
+        >
+          <div className="pointer-events-auto sticky top-4 h-[calc(100vh-6rem)]">
+            {renderedTarget && (
+              <FeedDetailPanel
+                target={renderedTarget}
+                onClose={() => setTarget(null)}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* 모바일 — 풀스크린 오버레이. 카드는 우측에서 슬라이드 인/아웃. */}
+        {renderedTarget && (
+          <div
+            className={`fixed inset-0 z-40 flex items-stretch p-2 transition-all duration-300 lg:hidden ${
+              detailOpen
+                ? 'bg-black/40 opacity-100'
+                : 'pointer-events-none bg-black/0 opacity-0'
+            }`}
+            onClick={() => setTarget(null)}
+          >
             <div
-              className="fixed inset-0 z-40 flex items-stretch bg-black/40 p-2 lg:hidden"
-              onClick={() => setTarget(null)}
+              className={`m-auto h-[90vh] w-full max-w-2xl transition-transform duration-300 ease-out ${
+                detailOpen ? 'translate-x-0' : 'translate-x-full'
+              }`}
+              onClick={(e) => e.stopPropagation()}
             >
-              <div
-                className="m-auto h-[90vh] w-full max-w-2xl"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <FeedDetailPanel target={target} onClose={() => setTarget(null)} />
-              </div>
+              <FeedDetailPanel
+                target={renderedTarget}
+                onClose={() => setTarget(null)}
+              />
             </div>
-            {/* 데스크톱 — 우측 sticky 패널 */}
-            <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-[28rem] lg:block xl:w-[32rem]">
-              <div className="pointer-events-auto sticky top-4 h-[calc(100vh-6rem)]">
-                <FeedDetailPanel target={target} onClose={() => setTarget(null)} />
-              </div>
-            </div>
-          </>
+          </div>
         )}
       </div>
     </div>

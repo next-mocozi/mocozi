@@ -122,12 +122,6 @@ function PostDetail({ post }: { post: FeedPost }) {
         <PostBody post={post} />
       )}
 
-      {/* 비공개 본인 게시물 힌트 */}
-      {post.isOwnerPrivate && (
-        <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700">
-          🔒 공개로 전환하면 이 게시물이 메인 피드에 노출됩니다.
-        </p>
-      )}
     </div>
   );
 }

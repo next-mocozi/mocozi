@@ -67,12 +67,17 @@ export default function PortfolioOnboardingPage() {
   const [finalizing, setFinalizing] = useState(false);
 
   // 비로그인 → 로그인 페이지. 이미 작성됨 → 피드.
+  // 단, 제출 중/공개여부 모달 표시 중/마무리 중에는 user.skills 가 막 갱신되어
+  // 가짜로 "이미 작성됨" 처럼 보이므로 리다이렉트 하지 않는다.
+  // (이전엔 이로 인해 visibility 모달이 0.5초만 보이고 '/portfolio' 로 튕겨
+  //  visibility 가 저장되지 않은 채 기본값 'private' 으로 처리되는 버그가 있었음.)
   useEffect(() => {
     if (loading) return;
     if (!user) {
       router.replace('/login');
       return;
     }
+    if (saving || showVisibilityModal || finalizing) return;
     try {
       const existingIntro = localStorage.getItem(INTRO_STORAGE_KEY) ?? '';
       const skillsCount = user.skills?.length ?? 0;
@@ -82,14 +87,15 @@ export default function PortfolioOnboardingPage() {
     } catch {
       // localStorage 실패 시 그냥 폼 표시
     }
-  }, [loading, user, router]);
+  }, [loading, user, router, saving, showVisibilityModal, finalizing]);
 
-  // 사용자 기존 skills 가 비어있지 않으면 폼 초기값으로 사용 (드물지만 부분 작성 케이스)
+  // 온보딩 폼은 항상 빈 상태로 시작한다.
+  // (이전엔 user.skills 가 있으면 자동으로 칩을 활성화했지만, 그러면 이전에 한 번
+  //  온보딩을 마친 적 있는 계정으로 로그인했을 때 의도치 않게 과거 선택이 그대로
+  //  남아 보이는 문제가 있었다. 사용자가 직접 칩을 골라 의도를 확정하도록 한다.)
   useEffect(() => {
-    if (user?.skills?.length) {
-      setSkills(user.skills);
-    }
-  }, [user]);
+    setSkills([]);
+  }, [user?.id]);
 
   const toggleSkill = (s: string) =>
     setSkills((prev) =>

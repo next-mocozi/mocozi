@@ -111,13 +111,13 @@ export default function PortfolioDetailPage({
       return;
     }
     if (isOwner) {
-      try {
-        const intro = localStorage.getItem(INTRO_STORAGE_KEY) ?? '';
-        const skillsCount = user.skills?.length ?? 0;
-        if (!intro.trim() || skillsCount < 1) {
-          router.replace('/portfolio/onboarding');
-        }
-      } catch {
+      // 서버에 저장된 skills 가 비어있을 때만 onboarding 으로 보낸다.
+      // (이전엔 localStorage 의 intro 가 비어있기만 해도 리다이렉트했지만,
+      //  시크릿 모드/캐시 정리 등으로 localStorage 가 사라진 경우에도 본인
+      //  포트폴리오 페이지에서 항목 상세→돌아가기 흐름이 onboarding 으로
+      //  튕기며 무한 로딩처럼 보이는 문제가 있었다. skills 는 서버 저장이라 신뢰 가능.)
+      const skillsCount = user.skills?.length ?? 0;
+      if (skillsCount < 1) {
         router.replace('/portfolio/onboarding');
       }
     }

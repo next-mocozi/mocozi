@@ -54,14 +54,6 @@ export default function FeedPostCard({
         {/* 제목 / 본문 — 종류별 분기 */}
         <PostTitleAndBody post={post} />
 
-        {/* 비공개 본인 게시물 힌트 */}
-        {post.isOwnerPrivate && (
-          <p className="mt-3 inline-flex items-center gap-1 rounded-md bg-amber-50 px-2.5 py-1 text-xs text-amber-700">
-            <span aria-hidden>🔒</span>
-            공개로 전환하면 이 게시물이 메인 피드에 노출됩니다.
-          </p>
-        )}
-
         {/* 태그 */}
         <PostTags post={post} />
 
@@ -183,16 +175,9 @@ function PostTitleAndBody({ post }: { post: FeedPost }) {
   switch (post.kind) {
     case 'item':
       return (
-        <>
-          <h3 className="text-xl font-bold leading-snug text-gray-900">
-            {post.item.title}
-          </h3>
-          {post.item.description && (
-            <p className="mt-2 text-sm leading-relaxed text-gray-600 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3] overflow-hidden">
-              {post.item.description}
-            </p>
-          )}
-        </>
+        <h3 className="text-xl font-bold leading-snug text-gray-900">
+          {post.item.title}
+        </h3>
       );
     case 'experience':
       return (

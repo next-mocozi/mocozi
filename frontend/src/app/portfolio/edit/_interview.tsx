@@ -845,7 +845,11 @@ export default function ProjectInterview() {
   });
 
   // 초기 로드 — 수정 모드면 저장된 답변 로드, 신규면 새 ID 발급
+  // (projectId 가 이미 발급된 뒤 effect 가 재실행되어 새 ID 가 또 발급되면,
+  //  같은 입력으로 localStorage 에 draft 가 중복 생성되어 이후 항목 상세에서
+  //  잘못된 id 를 찾는 원인이 될 수 있어 발급 후 재실행을 방지한다.)
   useEffect(() => {
+    if (projectId !== null) return;
     if (isEdit && editId !== null) {
       // 프로젝트가 아닌 항목(연구·스터디 등)이 잘못 라우팅된 경우 해당 폼으로 즉시 이동.
       // 그렇지 않으면 아래 자동저장이 type 을 'project' 로 덮어쓰게 됨.
@@ -903,10 +907,10 @@ export default function ProjectInterview() {
       setPhase('form');
       return;
     }
-    // 신규: 매번 새 ID 발급 (이전 작성 건은 별도 항목으로 보존됨)
+    // 신규: 진입 시 1회 새 ID 발급 (위 early-return 가드로 재발급 방지)
     setProjectId(Date.now());
     setPhase('form');
-  }, [isEdit, editId, router]);
+  }, [isEdit, editId, router, projectId]);
 
   // 자동 저장 — projectId 슬롯에 항상 ITEMS+DETAILS 동기 저장
   // (빈 draft 는 저장 안 함 — 빈 placeholder 항목 방지)
