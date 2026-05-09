@@ -44,3 +44,6 @@ coverage/
 *.tsbuildinfo
 *.docx
 docx_text.txt
+
+# Claude/AI 작업 시 PR 본문 임시 저장 (개인 작업 메모)
+.pr-bodies/
