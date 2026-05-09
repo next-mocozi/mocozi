@@ -29,6 +29,8 @@ export default function RoomList() {
     mutedRoomIds,
     setRoomMuted,
     setRoomUnmuted,
+    setRoomHidden,
+    setRoomUnhidden,
   } = useChatNotifications();
 
   const [rooms, setRooms] = useState<ChatRoomWithMembers[]>([]);
@@ -149,8 +151,9 @@ export default function RoomList() {
       await api.post(`/api/chat/rooms/${roomId}/hide`);
       // 활성 목록에서 즉시 제거 (Optimistic)
       setRooms((prev) => prev.filter((r) => r.id !== roomId));
-      // 백엔드 정책: hide 시 자동 mute. 클라이언트도 mutedRoomIds 갱신
-      setRoomMuted(roomId);
+      // 토스트 차단 — hide 자체가 알림 차단 효과 (mute와 별개)
+      // 숨김 해제 시 hide 전 mute 상태로 자연 복귀 — mutedRoomIds는 안 건드림
+      setRoomHidden(roomId);
     } catch (e: unknown) {
       // eslint-disable-next-line no-console
       console.error('[chat] hide failed', e);
@@ -162,7 +165,11 @@ export default function RoomList() {
   const handleUnhide = async (roomId: string) => {
     try {
       await api.post(`/api/chat/rooms/${roomId}/unhide`);
+      // 숨김 목록에서 즉시 제거 (Optimistic)
       setRooms((prev) => prev.filter((r) => r.id !== roomId));
+      // hiddenRoomIds set에서 해제 — mutedRoomIds는 hide 전 상태 그대로 유지
+      // 즉 hide 전 명시 mute였다면 unhide 후에도 mute / 아니었으면 알림 정상
+      setRoomUnhidden(roomId);
     } catch (e: unknown) {
       // eslint-disable-next-line no-console
       console.error('[chat] unhide failed', e);

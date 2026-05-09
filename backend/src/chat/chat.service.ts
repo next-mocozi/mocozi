@@ -623,31 +623,26 @@ export class ChatService {
   }
 
   /**
-   * 방을 목록에서 숨기기. hiddenAt 갱신 + 자동 mute 적용.
+   * 방을 목록에서 숨기기. hiddenAt만 갱신.
    * - 메시지는 정상 수신 (broadcast 그대로)
    * - GET /rooms 기본 응답에서 제외 (?includeHidden=true 또는 ?onlyHidden=true로 조회 가능)
    * - 멤버십 유지 (leftAt 영향 없음)
-   * - 정책: hide = 안 보이고 + 알림도 안 받음. mutedAt이 null이었으면 자동 set.
-   *   이미 mute 상태였다면 mutedAt 그대로 (덮지 않음)
+   * - mutedAt은 그대로 — 명시 mute와 hide의 의미를 분리
+   *   토스트 차단은 frontend가 hidden 방을 별도 분기로 처리 (mute와 OR 조건)
+   *   숨김 해제 시 hide 전 mute 상태로 자연스럽게 복귀
    */
   async hideRoom(roomId: string, userId: string) {
     await this.assertMembership(roomId, userId);
-    const now = new Date();
     await this.prisma.chatRoomMember.update({
       where: { roomId_userId: { roomId, userId } },
-      data: {
-        hiddenAt: now,
-        // 자동 mute — 이미 mute였다면 update 시점 갱신은 의미 없으니 그대로
-        // (Prisma는 update에서 명시한 컬럼만 변경 — mutedAt이 없으면 기존값 유지)
-        mutedAt: now,
-      },
+      data: { hiddenAt: new Date() },
     });
     return { ok: true };
   }
 
   /**
    * 방 숨김 해제. hiddenAt = null.
-   * - mutedAt은 사용자 의도 보존 (자동 unmute 안 함). 알림 받고 싶으면 별도 unmute 호출.
+   * - mutedAt은 그대로 — hide 전에 mute였다면 그대로 mute / 아니었으면 그대로 unmute
    */
   async unhideRoom(roomId: string, userId: string) {
     await this.assertMembership(roomId, userId);

@@ -34,18 +34,28 @@ export function useNotifications(socket: ChatSocket | null) {
   const [latestNotification, setLatestNotification] =
     useState<NewMessageNotification | null>(null);
 
-  /** mute된 방 id set — 토스트 skip 판단용 */
+  /** mute된 방 id set — 토스트 skip 판단용 (명시 알림 끄기) */
   const [mutedRoomIds, setMutedRoomIds] = useState<Set<string>>(() => new Set());
 
+  /** 숨긴 방 id set — 토스트 skip 판단용 (hide 자체가 알림 차단 효과)
+   *  mutedRoomIds와 별개로 관리해 의미 분리 — 숨김 해제 시 mute 상태 복귀 가능 */
+  const [hiddenRoomIds, setHiddenRoomIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+
   /**
-   * mutedRoomIds를 socket listener에서 stale closure 없이 참조하기 위한 ref.
-   * useEffect deps에 mutedRoomIds 넣으면 listener가 매번 재등록됨 — 비효율.
+   * mutedRoomIds / hiddenRoomIds를 socket listener에서 stale closure 없이 참조하기 위한 ref.
+   * useEffect deps에 두 set 넣으면 listener가 매번 재등록됨 — 비효율.
    * ref로 최신 값 추적하면 listener는 한 번만 등록되고도 항상 최신 set 참조.
    */
   const mutedRoomIdsRef = useRef(mutedRoomIds);
+  const hiddenRoomIdsRef = useRef(hiddenRoomIds);
   useEffect(() => {
     mutedRoomIdsRef.current = mutedRoomIds;
   }, [mutedRoomIds]);
+  useEffect(() => {
+    hiddenRoomIdsRef.current = hiddenRoomIds;
+  }, [hiddenRoomIds]);
 
   // ---------------------------------------------------------
   // socket listener 등록 / 해제
@@ -57,9 +67,13 @@ export function useNotifications(socket: ChatSocket | null) {
       // eslint-disable-next-line no-console
       console.info('[ws] notification:newMessage', n);
       setUnreadByRoom((prev) => ({ ...prev, [n.roomId]: n.unreadCount }));
-      // mute된 방은 latestNotification 자체에 set 안 함 — 토스트 깜빡임 방지
+      // mute된 방 또는 hidden인 방은 latestNotification 자체에 set 안 함 — 토스트 깜빡임 방지
       // (ToastContainer가 render에서 한 번 더 가드 — 이중 안전망)
-      if (!mutedRoomIdsRef.current.has(n.roomId)) {
+      // hide 자체가 알림 차단 효과 (mute와 별개 의미라 OR 조건)
+      if (
+        !mutedRoomIdsRef.current.has(n.roomId) &&
+        !hiddenRoomIdsRef.current.has(n.roomId)
+      ) {
         setLatestNotification(n);
       }
     };
@@ -90,9 +104,11 @@ export function useNotifications(socket: ChatSocket | null) {
   const dismissLatest = useCallback(() => setLatestNotification(null), []);
 
   /**
-   * 채팅방 목록 GET 직후에 일괄 초기화. unreadCount + mutedAt 동시에.
+   * 채팅방 목록 GET 직후에 일괄 초기화. unreadCount + mutedAt + hiddenAt 동시에.
    *
-   * mutedAt이 있는 방은 mutedRoomIds set에 등록 → 이후 토스트 도착 시 skip.
+   * mutedAt 또는 hiddenAt 있는 방은 각 set에 등록 → 이후 토스트 도착 시 skip.
+   * 활성 화면(GET /rooms 기본 응답)에선 hidden 방이 안 옴 → hiddenRoomIds 빔.
+   * 숨김 채팅 화면(GET /rooms?onlyHidden=true)에선 hidden 방만 옴 → hiddenRoomIds 채워짐.
    */
   const initFromRooms = useCallback(
     (
@@ -100,16 +116,20 @@ export function useNotifications(socket: ChatSocket | null) {
         id: string;
         unreadCount: number;
         mutedAt?: string | null;
+        hiddenAt?: string | null;
       }>,
     ) => {
       const unreadMap: Record<string, number> = {};
       const muted = new Set<string>();
+      const hidden = new Set<string>();
       for (const r of rooms) {
         unreadMap[r.id] = r.unreadCount;
         if (r.mutedAt) muted.add(r.id);
+        if (r.hiddenAt) hidden.add(r.id);
       }
       setUnreadByRoom(unreadMap);
       setMutedRoomIds(muted);
+      setHiddenRoomIds(hidden);
     },
     [],
   );
@@ -127,6 +147,26 @@ export function useNotifications(socket: ChatSocket | null) {
   /** unmute 액션 후 — set에서 제거 */
   const setRoomUnmuted = useCallback((roomId: string) => {
     setMutedRoomIds((prev) => {
+      if (!prev.has(roomId)) return prev;
+      const next = new Set(prev);
+      next.delete(roomId);
+      return next;
+    });
+  }, []);
+
+  /** hide 액션 후 — hiddenRoomIds 추가 (토스트 차단용) */
+  const setRoomHidden = useCallback((roomId: string) => {
+    setHiddenRoomIds((prev) => {
+      if (prev.has(roomId)) return prev;
+      const next = new Set(prev);
+      next.add(roomId);
+      return next;
+    });
+  }, []);
+
+  /** unhide 액션 후 — hiddenRoomIds 제거 */
+  const setRoomUnhidden = useCallback((roomId: string) => {
+    setHiddenRoomIds((prev) => {
       if (!prev.has(roomId)) return prev;
       const next = new Set(prev);
       next.delete(roomId);
@@ -153,10 +193,14 @@ export function useNotifications(socket: ChatSocket | null) {
     setRoomUnread,
     /** GET /rooms 응답 배열로부터 일괄 초기화 (unread + mute 동시) */
     initFromRooms,
-    /** mute된 방 id set — ToastContainer가 토스트 skip 판단 */
+    /** mute된 방 id set — ToastContainer가 토스트 skip 판단 + 🔕 아이콘 표시 */
     mutedRoomIds,
+    /** hidden 방 id set — 토스트 skip 판단용 (숨김 채팅 화면 진입 시 채워짐) */
+    hiddenRoomIds,
     /** 액션 후 set 갱신 — 낙관적 업데이트 */
     setRoomMuted,
     setRoomUnmuted,
+    setRoomHidden,
+    setRoomUnhidden,
   };
 }
