@@ -4,11 +4,13 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AttachmentButton } from '@/components/chat/AttachmentButton';
+import { MessageMarkdown } from '@/components/chat/MessageMarkdown';
 import RoomList from '@/components/chat/RoomList';
 import { RoleSelector } from '@/components/chat/RoleSelector';
 import { SlidingPanel } from '@/components/chat/SlidingPanel';
 import { TemplatePreview } from '@/components/chat/TemplatePreview';
 import { TemplateTrigger } from '@/components/chat/TemplateTrigger';
+import { PreviewIcon } from '@/components/icons/PreviewIcon';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import {
@@ -87,6 +89,9 @@ export default function ChatRoomPage({ params }: PageProps) {
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
+
+  /** 입력 미리보기 슬라이딩 패널 — 마크다운 렌더 결과 확인용 */
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   // ---------------------------------------------------------
   // Draft 영속화 — localStorage 방별 키
@@ -833,6 +838,17 @@ export default function ChatRoomPage({ params }: PageProps) {
           disabled={!isConnected}
           className="input-field flex-1 disabled:bg-gray-50"
         />
+        {/* 입력 미리보기 — 마크다운 렌더 결과를 슬라이딩 패널로. 빈 입력 시 비활성 */}
+        <button
+          type="button"
+          onClick={() => setPreviewOpen(true)}
+          disabled={!draft.trim()}
+          aria-label="입력 미리보기"
+          title="마크다운 미리보기"
+          className="rounded-md p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-30"
+        >
+          <PreviewIcon />
+        </button>
         <button
           type="submit"
           className="btn-primary disabled:opacity-50"
@@ -864,6 +880,24 @@ export default function ChatRoomPage({ params }: PageProps) {
             disabled={!isConnected}
           />
         )}
+      </SlidingPanel>
+
+      {/* 입력 미리보기 슬라이딩 패널 — draft를 마크다운 렌더로 즉시 확인 (Stance B 정책 docs/chat/09)
+          xl 이상: 채팅방 영역 우측 슬라이드 / xl 미만: 아래에서 위 bottom sheet (SlidingPanel 자체가 반응형) */}
+      <SlidingPanel
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        title="입력 미리보기"
+      >
+        <div className="p-4">
+          {draft.trim() ? (
+            <MessageMarkdown content={draft} />
+          ) : (
+            <p className="text-sm text-gray-400">
+              입력창에 텍스트를 입력하면 여기에 렌더 결과가 보여요.
+            </p>
+          )}
+        </div>
       </SlidingPanel>
     </div>
   );
@@ -1055,14 +1089,18 @@ function MessageItem({
             {message.sender.name}
           </p>
         )}
-        {/* 메시지 본문 + attachment 마커 파싱 — 마커는 본문에서 제거되고 둥근사각형 버튼으로 별도 렌더 */}
+        {/* 메시지 본문 + attachment 마커 파싱 — 마커는 본문에서 제거되고 둥근사각형 버튼으로 별도 렌더.
+            본문은 MessageMarkdown으로 마크다운+수식+코드 highlighting 렌더 (Stance B 정책 docs/chat/09).
+            soft-deleted 메시지는 placeholder 표시. */}
         {(() => {
           const parsed = parseAttachmentMarker(message.content);
           return (
             <>
-              <p className="whitespace-pre-wrap break-words text-sm">
-                {parsed.cleanContent}
-              </p>
+              {message.deletedAt ? (
+                <p className="text-sm italic text-gray-500">삭제된 메시지</p>
+              ) : (
+                <MessageMarkdown content={parsed.cleanContent} />
+              )}
               {parsed.attachments.map((a, i) => (
                 <AttachmentButton
                   key={`${a.type}-${a.target}-${i}`}
