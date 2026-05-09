@@ -226,6 +226,8 @@ mocozi/
 | 메시지 저장 | `backend/src/chat/chat.service.ts` |
 | DB 모델 | `ChatRoom`, `ChatRoomUser`, `ChatMessage` |
 
+> **관련 정책 / 설계 문서**: [`docs/chat/`](./docs/chat/) — 진입점 [`00-overview.md`](./docs/chat/00-overview.md). 정책 2개: Phase B 이연 항목([08](./docs/chat/08-phase-b-policy.md)), 메시지 표현([09](./docs/chat/09-message-expression-policy.md) — Stance B → 가벼운 D → D 진화 경로).
+
 ---
 
 ## 5. DB 스키마 요약

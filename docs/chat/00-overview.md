@@ -81,8 +81,8 @@ Day 7 압축으로 1.5일 여유 확보 → Day 8부터 useSocket 훅 작업 시
 
 ## 미해결 기술 부채
 
-> **상세 정책**: [`08-phase-b-policy.md`](./08-phase-b-policy.md) — Phase B 이연 항목 16개 통합 정리.
-> 각 항목의 이유·영향·착수 트리거·작업 항목을 카테고리별로 명시.
+> **Phase B 이연 항목**: [`08-phase-b-policy.md`](./08-phase-b-policy.md) — 16개 항목 통합 정리. 각 항목의 이유·영향·착수 트리거·작업 항목을 카테고리별로 명시.
+> **메시지 표현 정책**: [`09-message-expression-policy.md`](./09-message-expression-policy.md) — Stance B(게이트웨이) 시작, Stance D(실시간 협업 캔버스) 장기 도입 의지 명시. 마크다운/임베드/AI 산출물 처리 정책.
 
 | 카테고리 | 대표 항목 | 우선순위 |
 |---|---|---|
@@ -91,6 +91,7 @@ Day 7 압축으로 1.5일 여유 확보 → Day 8부터 useSocket 훅 작업 시
 | 💬 DM 모듈 진화 | 컨텍스트 의미 재설계, 그룹 초대, 방 폭파 등 5건 | 기능 확장 시 |
 | 🎨 UX 개선 | NewChatModal 재활용, draft TTL cleanup 등 4건 | 시간 될 때 |
 | 🧪 품질/회귀 | mute 시나리오 verify, cache invalidation 등 3건 | 안정화 시 |
+| 💬 메시지 표현 | 마크다운 도입, 임베드 화이트리스트, Stance D 진화 | 별도 정책(09) — 단계적 |
 
 ## 다음 작업 시작 시 진입 명령
 
