@@ -70,7 +70,7 @@ export class ChatController {
     await this.chatService.hideRoom(roomId, user.id);
   }
 
-  /** POST /api/chat/rooms/:roomId/unhide — 숨김 해제 */
+  /** POST /api/chat/rooms/:roomId/unhide — 숨김 해제 (mutedAt 보존) */
   @Post('rooms/:roomId/unhide')
   @HttpCode(204)
   async unhideRoom(
@@ -78,6 +78,29 @@ export class ChatController {
     @Param('roomId') roomId: string,
   ) {
     await this.chatService.unhideRoom(roomId, user.id);
+  }
+
+  /**
+   * POST /api/chat/rooms/:roomId/mute — 알림 끄기
+   * 메시지는 정상 수신, 토스트만 클라이언트가 skip.
+   */
+  @Post('rooms/:roomId/mute')
+  @HttpCode(204)
+  async muteRoom(
+    @CurrentUser() user: { id: string },
+    @Param('roomId') roomId: string,
+  ) {
+    await this.chatService.muteRoom(roomId, user.id);
+  }
+
+  /** POST /api/chat/rooms/:roomId/unmute — 알림 켜기 */
+  @Post('rooms/:roomId/unmute')
+  @HttpCode(204)
+  async unmuteRoom(
+    @CurrentUser() user: { id: string },
+    @Param('roomId') roomId: string,
+  ) {
+    await this.chatService.unmuteRoom(roomId, user.id);
   }
 
   /**

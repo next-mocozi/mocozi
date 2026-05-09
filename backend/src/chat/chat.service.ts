@@ -623,29 +623,62 @@ export class ChatService {
   }
 
   /**
-   * 방을 목록에서 숨기기. hiddenAt 갱신.
+   * 방을 목록에서 숨기기. hiddenAt 갱신 + 자동 mute 적용.
    * - 메시지는 정상 수신 (broadcast 그대로)
    * - GET /rooms 기본 응답에서 제외 (?includeHidden=true 또는 ?onlyHidden=true로 조회 가능)
    * - 멤버십 유지 (leftAt 영향 없음)
+   * - 정책: hide = 안 보이고 + 알림도 안 받음. mutedAt이 null이었으면 자동 set.
+   *   이미 mute 상태였다면 mutedAt 그대로 (덮지 않음)
    */
   async hideRoom(roomId: string, userId: string) {
     await this.assertMembership(roomId, userId);
+    const now = new Date();
     await this.prisma.chatRoomMember.update({
       where: { roomId_userId: { roomId, userId } },
-      data: { hiddenAt: new Date() },
+      data: {
+        hiddenAt: now,
+        // 자동 mute — 이미 mute였다면 update 시점 갱신은 의미 없으니 그대로
+        // (Prisma는 update에서 명시한 컬럼만 변경 — mutedAt이 없으면 기존값 유지)
+        mutedAt: now,
+      },
     });
     return { ok: true };
   }
 
   /**
    * 방 숨김 해제. hiddenAt = null.
-   * - 다시 GET /rooms 기본 응답에 노출
+   * - mutedAt은 사용자 의도 보존 (자동 unmute 안 함). 알림 받고 싶으면 별도 unmute 호출.
    */
   async unhideRoom(roomId: string, userId: string) {
     await this.assertMembership(roomId, userId);
     await this.prisma.chatRoomMember.update({
       where: { roomId_userId: { roomId, userId } },
       data: { hiddenAt: null },
+    });
+    return { ok: true };
+  }
+
+  /**
+   * 알림 끄기 (mute). mutedAt 갱신.
+   * - 메시지 데이터는 정상 수신 (broadcast 그대로) — 사이드바 unreadCount 등 정상 동작
+   * - 클라이언트에서 토스트 알림만 skip (notification:newMessage 받아도 표시 X)
+   * - 목록에서는 그대로 보임 (hidden과 별개)
+   */
+  async muteRoom(roomId: string, userId: string) {
+    await this.assertMembership(roomId, userId);
+    await this.prisma.chatRoomMember.update({
+      where: { roomId_userId: { roomId, userId } },
+      data: { mutedAt: new Date() },
+    });
+    return { ok: true };
+  }
+
+  /** 알림 켜기. mutedAt = null. */
+  async unmuteRoom(roomId: string, userId: string) {
+    await this.assertMembership(roomId, userId);
+    await this.prisma.chatRoomMember.update({
+      where: { roomId_userId: { roomId, userId } },
+      data: { mutedAt: null },
     });
     return { ok: true };
   }
@@ -925,14 +958,32 @@ export class ChatService {
   }
 
   /**
-   * Prisma 결과에 unreadCount를 더해 응답 형태로 가공.
+   * Prisma 결과에 unreadCount + 본인 멤버십 메타(mutedAt/hiddenAt)를 더해 응답 형태로 가공.
    * (확장 필드가 늘어나면 여기에 추가)
    */
-  private shapeRoom<T extends object>(
+  private shapeRoom<
+    T extends {
+      members: Array<{
+        userId: string;
+        mutedAt: Date | null;
+        hiddenAt: Date | null;
+      }>;
+    },
+  >(
     room: T,
-    _userId: string,
+    userId: string,
     unreadCount: number,
-  ): T & { unreadCount: number } {
-    return { ...room, unreadCount };
+  ): T & {
+    unreadCount: number;
+    mutedAt: Date | null;
+    hiddenAt: Date | null;
+  } {
+    const my = room.members.find((m) => m.userId === userId);
+    return {
+      ...room,
+      unreadCount,
+      mutedAt: my?.mutedAt ?? null,
+      hiddenAt: my?.hiddenAt ?? null,
+    };
   }
 }

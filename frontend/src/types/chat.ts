@@ -37,6 +37,8 @@ export interface ChatRoomMember {
   lastReadMessageId: string | null;
   joinedAt: string;
   leftAt: string | null;
+  hiddenAt: string | null;
+  mutedAt: string | null;
   user?: {
     id: string;
     name: string;
@@ -70,6 +72,9 @@ export interface MessageReaction {
 export interface ChatRoomWithMembers extends ChatRoom {
   members: ChatRoomMember[];
   unreadCount: number;
+  /** 본인 멤버십 메타 — shapeRoom이 자동 합성 */
+  mutedAt: string | null;
+  hiddenAt: string | null;
 }
 
 export interface ChatMessageWithSender extends ChatMessage {
