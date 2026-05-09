@@ -194,8 +194,24 @@ export default function ChatRoomPage({ params }: PageProps) {
       .catch(() => setTeamContact(null));
   }, [context, teamIdParam, teamContact]);
 
-  // 컨텍스트 + 메시지 0건일 때만 양식 트리거 노출
-  const shouldShowTemplateTrigger = !!context && messages.length === 0 && !loading;
+  // 양식 트리거 노출 조건 — 본인이 alive 상태로 보낸 메시지가 0개일 때
+  // 단순 messages.length를 보면 다음 케이스에서 양식이 안 떠 어색했음:
+  //  - 본인 또는 상대방이 첫 메시지 보낸 후 즉시 삭제 (deletedAt만 있는 placeholder 1개)
+  //  - 상대방만 메시지 보내고 본인은 아직 응답 X (본인 입장에서 첫 응답 시점)
+  // soft-deleted 메시지는 backend가 그대로 응답에 포함 → 클라이언트가 placeholder 렌더.
+  // 따라서 트리거 판단에선 deletedAt 제외 + senderId 본인만 카운트.
+  const myAliveMessageCount = useMemo(
+    () =>
+      user
+        ? messages.filter(
+            (m) => m.deletedAt === null && m.senderId === user.id,
+          ).length
+        : 0,
+    [messages, user],
+  );
+
+  const shouldShowTemplateTrigger =
+    !!context && !!user && myAliveMessageCount === 0 && !loading;
 
   /** 받는 사람 이름 — DIRECT면 상대 멤버, GROUP이면 방 이름 또는 첫 멤버 */
   const recipientName = useMemo(() => {
