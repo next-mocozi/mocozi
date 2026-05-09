@@ -5,17 +5,49 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
+import {
+  PlatformIcon,
+  PLATFORM_META,
+  detectPlatform,
+  getDisplayLabel,
+  type ProfileLink,
+} from '../_platforms';
 
-type PortfolioItemType = 'PROJECT' | 'RESEARCH' | 'ACTIVITY' | 'ETC';
+type PortfolioItemType = 'PROJECT' | 'RESEARCH' | 'STUDY' | 'ACTIVITY' | 'ETC';
 
 const TYPE_META: Record<PortfolioItemType, { label: string; bg: string; text: string }> = {
   PROJECT: { label: '프로젝트', bg: 'bg-purple-100', text: 'text-purple-700' },
   RESEARCH: { label: '연구', bg: 'bg-blue-100', text: 'text-blue-700' },
+  STUDY: { label: '스터디', bg: 'bg-amber-100', text: 'text-amber-700' },
   ACTIVITY: { label: '활동', bg: 'bg-green-100', text: 'text-green-700' },
   ETC: { label: '기타', bg: 'bg-gray-100', text: 'text-gray-700' },
 };
 
-const TAB_ORDER: PortfolioItemType[] = ['PROJECT', 'RESEARCH', 'ACTIVITY', 'ETC'];
+type SectionKey =
+  | 'intro'
+  | 'experiences'
+  | 'careers'
+  | 'projects'
+  | 'research'
+  | 'studies';
+
+const SECTION_ORDER: SectionKey[] = [
+  'intro',
+  'experiences',
+  'careers',
+  'projects',
+  'research',
+  'studies',
+];
+
+const SECTION_LABEL: Record<SectionKey, string> = {
+  intro: '자기소개',
+  experiences: '실무 경험 & 이력',
+  careers: '경력 요약',
+  projects: '프로젝트',
+  research: '연구',
+  studies: '스터디',
+};
 
 interface PortfolioItem {
   id: string;
@@ -55,7 +87,7 @@ export default function UserProfilePage({
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<PortfolioItemType>('PROJECT');
+  const [activeTab, setActiveTab] = useState<SectionKey>('intro');
 
   useEffect(() => {
     if (me?.id === id) {
@@ -70,15 +102,6 @@ export default function UserProfilePage({
       })
       .finally(() => setLoading(false));
   }, [id, me?.id, router]);
-
-  const items = profile?.portfolio?.items ?? [];
-  const availableTabs = TAB_ORDER.filter((t) => items.some((it) => it.type === t));
-
-  useEffect(() => {
-    if (availableTabs.length > 0 && !availableTabs.includes(activeTab)) {
-      setActiveTab(availableTabs[0]);
-    }
-  }, [availableTabs, activeTab]);
 
   if (loading) {
     return (
@@ -109,6 +132,14 @@ export default function UserProfilePage({
 
   const mainRole = profile.roles?.[0];
   const subRoles = profile.roles?.slice(1) ?? [];
+
+  // TODO: 백엔드 응답에 links 필드 추가되면 profile.links ?? [] 로 교체
+  const links: ProfileLink[] = [];
+
+  const items = profile.portfolio?.items ?? [];
+  const projects = items.filter((it) => it.type === 'PROJECT');
+  const research = items.filter((it) => it.type === 'RESEARCH');
+  const studies = items.filter((it) => it.type === 'STUDY');
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
@@ -181,15 +212,32 @@ export default function UserProfilePage({
         )}
       </div>
 
-      {/* 경력 요약 */}
-      {profile.careerSummary && (
-        <div className="card mb-6">
-          <h2 className="mb-4 text-lg font-semibold">경력 요약</h2>
-          <p className="whitespace-pre-wrap break-words text-sm text-gray-700">
-            {profile.careerSummary}
-          </p>
-        </div>
-      )}
+      {/* 외부 링크 */}
+      <div className="card mb-6">
+        <h2 className="mb-4 text-lg font-semibold">링크</h2>
+        {links.length === 0 ? (
+          <p className="text-sm text-gray-500">아직 등록된 링크가 없습니다.</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {links.map((link) => {
+              const key = detectPlatform(link.url);
+              const meta = PLATFORM_META[key];
+              return (
+                <a
+                  key={link.id}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm shadow-sm transition-all hover:shadow-md ${meta.bg} ${meta.text}`}
+                >
+                  <PlatformIcon k={key} className="h-4 w-4" />
+                  <span className="font-medium">{getDisplayLabel(link, key)}</span>
+                </a>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* 포트폴리오 */}
       <section className="mb-6">
@@ -200,46 +248,87 @@ export default function UserProfilePage({
           </p>
         </div>
 
-        {availableTabs.length === 0 ? (
-          <div className="card py-10 text-center text-sm text-gray-400">
-            등록된 포트폴리오가 없습니다.
+        <div className="space-y-4">
+          {/* 세그먼트 컨트롤 */}
+          <div
+            role="tablist"
+            aria-label="포트폴리오 섹션"
+            className="inline-flex flex-wrap gap-1 rounded-2xl bg-gray-100 p-1"
+          >
+            {SECTION_ORDER.map((k) => {
+              const isActive = activeTab === k;
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => setActiveTab(k)}
+                  className={`rounded-xl px-4 py-1.5 text-sm font-medium transition-all ${
+                    isActive
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  {SECTION_LABEL[k]}
+                </button>
+              );
+            })}
           </div>
-        ) : (
-          <div className="space-y-4">
-            {/* 세그먼트 컨트롤 */}
-            <div
-              role="tablist"
-              aria-label="포트폴리오 섹션"
-              className="inline-flex flex-wrap gap-1 rounded-2xl bg-gray-100 p-1"
-            >
-              {availableTabs.map((t) => {
-                const isActive = activeTab === t;
-                return (
-                  <button
-                    key={t}
-                    type="button"
-                    role="tab"
-                    aria-selected={isActive}
-                    onClick={() => setActiveTab(t)}
-                    className={`rounded-xl px-4 py-1.5 text-sm font-medium transition-all ${
-                      isActive
-                        ? 'bg-white text-gray-900 shadow-sm'
-                        : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    {TYPE_META[t].label}
-                  </button>
-                );
-              })}
-            </div>
 
-            {/* 활성 탭 컨텐츠 */}
+          {/* 활성 탭 컨텐츠 */}
+          {activeTab === 'intro' && (
+            <div className="card">
+              <p className="text-sm text-gray-400">
+                아직 등록된 자기소개가 없습니다.
+              </p>
+            </div>
+          )}
+
+          {activeTab === 'experiences' && (
+            <div className="card">
+              <p className="text-sm text-gray-400">
+                등록된 실무 경험이 없습니다.
+              </p>
+            </div>
+          )}
+
+          {activeTab === 'careers' && (
+            <div className="card">
+              {profile.careerSummary?.trim() ? (
+                <p className="whitespace-pre-wrap break-words text-sm text-gray-700">
+                  {profile.careerSummary}
+                </p>
+              ) : (
+                <p className="text-sm text-gray-400">등록된 경력 요약이 없습니다.</p>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'projects' && (
             <SectionCardList
               userId={profile.id}
-              items={items.filter((it) => it.type === activeTab)}
+              items={projects}
+              emptyText="등록된 프로젝트가 없습니다."
             />
-          </div>
-        )}
+          )}
+
+          {activeTab === 'research' && (
+            <SectionCardList
+              userId={profile.id}
+              items={research}
+              emptyText="등록된 연구가 없습니다."
+            />
+          )}
+
+          {activeTab === 'studies' && (
+            <SectionCardList
+              userId={profile.id}
+              items={studies}
+              emptyText="등록된 스터디가 없습니다."
+            />
+          )}
+        </div>
       </section>
     </div>
   );
@@ -248,14 +337,16 @@ export default function UserProfilePage({
 function SectionCardList({
   userId,
   items,
+  emptyText,
 }: {
   userId: string;
   items: PortfolioItem[];
+  emptyText: string;
 }) {
   return (
     <div className="card">
       {items.length === 0 ? (
-        <p className="text-sm text-gray-400">등록된 항목이 없습니다.</p>
+        <p className="text-sm text-gray-400">{emptyText}</p>
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
           {items.map((item) => {
