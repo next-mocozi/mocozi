@@ -96,8 +96,12 @@ export default function RoomList() {
       setRooms((prev) => {
         const idx = prev.findIndex((r) => r.id === n.roomId);
         if (idx === -1) {
-          // 새로 만들어진 방 알림이면 활성 목록 재조회
-          void load({ onlyHidden: false });
+          // 활성 목록에 없는 방의 알림 — 다음 셋 중 하나:
+          //  (a) 사용자가 hide한 방 (가장 흔함). 의도적으로 가린 것이므로 갱신 X
+          //  (b) 다른 사람이 사용자를 새 방에 초대했음 (Phase B 시나리오, Phase A에서는 거의 없음)
+          //  (c) 사용자가 막 만든 방 — NewChatModal.onCreated에서 이미 setRooms로 처리됨
+          // → 매번 GET /rooms로 reload하면 hide 방 알림이 올 때마다 "불러오는 중..." 깜빡임 발생.
+          //   socket 재연결(onConnect) 또는 페이지 이동 시 자연스럽게 load되므로 여기선 무시.
           return prev;
         }
         const updated = {
