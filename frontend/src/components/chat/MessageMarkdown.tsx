@@ -1,5 +1,9 @@
 'use client';
 
+// KaTeX CSS — Tailwind v4 PostCSS가 globals.css의 node_modules @import 처리 못 해 컴포넌트 단에서 import
+// 효과: chat 페이지(MessageMarkdown 사용처) 진입 시에만 ~280KB CSS 로드
+import 'katex/dist/katex.min.css';
+
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
