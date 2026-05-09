@@ -81,14 +81,16 @@ Day 7 압축으로 1.5일 여유 확보 → Day 8부터 useSocket 훅 작업 시
 
 ## 미해결 기술 부채
 
-| 항목 | 우선순위 | 처리 시점 |
+> **상세 정책**: [`08-phase-b-policy.md`](./08-phase-b-policy.md) — Phase B 이연 항목 16개 통합 정리.
+> 각 항목의 이유·영향·착수 트리거·작업 항목을 카테고리별로 명시.
+
+| 카테고리 | 대표 항목 | 우선순위 |
 |---|---|---|
-| ~~`prisma/migrations/` baseline migration 누락~~ | ~~높음~~ | ✅ Day 7 완료 (`20260504061319_chat_schema_overhaul`) |
-| 인증 모듈 fallback_secret 제거 | **높음** | 인증 담당자 일정 |
-| 인증 모듈 refresh token 도입 | 중간 | 인증 담당자 일정 |
-| ~~답글 verify 스크립트 부재~~ | ~~중간~~ | ✅ Day 7 완료 (test-ws-reply.js, 20/20) |
-| ~~반응(reaction) 백엔드 미구현~~ | ~~중간~~ | ✅ Day 7 완료 (test-ws-reaction.js, 28/28) |
-| Dockerfile.dev CMD `db push --skip-generate` | 낮음 | Phase B 운영 배포 직전. dev 워크플로우엔 영향 없음 |
+| 🔐 인증/보안 | fallback_secret 제거, refresh token 도입 | **운영 배포 전 필수** |
+| 🚀 운영/배포 | prisma migrate deploy 전환, Supabase Transaction mode 검토 | Phase B 초기 |
+| 💬 DM 모듈 진화 | 컨텍스트 의미 재설계, 그룹 초대, 방 폭파 등 5건 | 기능 확장 시 |
+| 🎨 UX 개선 | NewChatModal 재활용, draft TTL cleanup 등 4건 | 시간 될 때 |
+| 🧪 품질/회귀 | mute 시나리오 verify, cache invalidation 등 3건 | 안정화 시 |
 
 ## 다음 작업 시작 시 진입 명령
 
