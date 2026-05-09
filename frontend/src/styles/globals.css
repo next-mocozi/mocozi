@@ -1,7 +1,9 @@
 @import "tailwindcss";
-@import "katex/dist/katex.min.css";
 
 @plugin "@tailwindcss/typography";
+
+/* KaTeX CSS는 컴포넌트 단에서 직접 import (frontend/src/components/chat/MessageMarkdown.tsx)
+   — Tailwind v4의 PostCSS가 node_modules CSS @import resolve 못 함 */
 
 @theme {
   /* Indigo primary */
