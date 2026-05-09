@@ -16,12 +16,12 @@ import { useChatNotifications } from '@/providers/SocketProvider';
  * 사용: layout.tsx에 한 번 마운트
  */
 export function ToastContainer() {
-  const { latestNotification, dismissLatest } = useChatNotifications();
+  const { latestNotification, dismissLatest, mutedRoomIds } =
+    useChatNotifications();
   const pathname = usePathname();
   const router = useRouter();
 
-  // 현재 보고 있는 방의 알림은 무시 (이미 화면에 메시지가 보임)
-  // + 3초 자동 닫힘
+  // 현재 보고 있는 방 / mute된 방의 알림은 모두 skip (3초 자동 닫힘은 그 외)
   useEffect(() => {
     if (!latestNotification) return;
 
@@ -34,9 +34,15 @@ export function ToastContainer() {
       return;
     }
 
+    // mute된 방 — 토스트 skip (unreadCount는 useNotifications에서 이미 갱신됨)
+    if (mutedRoomIds.has(latestNotification.roomId)) {
+      dismissLatest();
+      return;
+    }
+
     const timer = setTimeout(dismissLatest, 3000);
     return () => clearTimeout(timer);
-  }, [latestNotification, pathname, dismissLatest]);
+  }, [latestNotification, pathname, dismissLatest, mutedRoomIds]);
 
   if (!latestNotification) return null;
 
@@ -45,6 +51,7 @@ export function ToastContainer() {
     ? pathname.slice('/chat/'.length).split('/')[0]
     : null;
   if (currentRoomId === latestNotification.roomId) return null;
+  if (mutedRoomIds.has(latestNotification.roomId)) return null;
 
   const displayTitle =
     latestNotification.roomName ?? latestNotification.senderName;

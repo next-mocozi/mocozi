@@ -23,7 +23,13 @@ export default function RoomList() {
   const pathname = usePathname();
   const { user } = useAuth();
   const { socket } = useChatSocket();
-  const { unreadByRoom, initFromRooms } = useChatNotifications();
+  const {
+    unreadByRoom,
+    initFromRooms,
+    mutedRoomIds,
+    setRoomMuted,
+    setRoomUnmuted,
+  } = useChatNotifications();
 
   const [rooms, setRooms] = useState<ChatRoomWithMembers[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,7 +58,13 @@ export default function RoomList() {
         );
         const list = res.data.data.rooms;
         setRooms(list);
-        initFromRooms(list.map((r) => ({ id: r.id, unreadCount: r.unreadCount })));
+        initFromRooms(
+          list.map((r) => ({
+            id: r.id,
+            unreadCount: r.unreadCount,
+            mutedAt: r.mutedAt,
+          })),
+        );
       } catch (e: unknown) {
         const msg =
           (e as { response?: { data?: { message?: string } } })?.response?.data
@@ -133,6 +145,8 @@ export default function RoomList() {
       await api.post(`/api/chat/rooms/${roomId}/hide`);
       // 활성 목록에서 즉시 제거 (Optimistic)
       setRooms((prev) => prev.filter((r) => r.id !== roomId));
+      // 백엔드 정책: hide 시 자동 mute. 클라이언트도 mutedRoomIds 갱신
+      setRoomMuted(roomId);
     } catch (e: unknown) {
       // eslint-disable-next-line no-console
       console.error('[chat] hide failed', e);
@@ -148,6 +162,29 @@ export default function RoomList() {
     } catch (e: unknown) {
       // eslint-disable-next-line no-console
       console.error('[chat] unhide failed', e);
+    }
+  };
+
+  const handleMute = async (roomId: string) => {
+    // Optimistic — 즉시 set 갱신 + UI 반영
+    setRoomMuted(roomId);
+    try {
+      await api.post(`/api/chat/rooms/${roomId}/mute`);
+    } catch (e) {
+      setRoomUnmuted(roomId); // 롤백
+      // eslint-disable-next-line no-console
+      console.error('[chat] mute failed', e);
+    }
+  };
+
+  const handleUnmute = async (roomId: string) => {
+    setRoomUnmuted(roomId);
+    try {
+      await api.post(`/api/chat/rooms/${roomId}/unmute`);
+    } catch (e) {
+      setRoomMuted(roomId); // 롤백
+      // eslint-disable-next-line no-console
+      console.error('[chat] unmute failed', e);
     }
   };
 
@@ -240,7 +277,18 @@ export default function RoomList() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
-                      <h3 className="truncate text-sm font-medium">{displayName}</h3>
+                      <div className="flex min-w-0 items-center gap-1">
+                        <h3 className="truncate text-sm font-medium">{displayName}</h3>
+                        {mutedRoomIds.has(room.id) && (
+                          <span
+                            className="shrink-0 text-xs text-gray-400"
+                            aria-label="알림 꺼짐"
+                            title="알림 꺼짐"
+                          >
+                            🔕
+                          </span>
+                        )}
+                      </div>
                       {time && (
                         <span className="shrink-0 text-xs text-gray-500">{time}</span>
                       )}
@@ -285,6 +333,32 @@ export default function RoomList() {
                     className="absolute right-2 top-12 z-10 w-36 rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
                     onClick={(e) => e.stopPropagation()}
                   >
+                    {/* 알림 끄기/켜기 — 가벼운 액션이라 다이얼로그 없이 즉시 적용 */}
+                    {!showingHidden && (
+                      mutedRoomIds.has(room.id) ? (
+                        <button
+                          type="button"
+                          className="block w-full px-3 py-1.5 text-left text-xs text-gray-800 hover:bg-gray-50"
+                          onClick={() => {
+                            void handleUnmute(room.id);
+                            setOpenMenuRoomId(null);
+                          }}
+                        >
+                          알림 켜기
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="block w-full px-3 py-1.5 text-left text-xs text-gray-800 hover:bg-gray-50"
+                          onClick={() => {
+                            void handleMute(room.id);
+                            setOpenMenuRoomId(null);
+                          }}
+                        >
+                          알림 끄기
+                        </button>
+                      )
+                    )}
                     {showingHidden ? (
                       <button
                         type="button"
