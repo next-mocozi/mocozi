@@ -165,7 +165,7 @@ export default function PeerDirectory() {
       <div className="mx-auto max-w-7xl px-4">
         <div className="mb-8 flex flex-col items-start justify-between gap-2 md:flex-row md:items-end">
           <div>
-            <h2 className="text-3xl font-bold text-gray-900">
+            <h2 className="text-2xl font-bold text-gray-900 sm:text-3xl md:text-4xl">
               지금 모코지에 있는 동료들
             </h2>
             <p className="mt-2 text-gray-600">
