@@ -47,6 +47,28 @@ type LocalMessage = ChatMessageWithSender & {
 };
 
 /**
+ * 메시지 본문 최대 길이 — backend SendMessageDto/EditMessageDto의 @MaxLength(4000)와 동기.
+ *
+ * 초과 시 backend ValidationPipe가 WsException 던지지만 ack 콜백이 절대 resolve 안 됨 →
+ * 프론트는 "전송 중..." 영원히 표시. 사용자 사전 차단으로 그 함정 회피.
+ *
+ * 동기 유지: backend 값 변경 시 함께 수정. 4000 = 약 한국어 A4 1페이지 + 여유.
+ */
+const MAX_MESSAGE_LENGTH = 4000;
+/** 카운터 노출 임계 — 4000의 87.5% (3500자) 도달 시 글자수 표시 */
+const COUNTER_THRESHOLD = 3500;
+
+/**
+ * "맨 아래로 가기" 버튼 노출 임계 (px).
+ * 사용자가 메시지 영역에서 이 값 이상 위로 스크롤한 상태이면 버튼 노출.
+ *
+ * 카카오톡/Slack/Discord 등 표준 패턴: 한 화면(~200~400px) 정도 올렸을 때부터 노출.
+ * 너무 낮으면(예: 50px) 가벼운 스크롤에도 깜빡임 ↑. 너무 높으면(예: 600px) 발견성 ↓.
+ * 200px가 균형점 — 메시지 5~7개 정도 위로 스크롤한 시점.
+ */
+const SCROLL_TO_BOTTOM_THRESHOLD = 200;
+
+/**
  * 채팅방 화면 — Day 10-1
  *
  * 데이터 흐름:
@@ -130,6 +152,19 @@ export default function ChatRoomPage({ params }: PageProps) {
     return () => clearTimeout(t);
   }, [draft, draftStorageKey]);
 
+  // textarea 자동 높이 조정 — content-line별 늘어났다 줄어듦.
+  // height='auto' 한 번 → scrollHeight 측정 → min(200, ...)으로 클램프.
+  // 200px 초과 시점부터 contentOverflows=true → overflow-y-auto로 스크롤바 노출.
+  // 그 전에는 overflow-y-hidden — 빈 입력 시 우측에 스크롤 트랙이 보이는 현상 차단.
+  useEffect(() => {
+    const ta = inputRef.current;
+    if (!ta) return;
+    ta.style.height = 'auto';
+    const overflows = ta.scrollHeight > 200;
+    ta.style.height = `${Math.min(ta.scrollHeight, 200)}px`;
+    setContentOverflows(overflows);
+  }, [draft]);
+
   /** 편집 모드 — 한 번에 한 메시지만. null이면 편집 모드 아님 */
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState('');
@@ -148,6 +183,15 @@ export default function ChatRoomPage({ params }: PageProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const topSentinelRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  /** 입력창 — textarea 자동 높이 조정용 (max 200px). content-line별 늘어났다 줄어듦 */
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  /** content가 max-height 초과한 시점부터만 스크롤바/드래그 핸들 노출 — 빈 입력 상태에서 우측에
+   *  스크롤 트랙이 항상 보이는 macOS "스크롤바 항상 표시" 설정 환경 회피 */
+  const [contentOverflows, setContentOverflows] = useState(false);
+
+  /** "맨 아래로 가기" 버튼 노출 여부 — 메시지 영역에서 사용자가 임계만큼 위로 스크롤한 상태.
+   *  카카오톡 패턴: 일정량 위로 스크롤 시 노출 → 클릭 시 맨 아래 도착하며 버튼도 자동 사라짐. */
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
 
   /** 자동 스크롤 가드 — 마지막으로 본 메시지 id (변경 추적용) */
   const lastMessageIdRef = useRef<string | null>(null);
@@ -488,6 +532,35 @@ export default function ChatRoomPage({ params }: PageProps) {
   }, [messages]);
 
   // ---------------------------------------------------------
+  // "맨 아래로 가기" 버튼 — 카카오톡 패턴 (사용자가 위로 스크롤하면 노출, 클릭/도착 시 자동 숨김)
+  //
+  // 정책:
+  //  - 컨테이너 scroll 이벤트마다 distanceFromBottom 측정
+  //  - distanceFromBottom > SCROLL_TO_BOTTOM_THRESHOLD(200px) → 버튼 visible
+  //  - 버튼 클릭 → smooth scrollIntoView → 도착하면서 자연스럽게 distance < threshold → 자동 숨김
+  //  - { passive: true } — scroll 이벤트는 빈번해서 listener가 main thread block하면 안됨
+  // ---------------------------------------------------------
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const onScroll = () => {
+      const distance =
+        container.scrollHeight - (container.scrollTop + container.clientHeight);
+      setShowScrollToBottom(distance > SCROLL_TO_BOTTOM_THRESHOLD);
+    };
+    // 초기 상태 계산 — 메시지 로드 직후나 방 변경 직후 정확히 반영
+    onScroll();
+    container.addEventListener('scroll', onScroll, { passive: true });
+    return () => container.removeEventListener('scroll', onScroll);
+  }, [messages.length]);
+  // messages.length deps — 메시지 prepend(loadOlder)나 새 메시지 도착 시 distance 재계산.
+  // 컨테이너 ref 자체는 마운트 후 안정.
+
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
+
+  // ---------------------------------------------------------
   // 무한 스크롤 — 위로 옛 메시지 페이징
   //
   // 흐름:
@@ -567,6 +640,15 @@ export default function ChatRoomPage({ params }: PageProps) {
     e.preventDefault();
     const content = draft.trim();
     if (!content || sending || !user) return;
+
+    // 길이 사전 검증 — backend @MaxLength(4000) 초과 시 ack 콜백이 resolve 안 되어
+    // "전송 중..." 영원히 표시되는 함정 회피. 사용자에 즉시 알림.
+    if (content.length > MAX_MESSAGE_LENGTH) {
+      window.alert(
+        `메시지가 너무 깁니다. (${MAX_MESSAGE_LENGTH.toLocaleString()}자 이하)\n현재 ${content.length.toLocaleString()}자`,
+      );
+      return;
+    }
 
     setSending(true);
 
@@ -662,6 +744,14 @@ export default function ChatRoomPage({ params }: PageProps) {
     if (!editingId) return;
     const content = editDraft.trim();
     if (content.length === 0) return;
+    // 길이 검증 — backend EditMessageDto @MaxLength(4000)와 동기.
+    // 초과 시 ack resolve 안 되어 편집 모드가 풀린 채 무반응 — 사전 차단 필수.
+    if (content.length > MAX_MESSAGE_LENGTH) {
+      window.alert(
+        `메시지가 너무 깁니다. (${MAX_MESSAGE_LENGTH.toLocaleString()}자 이하)\n현재 ${content.length.toLocaleString()}자`,
+      );
+      return;
+    }
     try {
       // 결과는 broadcast(message:edited)로 listener가 갱신
       await editMessage({ messageId: editingId, content });
@@ -721,15 +811,36 @@ export default function ChatRoomPage({ params }: PageProps) {
     }
   };
 
+  // 어떤 사이드 패널이든 열렸는지 — 채팅창/RoomList 레이아웃 shift 트리거
+  // (포트폴리오 page.tsx의 detailOpen 패턴 차용 — backdrop 없는 split-shift)
+  const anyPanelOpen = panelOpen || previewOpen;
+
   return (
-    <div className="relative h-[calc(100vh-11rem)]">
-      {/* 좌측 사이드바 — 채팅창 가운데 정렬은 그대로 두고, 좌측 빈 공간에 absolute로 배치.
-          xl(1280px) 미만에선 채팅창과 겹쳐서 hidden 처리 */}
-      <aside className="absolute right-[calc(50%+21rem)] top-0 hidden h-full w-72 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white xl:flex">
-        <RoomList />
+    <div className="flex h-[calc(100vh-11rem)] gap-4 overflow-hidden">
+      {/* 좌측 RoomList — lg(1024px) 이상 항상 visible. 패널 열리면 width 애니메이션
+          (w-72 → w-32). 우측 끝이 좌측으로 슬라이딩, 좌측 끝은 flex 좌측 anchor 유지.
+          compact prop으로 RoomList가 아바타 + 짧은 이름 + unread 빨간점만 노출. */}
+      <aside
+        className={`hidden h-full shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-300 ease-out lg:block ${
+          anyPanelOpen ? 'lg:w-32' : 'lg:w-72'
+        }`}
+      >
+        <RoomList compact={anyPanelOpen} />
       </aside>
 
-      <div className="mx-auto flex h-full max-w-[40rem] flex-col overflow-hidden rounded-xl border border-gray-200 bg-white">
+      {/* 채팅 zone — flex-1로 남은 폭 차지. 내부에 채팅창 가운데 정렬 + SlidingPanel(absolute right-0)
+          relative + overflow-hidden — SlidingPanel이 이 zone 내부에서 슬라이드 인. */}
+      <div className="relative flex-1 overflow-hidden">
+
+      {/* 채팅창 — 패널 열리면 좌측으로 translate (포트폴리오 패턴). RoomList가 이미 자기
+          자리 차지하므로 translate량은 이전(-56/-64)보다 작게: -32/-40 (8rem/10rem). */}
+      <div
+        className={`mx-auto flex h-full max-w-[40rem] flex-col overflow-hidden rounded-xl border border-gray-200 bg-white transition-transform duration-300 ease-out ${
+          anyPanelOpen
+            ? 'md:-translate-x-32 xl:-translate-x-40'
+            : 'translate-x-0'
+        }`}
+      >
       {/* 헤더 */}
       <div className="flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-3">
         <Link href="/chat" className="text-gray-500 hover:text-gray-700">
@@ -746,50 +857,83 @@ export default function ChatRoomPage({ params }: PageProps) {
         </span>
       </div>
 
-      {/* 메시지 목록 */}
-      <div
-        ref={containerRef}
-        className="flex-1 space-y-2 overflow-y-auto p-4"
-      >
-        {/* 위로 스크롤 시 옛 메시지 페이징 trigger */}
-        {nextCursor && (
-          <div
-            ref={topSentinelRef}
-            className="py-2 text-center text-xs text-gray-400"
+      {/* 메시지 영역 — relative 래퍼: 스크롤 컨테이너 + "맨 아래로" 떠있는 버튼 anchor */}
+      <div className="relative flex-1 overflow-hidden">
+        <div
+          ref={containerRef}
+          className="absolute inset-0 space-y-2 overflow-y-auto p-4"
+        >
+          {/* 위로 스크롤 시 옛 메시지 페이징 trigger */}
+          {nextCursor && (
+            <div
+              ref={topSentinelRef}
+              className="py-2 text-center text-xs text-gray-400"
+            >
+              {loadingMore ? '이전 메시지 불러오는 중…' : '↑ 더 위로 스크롤하여 이전 메시지 보기'}
+            </div>
+          )}
+
+          {error && (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              {error}
+            </div>
+          )}
+
+          {loading && (
+            <div className="text-center text-sm text-gray-500">불러오는 중…</div>
+          )}
+
+          {!loading &&
+            messages.map((msg) => (
+              <MessageItem
+                key={msg.id}
+                message={msg}
+                myId={user?.id}
+                isEditing={editingId === msg.id}
+                editDraft={editDraft}
+                onEditDraftChange={setEditDraft}
+                onStartEdit={() => startEdit(msg)}
+                onSubmitEdit={submitEdit}
+                onCancelEdit={cancelEdit}
+                onDelete={() => handleDelete(msg)}
+                onReply={() => startReply(msg)}
+                onToggleReaction={(emoji) => toggleReaction(msg, emoji)}
+              />
+            ))}
+
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* 맨 아래로 가기 버튼 — 카카오톡 패턴.
+            메시지 영역 우상자만 우측 하단에 떠 있음. 사용자가 200px 이상 위로 스크롤하면 fade-in.
+            클릭 시 smooth scroll → 자연스럽게 distance < threshold 되며 자동 사라짐 */}
+        <button
+          type="button"
+          onClick={scrollToBottom}
+          aria-label="맨 아래로 가기"
+          title="맨 아래로 가기"
+          className={`absolute bottom-4 right-4 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 shadow-lg transition-all duration-200 hover:bg-gray-50 hover:text-gray-900 ${
+            showScrollToBottom
+              ? 'pointer-events-auto opacity-100'
+              : 'pointer-events-none opacity-0'
+          }`}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+            aria-hidden
           >
-            {loadingMore ? '이전 메시지 불러오는 중…' : '↑ 더 위로 스크롤하여 이전 메시지 보기'}
-          </div>
-        )}
-
-        {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
-        {loading && (
-          <div className="text-center text-sm text-gray-500">불러오는 중…</div>
-        )}
-
-        {!loading &&
-          messages.map((msg) => (
-            <MessageItem
-              key={msg.id}
-              message={msg}
-              myId={user?.id}
-              isEditing={editingId === msg.id}
-              editDraft={editDraft}
-              onEditDraftChange={setEditDraft}
-              onStartEdit={() => startEdit(msg)}
-              onSubmitEdit={submitEdit}
-              onCancelEdit={cancelEdit}
-              onDelete={() => handleDelete(msg)}
-              onReply={() => startReply(msg)}
-              onToggleReaction={(emoji) => toggleReaction(msg, emoji)}
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M19 14l-7 7m0 0l-7-7m7 7V3"
             />
-          ))}
-
-        <div ref={messagesEndRef} />
+          </svg>
+        </button>
       </div>
 
       {/* 답글 미리보기 — replyTo가 있으면 입력창 위에 표시 */}
@@ -822,41 +966,79 @@ export default function ChatRoomPage({ params }: PageProps) {
       {/* 입력 */}
       <form
         onSubmit={handleSend}
-        className="flex gap-2 border-t border-gray-200 bg-white p-4"
+        className="flex items-end gap-2 border-t border-gray-200 bg-white p-4"
       >
-        <input
-          type="text"
+        {/* multi-line 입력 — Enter=전송, Shift+Enter=줄바꿈 (Slack/Discord 표준).
+            input → textarea로 바꾸면서 마크다운 본문(여러 줄 헤딩, 빈 줄, 표 등)이 정상 작성 가능.
+            scrollHeight 기반 auto-resize (max 200px) — useEffect [draft]에서 갱신 */}
+        <textarea
+          ref={inputRef}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              e.currentTarget.form?.requestSubmit();
+            }
+          }}
           placeholder={
             replyTo
               ? `${replyTo.sender.name}님에게 답글 작성…`
               : isConnected
-                ? '메시지를 입력하세요...'
+                ? '메시지를 입력하세요... (Shift+Enter로 줄바꿈)'
                 : '연결 대기 중…'
           }
           disabled={!isConnected}
-          className="input-field flex-1 disabled:bg-gray-50"
+          rows={1}
+          className={`input-field flex-1 resize-none disabled:bg-gray-50 ${
+            contentOverflows ? 'overflow-y-auto' : 'overflow-y-hidden'
+          }`}
+          style={{ maxHeight: '200px' }}
         />
-        {/* 입력 미리보기 — 마크다운 렌더 결과를 슬라이딩 패널로. 빈 입력 시 비활성 */}
+        {/* 입력 미리보기 — 마크다운 렌더 결과를 슬라이딩 패널로. 토글 동작:
+            - 닫힌 상태에서 클릭: open (단, draft 비어 있으면 비활성)
+            - 열린 상태에서 클릭: close (draft 상관없이 — 패널 닫기 의도) */}
         <button
           type="button"
-          onClick={() => setPreviewOpen(true)}
-          disabled={!draft.trim()}
-          aria-label="입력 미리보기"
-          title="마크다운 미리보기"
-          className="rounded-md p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-30"
+          onClick={() => setPreviewOpen((v) => !v)}
+          disabled={!previewOpen && !draft.trim()}
+          aria-label={previewOpen ? '미리보기 닫기' : '입력 미리보기'}
+          aria-pressed={previewOpen}
+          title={previewOpen ? '미리보기 닫기' : '마크다운 미리보기'}
+          className={`rounded-md p-2 transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${
+            previewOpen
+              ? 'bg-primary-100 text-primary-700 hover:bg-primary-200'
+              : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+          }`}
         >
           <PreviewIcon />
         </button>
         <button
           type="submit"
           className="btn-primary disabled:opacity-50"
-          disabled={!isConnected || sending || draft.trim().length === 0}
+          disabled={
+            !isConnected ||
+            sending ||
+            draft.trim().length === 0 ||
+            draft.length > MAX_MESSAGE_LENGTH
+          }
         >
           전송
         </button>
       </form>
+      {/* 글자수 카운터 — 임계(3500자) 도달 시만 노출. 초과 시 빨강 + 에러 메시지.
+          항상 노출하면 시각 노이즈 — 일반 입력엔 보일 필요 없음 */}
+      {draft.length >= COUNTER_THRESHOLD && (
+        <div
+          className={`flex justify-end px-4 pb-2 text-xs ${
+            draft.length > MAX_MESSAGE_LENGTH ? 'text-red-600' : 'text-gray-500'
+          }`}
+        >
+          {draft.length > MAX_MESSAGE_LENGTH
+            ? `메시지가 너무 깁니다. (${MAX_MESSAGE_LENGTH.toLocaleString()}자 이하) — 현재 ${draft.length.toLocaleString()}자`
+            : `${draft.length.toLocaleString()} / ${MAX_MESSAGE_LENGTH.toLocaleString()}자`}
+        </div>
+      )}
       </div>
 
       {/* 양식 슬라이딩 패널 (Phase A) — RECRUIT_TEAM은 직군 선택부터 / 그 외 컨텍스트는 미리보기 직접 */}
@@ -882,23 +1064,23 @@ export default function ChatRoomPage({ params }: PageProps) {
         )}
       </SlidingPanel>
 
-      {/* 입력 미리보기 슬라이딩 패널 — draft를 마크다운 렌더로 즉시 확인 (Stance B 정책 docs/chat/09)
-          xl 이상: 채팅방 영역 우측 슬라이드 / xl 미만: 아래에서 위 bottom sheet (SlidingPanel 자체가 반응형) */}
+      {/* 입력 미리보기 슬라이딩 패널 — draft를 마크다운 렌더로 즉시 확인 (Stance B 정책 docs/chat/09).
+          md 이상: 채팅창 좌측 이동 + 우측 슬라이드 인 (split-shift, no backdrop) /
+          md 미만: fullscreen modal (SlidingPanel 자체가 반응형) */}
       <SlidingPanel
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
         title="입력 미리보기"
       >
-        <div className="p-4">
-          {draft.trim() ? (
-            <MessageMarkdown content={draft} />
-          ) : (
-            <p className="text-sm text-gray-400">
-              입력창에 텍스트를 입력하면 여기에 렌더 결과가 보여요.
-            </p>
-          )}
-        </div>
+        {draft.trim() ? (
+          <MessageMarkdown content={draft} />
+        ) : (
+          <p className="text-sm text-gray-400">
+            입력창에 텍스트를 입력하면 여기에 렌더 결과가 보여요.
+          </p>
+        )}
       </SlidingPanel>
+      </div>
     </div>
   );
 }
@@ -941,6 +1123,25 @@ function MessageItem({
 }) {
   const isMine = message.senderId === myId;
   const time = formatTime(message.createdAt);
+
+  // 원문(raw 마크다운) 클립보드 복사 — 드래그 복사하면 prose 변환되어 ##·$·--- 등 마커가 빠지는데,
+  // 마크다운 그대로 다른 곳에 붙여넣고 싶을 때 (Slack/Notion으로 옮기거나 원본 보존) 명시 버튼으로 제공.
+  // 본인/타인 메시지 모두에 노출 — 받은 메시지의 마크다운을 다시 활용할 수 있어야 하기 때문.
+  // attachment 마커([[link:...]])는 본문에서 분리 — 사용자가 보는 그대로의 본문만 복사
+  const [copied, setCopied] = useState(false);
+  const handleCopyRaw = useCallback(() => {
+    if (typeof navigator === 'undefined' || !navigator.clipboard) return;
+    const parsed = parseAttachmentMarker(message.content);
+    navigator.clipboard
+      .writeText(parsed.cleanContent)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1200);
+      })
+      .catch(() => {
+        // 권한 거부/non-secure context — silent fail. 사용자가 다시 시도하거나 드래그 복사 사용.
+      });
+  }, [message.content]);
 
   if (message.deletedAt) {
     // 삭제된 메시지는 채팅 흐름 가운데 시스템 메시지 형태로 표시 — 누가 삭제했는지
@@ -1021,7 +1222,7 @@ function MessageItem({
 
   return (
     <div className={`group flex ${isMine ? 'justify-end' : 'justify-start'} gap-1`}>
-      {/* 본인 메시지 좌측 액션 버튼 (편집/삭제/답글/반응) */}
+      {/* 본인 메시지 좌측 액션 버튼 (편집/삭제/답글/반응/원문 복사) */}
       {isMine && (
         <div className="flex items-center self-center opacity-0 transition-opacity group-hover:opacity-100">
           {canReact && (
@@ -1035,6 +1236,15 @@ function MessageItem({
             title="답글"
           >
             ↩
+          </button>
+          <button
+            type="button"
+            onClick={handleCopyRaw}
+            className="rounded p-1 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+            aria-label="원문 복사 (마크다운 그대로)"
+            title={copied ? '복사됨!' : '원문 복사 (마크다운 그대로)'}
+          >
+            {copied ? '✓' : '📋'}
           </button>
           {canMutate && (
             <>
@@ -1155,7 +1365,7 @@ function MessageItem({
         </p>
       </div>
 
-      {/* 타인 메시지 우측 액션 버튼 (답글/반응) — 편집·삭제는 권한 없음 */}
+      {/* 타인 메시지 우측 액션 버튼 (답글/반응/원문 복사) — 편집·삭제는 권한 없음 */}
       {!isMine && (
         <div className="flex items-center self-center opacity-0 transition-opacity group-hover:opacity-100">
           {canReact && <ReactionPicker onPick={onToggleReaction} />}
@@ -1167,6 +1377,15 @@ function MessageItem({
             title="답글"
           >
             ↩
+          </button>
+          <button
+            type="button"
+            onClick={handleCopyRaw}
+            className="rounded p-1 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+            aria-label="원문 복사 (마크다운 그대로)"
+            title={copied ? '복사됨!' : '원문 복사 (마크다운 그대로)'}
+          >
+            {copied ? '✓' : '📋'}
           </button>
         </div>
       )}
