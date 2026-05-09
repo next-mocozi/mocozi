@@ -88,6 +88,43 @@ export default function ChatRoomPage({ params }: PageProps) {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
 
+  // ---------------------------------------------------------
+  // Draft 영속화 — localStorage 방별 키
+  // 페이지 이동·새로고침 후에도 작성 중이던 임시 메시지 보존.
+  // - 키: `chat-draft-${roomId}`
+  // - 마운트 시 복원, 입력 변경 시 debounce 저장, 전송 또는 빈 입력 시 제거
+  // ---------------------------------------------------------
+  const draftStorageKey = `chat-draft-${roomId}`;
+
+  // 마운트(또는 roomId 변경) 시 저장된 draft 복원
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const saved = localStorage.getItem(draftStorageKey);
+      if (saved) setDraft(saved);
+      else setDraft(''); // 다른 방으로 이동 시 옛 draft 잔존 방지
+    } catch {
+      // private mode 등 storage 접근 실패 — 무시
+    }
+  }, [draftStorageKey]);
+
+  // draft 변경 시 debounce로 저장 (입력 한 글자마다 storage write 부담 회피)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const t = setTimeout(() => {
+      try {
+        if (draft) {
+          localStorage.setItem(draftStorageKey, draft);
+        } else {
+          localStorage.removeItem(draftStorageKey);
+        }
+      } catch {
+        // 무시
+      }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [draft, draftStorageKey]);
+
   /** 편집 모드 — 한 번에 한 메시지만. null이면 편집 모드 아님 */
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState('');
@@ -537,6 +574,14 @@ export default function ChatRoomPage({ params }: PageProps) {
     };
     setMessages((prev) => [...prev, tempMessage]);
     setDraft('');
+    // 전송 즉시 영속 draft 제거 — debounce 대기 없이 (다음 마운트 시 복원 방지)
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem(draftStorageKey);
+      } catch {
+        // 무시
+      }
+    }
     setReplyTo(null); // 전송 즉시 답글 모드 해제
 
     try {
