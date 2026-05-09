@@ -29,7 +29,7 @@ import { Highlight, themes } from 'prism-react-renderer';
  */
 export function MessageMarkdown({ content }: { content: string }) {
   return (
-    <div className="prose prose-sm max-w-none break-words text-sm prose-p:my-1 prose-pre:my-2 prose-pre:p-0 prose-pre:bg-transparent prose-code:before:content-none prose-code:after:content-none prose-headings:my-2">
+    <div className="markdown-content max-w-none break-words">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeKatex, [rehypeSanitize, sanitizeSchema]]}
