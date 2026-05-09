@@ -16,12 +16,12 @@ import { useChatNotifications } from '@/providers/SocketProvider';
  * 사용: layout.tsx에 한 번 마운트
  */
 export function ToastContainer() {
-  const { latestNotification, dismissLatest, mutedRoomIds } =
+  const { latestNotification, dismissLatest, mutedRoomIds, hiddenRoomIds } =
     useChatNotifications();
   const pathname = usePathname();
   const router = useRouter();
 
-  // 현재 보고 있는 방 / mute된 방의 알림은 모두 skip (3초 자동 닫힘은 그 외)
+  // 현재 보고 있는 방 / mute된 방 / hidden인 방의 알림은 모두 skip
   useEffect(() => {
     if (!latestNotification) return;
 
@@ -34,15 +34,24 @@ export function ToastContainer() {
       return;
     }
 
-    // mute된 방 — 토스트 skip (unreadCount는 useNotifications에서 이미 갱신됨)
-    if (mutedRoomIds.has(latestNotification.roomId)) {
+    // mute된 방 또는 hidden인 방 — 토스트 skip (unreadCount는 useNotifications에서 갱신됨)
+    if (
+      mutedRoomIds.has(latestNotification.roomId) ||
+      hiddenRoomIds.has(latestNotification.roomId)
+    ) {
       dismissLatest();
       return;
     }
 
     const timer = setTimeout(dismissLatest, 3000);
     return () => clearTimeout(timer);
-  }, [latestNotification, pathname, dismissLatest, mutedRoomIds]);
+  }, [
+    latestNotification,
+    pathname,
+    dismissLatest,
+    mutedRoomIds,
+    hiddenRoomIds,
+  ]);
 
   if (!latestNotification) return null;
 
@@ -52,6 +61,7 @@ export function ToastContainer() {
     : null;
   if (currentRoomId === latestNotification.roomId) return null;
   if (mutedRoomIds.has(latestNotification.roomId)) return null;
+  if (hiddenRoomIds.has(latestNotification.roomId)) return null;
 
   const displayTitle =
     latestNotification.roomName ?? latestNotification.senderName;
