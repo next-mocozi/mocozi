@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   NewMessageNotification,
   UnreadCountChangedNotification,
@@ -37,6 +37,16 @@ export function useNotifications(socket: ChatSocket | null) {
   /** mute된 방 id set — 토스트 skip 판단용 */
   const [mutedRoomIds, setMutedRoomIds] = useState<Set<string>>(() => new Set());
 
+  /**
+   * mutedRoomIds를 socket listener에서 stale closure 없이 참조하기 위한 ref.
+   * useEffect deps에 mutedRoomIds 넣으면 listener가 매번 재등록됨 — 비효율.
+   * ref로 최신 값 추적하면 listener는 한 번만 등록되고도 항상 최신 set 참조.
+   */
+  const mutedRoomIdsRef = useRef(mutedRoomIds);
+  useEffect(() => {
+    mutedRoomIdsRef.current = mutedRoomIds;
+  }, [mutedRoomIds]);
+
   // ---------------------------------------------------------
   // socket listener 등록 / 해제
   // ---------------------------------------------------------
@@ -47,8 +57,11 @@ export function useNotifications(socket: ChatSocket | null) {
       // eslint-disable-next-line no-console
       console.info('[ws] notification:newMessage', n);
       setUnreadByRoom((prev) => ({ ...prev, [n.roomId]: n.unreadCount }));
-      // 가장 최근 알림 갱신 — UI는 dismissLatest 또는 다음 알림 도착 시 교체
-      setLatestNotification(n);
+      // mute된 방은 latestNotification 자체에 set 안 함 — 토스트 깜빡임 방지
+      // (ToastContainer가 render에서 한 번 더 가드 — 이중 안전망)
+      if (!mutedRoomIdsRef.current.has(n.roomId)) {
+        setLatestNotification(n);
+      }
     };
 
     const onUnreadChanged = (n: UnreadCountChangedNotification) => {
