@@ -3,17 +3,18 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { getMyPortfolioPath, type PortfolioItem } from '../_lib';
+import { DownSelect, getMyPortfolioPath, type PortfolioItem } from '../_lib';
 
 // ─────── Storage keys ───────
 const ITEMS_STORAGE_KEY = 'mock_portfolio_items';
 const STUDY_DETAILS_STORAGE_KEY = 'mock_study_details';
 
 // ─────── Year/Month options ───────
+// 최대 연도는 오늘 연도, 12년치만 노출 (월 드롭다운과 같은 높이로 아래 정렬 유도).
 const PERIOD_CURRENT_YEAR = new Date().getFullYear();
 const YEAR_OPTIONS = Array.from(
-  { length: 32 },
-  (_, i) => PERIOD_CURRENT_YEAR + 1 - i,
+  { length: 12 },
+  (_, i) => PERIOD_CURRENT_YEAR - i,
 );
 const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1);
 
@@ -30,6 +31,8 @@ export type StudyDetail = {
   learned: string;
   improvements: string;
   moreToLearn: string;
+  /** 피드 카드에 노출되는 한 줄 요약 (필수). */
+  summary: string;
 };
 
 const EMPTY_DETAIL: StudyDetail = {
@@ -44,6 +47,7 @@ const EMPTY_DETAIL: StudyDetail = {
   learned: '',
   improvements: '',
   moreToLearn: '',
+  summary: '',
 };
 
 // ─────── Helpers ───────
@@ -67,6 +71,7 @@ export default function StudyForm() {
   const [d, setD] = useState<StudyDetail>(EMPTY_DETAIL);
   const [topicError, setTopicError] = useState('');
   const [periodError, setPeriodError] = useState('');
+  const [summaryError, setSummaryError] = useState('');
 
   // 시작 > 종료 검증
   const periodInvalid = (() => {
@@ -117,6 +122,10 @@ export default function StudyForm() {
       setPeriodError('종료 날짜는 시작 날짜 이후여야 합니다.');
       return;
     }
+    if (!d.summary.trim()) {
+      setSummaryError('피드에 노출될 한 줄 요약을 입력해주세요.');
+      return;
+    }
     const targetId = isEdit && editId !== null ? editId : Date.now();
     const period = formatPeriod(d);
     const item: PortfolioItem = {
@@ -124,6 +133,7 @@ export default function StudyForm() {
       type: 'study',
       title: d.topic.trim(),
       description: d.motivation.trim() || d.process.trim() || '',
+      summary: d.summary.trim(),
       period,
       current: d.current,
       tags: [],
@@ -175,8 +185,6 @@ export default function StudyForm() {
     'w-full rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100';
   const textareaClass =
     'w-full resize-none rounded-lg border border-gray-200 px-4 py-2 text-sm leading-7 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100';
-  const selectClass =
-    'rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400';
   const chipBase =
     'rounded-full border px-3 py-1.5 text-xs leading-relaxed transition-all';
   const chipOff =
@@ -235,73 +243,61 @@ export default function StudyForm() {
         <div>
           <label className={`mb-2 ${labelClass}`}>기간</label>
           <div className="flex flex-wrap items-center gap-2">
-            <select
+            <DownSelect
               value={d.startYear}
-              onChange={(e) => {
-                update('startYear', e.target.value);
+              onChange={(v) => {
+                update('startYear', v);
                 if (periodError) setPeriodError('');
               }}
-              aria-label="시작 년"
-              className={selectClass}
-            >
-              <option value="">시작 년</option>
-              {YEAR_OPTIONS.map((y) => (
-                <option key={y} value={String(y)}>
-                  {y}년
-                </option>
-              ))}
-            </select>
-            <select
+              options={YEAR_OPTIONS.map((y) => ({
+                value: String(y),
+                label: `${y}년`,
+              }))}
+              placeholder="시작 년"
+              ariaLabel="시작 년"
+            />
+            <DownSelect
               value={d.startMonth}
-              onChange={(e) => {
-                update('startMonth', e.target.value);
+              onChange={(v) => {
+                update('startMonth', v);
                 if (periodError) setPeriodError('');
               }}
-              aria-label="시작 월"
-              className={selectClass}
-            >
-              <option value="">시작 월</option>
-              {MONTH_OPTIONS.map((m) => (
-                <option key={m} value={String(m).padStart(2, '0')}>
-                  {m}월
-                </option>
-              ))}
-            </select>
+              options={MONTH_OPTIONS.map((m) => ({
+                value: String(m).padStart(2, '0'),
+                label: `${m}월`,
+              }))}
+              placeholder="시작 월"
+              ariaLabel="시작 월"
+            />
             <span className="text-sm text-gray-400">~</span>
-            <select
+            <DownSelect
               value={d.endYear}
-              onChange={(e) => {
-                update('endYear', e.target.value);
+              onChange={(v) => {
+                update('endYear', v);
                 if (periodError) setPeriodError('');
               }}
+              options={YEAR_OPTIONS.map((y) => ({
+                value: String(y),
+                label: `${y}년`,
+              }))}
+              placeholder="종료 년"
+              ariaLabel="종료 년"
               disabled={d.current}
-              aria-label="종료 년"
-              className={selectClass}
-            >
-              <option value="">종료 년</option>
-              {YEAR_OPTIONS.map((y) => (
-                <option key={y} value={String(y)}>
-                  {y}년
-                </option>
-              ))}
-            </select>
-            <select
+            />
+            <DownSelect
               value={d.endMonth}
-              onChange={(e) => {
-                update('endMonth', e.target.value);
+              onChange={(v) => {
+                update('endMonth', v);
                 if (periodError) setPeriodError('');
               }}
+              options={MONTH_OPTIONS.map((m) => ({
+                value: String(m).padStart(2, '0'),
+                label: `${m}월`,
+              }))}
+              placeholder="종료 월"
+              ariaLabel="종료 월"
               disabled={d.current}
-              aria-label="종료 월"
-              className={selectClass}
-            >
-              <option value="">종료 월</option>
-              {MONTH_OPTIONS.map((m) => (
-                <option key={m} value={String(m).padStart(2, '0')}>
-                  {m}월
-                </option>
-              ))}
-            </select>
+            />
             <button
               type="button"
               onClick={() => {
@@ -387,6 +383,38 @@ export default function StudyForm() {
             placeholder="이 스터디 이후 추가로 파고들고 싶은 주제·자료 등."
             className={textareaClass}
           />
+        </div>
+
+        {/* 7. 한 줄 요약 — 피드 카드에 노출 (필수) */}
+        <div>
+          <div className="mb-2 flex items-center justify-between">
+            <label className={`${labelClass}`}>
+              7. 한 줄 요약 <span className="text-red-500">*</span>
+            </label>
+            <span className="text-[11px] text-blue-600">
+              ⓘ 작성한 내용이 피드에 올라갑니다.
+            </span>
+          </div>
+          <input
+            type="text"
+            value={d.summary}
+            onChange={(e) => {
+              update('summary', e.target.value.slice(0, 120));
+              if (summaryError) setSummaryError('');
+            }}
+            placeholder="피드 카드에 보일 한 줄 소개 (예: 백준 골드 알고리즘 풀이 공유 스터디)"
+            className={inputClass}
+          />
+          <div className="mt-1 flex items-center justify-between">
+            {summaryError ? (
+              <p className="text-xs text-red-500">{summaryError}</p>
+            ) : (
+              <span />
+            )}
+            <span className="text-xs text-gray-400">
+              {d.summary.length} / 120
+            </span>
+          </div>
         </div>
 
       </div>

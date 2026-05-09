@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, Dispatch, ReactNode, SetStateAction } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { getMyPortfolioPath, type PortfolioItem } from '../_lib';
+import { DownSelect, getMyPortfolioPath, type PortfolioItem } from '../_lib';
 
 // ─────── Storage keys ───────
 const ITEMS_STORAGE_KEY = 'mock_portfolio_items';
@@ -11,14 +11,18 @@ const DETAILS_STORAGE_KEY = 'mock_portfolio_details';
 
 // ─────── Types ───────
 /** 시각 자료가 첨부될 수 있는 단계 — 각 단계의 자료는 다른 단계와 격리됨 */
-export type AssetStepKey = 'architecture' | 'result' | 'retro';
+// 자료가 속한 인터뷰 단계 키. 어떤 질문 textarea 에서 업로드한 자료인지 구분해
+// 그 단계의 미리보기/멘션 팝업에만 노출하기 위해 넓게 string 으로 둔다.
+// (이전엔 'architecture'|'result'|'retro' 3개만 허용했지만, 실제로는 motivation/
+//  techChoice/contribution 등 더 많은 단계에서 자료 업로드가 가능하므로 일반화.)
+export type AssetStepKey = string;
 
 export type Asset = {
   id: string;
   alias: string; // 프로젝트 전체에서 고유 (A, B, C, ..., Z, AA, ...)
   filename: string;
   dataUrl: string;
-  /** 레거시 — 어느 섹션에 처음 등록됐는지. 없으면 전역 자료. */
+  /** 어느 단계(질문)에서 등록됐는지. 새 자료는 항상 채워지지만 레거시 호환을 위해 optional. */
   stepKey?: AssetStepKey;
   /** 'image' | 'file' — 자료 종류 */
   kind?: 'image' | 'file';
@@ -132,6 +136,8 @@ export type Draft = {
   domainLimits: string;
   deliverableUrl: string;
   deliverableFiles: Omit<Asset, 'stepKey'>[];
+  /** 피드 카드에 노출되는 한 줄 요약. 미리보기 직전 단계에서 단답형 입력. */
+  pitch: string;
   assets: Asset[];
   stepIdx: number;
 };
@@ -157,6 +163,7 @@ const EMPTY_DRAFT: Draft = {
   domainLimits: '',
   deliverableUrl: '',
   deliverableFiles: [],
+  pitch: '',
   assets: [],
   stepIdx: 0,
 };
@@ -402,6 +409,7 @@ type StepKey =
   | 'domainComm'
   | 'domainLimits'
   | 'deliverables'
+  | 'pitch'
   | 'summary';
 
 type StepCfg = {
@@ -414,7 +422,7 @@ type StepCfg = {
 
 // 필수 응답이 있어야 다음으로 넘어갈 수 있는 단계 (isStepValid 와 동기화)
 const isStepRequired = (k: StepKey): boolean =>
-  k !== 'deliverables' && k !== 'summary';
+  k !== 'deliverables' && k !== 'pitch' && k !== 'summary';
 
 const buildSteps = (hasDomain: boolean | null): StepCfg[] => {
   const arr: StepCfg[] = [
@@ -531,6 +539,12 @@ const buildSteps = (hasDomain: boolean | null): StepCfg[] => {
       label: 'Q1.',
       title: '7. 결과물 / 배포물',
       subtitle: 'URL과 파일을 첨부해주세요. (선택)',
+    },
+    {
+      key: 'pitch',
+      label: 'Q1.',
+      title: '8. 한 줄 요약',
+      subtitle: '피드에 노출될 한 줄 소개를 적어주세요.',
     },
     {
       key: 'summary',
@@ -830,6 +844,7 @@ export default function ProjectInterview() {
       d.contribution.trim() ||
       d.result.text.trim() ||
       '',
+    summary: d.pitch.trim() || undefined,
     period: formatPeriod(d.period),
     current: d.period.current,
     domain: d.hasDomain && d.domainTags[0] ? d.domainTags[0] : undefined,
@@ -1123,6 +1138,8 @@ export default function ProjectInterview() {
         return draft.domainLimits.trim().length > 0;
       case 'deliverables':
         return true; // 선택
+      case 'pitch':
+        return true; // 선택 — 비워두면 피드 카드에 제목만 노출
       case 'summary':
         return true;
       default:
@@ -1476,11 +1493,19 @@ function StepBody({
   setDraft: Dispatch<SetStateAction<Draft>>;
   jumpToStep: (key: StepKey) => void;
 }) {
-  // 텍스트 입력 단계에서 공통으로 쓰는 자료 등록 props
+  // 텍스트 입력 단계에서 공통으로 쓰는 자료 등록 props.
+  // 자료는 현재 단계(cfg.key) 의 것만 보여주고, 새로 추가되는 자료에도 현재 단계의
+  // stepKey 를 박아 다른 단계에서는 보이지 않도록 한다.
+  // (alias 는 프로젝트 전체에서 유일해야 하므로 alias 발급 시에는 전체 풀로 비교.)
   const assetProps = {
-    assets: draft.assets,
+    assets: draft.assets.filter((a) => a.stepKey === cfg.key),
+    // alias 는 프로젝트 전체에서 유일해야 하므로 발급 시에는 전체 풀과 비교한다.
+    allAssetsForAlias: draft.assets,
     onAddAsset: (a: Asset) =>
-      setDraft((d) => ({ ...d, assets: [...d.assets, a] })),
+      setDraft((d) => ({
+        ...d,
+        assets: [...d.assets, { ...a, stepKey: cfg.key }],
+      })),
   };
   switch (cfg.key) {
     case 'name':
@@ -1712,6 +1737,27 @@ function StepBody({
       );
     case 'deliverables':
       return <DeliverablesStep draft={draft} setDraft={setDraft} />;
+    case 'pitch':
+      return (
+        <div className="space-y-2">
+          <p className="rounded-lg bg-blue-50 px-3 py-2 text-xs leading-relaxed text-blue-700">
+            ⓘ 여기에 작성한 내용이 피드에 올라갑니다.
+          </p>
+          <input
+            type="text"
+            autoFocus
+            value={draft.pitch}
+            onChange={(e) =>
+              setDraft((d) => ({ ...d, pitch: e.target.value.slice(0, 120) }))
+            }
+            placeholder="예: ROS2 기반 실내 자율주행 로봇 — 라이다 SLAM + 강화학습 경로 계획"
+            className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm leading-relaxed outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+          />
+          <div className="flex justify-end text-xs text-gray-400">
+            {draft.pitch.length} / 120
+          </div>
+        </div>
+      );
     case 'summary':
       return <SummaryView draft={draft} setDraft={setDraft} />;
     default:
@@ -1723,9 +1769,12 @@ function StepBody({
 
 // ─────── 기간 선택 (년/월 필수, 일 선택, 진행중 토글) ───────
 const PERIOD_CURRENT_YEAR = new Date().getFullYear();
+// 최대 연도는 오늘 연도, 12년치만 노출.
+// (이전엔 32년치 + 다음 해까지 미래 연도가 떠서 드롭다운이 위쪽으로 펴졌다.
+//  월·일 드롭다운과 같은 항목 수로 맞춰 자연스럽게 아래로 펴지도록 한다.)
 const PERIOD_YEAR_OPTIONS = Array.from(
-  { length: 32 },
-  (_, i) => PERIOD_CURRENT_YEAR + 1 - i, // 최신 연도가 위
+  { length: 12 },
+  (_, i) => PERIOD_CURRENT_YEAR - i, // 최신 연도가 위
 );
 const PERIOD_MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1);
 
@@ -1750,10 +1799,6 @@ function YearMonthDayPicker({
   onChange: (year: string, month: string, day: string) => void;
   disabled?: boolean;
 }) {
-  // 다른 단계의 input/태그와 동일한 높이·radius·포커스 링 사용
-  const selectClass =
-    'rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm leading-relaxed outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400';
-
   const maxDays = getDaysInMonth(year, month);
   const dayOptions = Array.from({ length: maxDays }, (_, i) => i + 1);
 
@@ -1772,48 +1817,39 @@ function YearMonthDayPicker({
       style={{ rowGap: '0.625rem', columnGap: '0.625rem' }}
       className="flex flex-wrap items-center"
     >
-      <select
+      <DownSelect
         value={year}
-        onChange={(e) => handleYearChange(e.target.value)}
+        onChange={handleYearChange}
+        options={PERIOD_YEAR_OPTIONS.map((y) => ({
+          value: String(y),
+          label: `${y}년`,
+        }))}
+        placeholder="년"
         disabled={disabled}
-        aria-label="년"
-        className={selectClass}
-      >
-        <option value="">년</option>
-        {PERIOD_YEAR_OPTIONS.map((y) => (
-          <option key={y} value={String(y)}>
-            {y}년
-          </option>
-        ))}
-      </select>
-      <select
+        ariaLabel="년"
+      />
+      <DownSelect
         value={month}
-        onChange={(e) => handleMonthChange(e.target.value)}
+        onChange={handleMonthChange}
+        options={PERIOD_MONTH_OPTIONS.map((m) => ({
+          value: String(m).padStart(2, '0'),
+          label: `${m}월`,
+        }))}
+        placeholder="월"
         disabled={disabled}
-        aria-label="월"
-        className={selectClass}
-      >
-        <option value="">월</option>
-        {PERIOD_MONTH_OPTIONS.map((m) => (
-          <option key={m} value={String(m).padStart(2, '0')}>
-            {m}월
-          </option>
-        ))}
-      </select>
-      <select
+        ariaLabel="월"
+      />
+      <DownSelect
         value={day}
-        onChange={(e) => onChange(year, month, e.target.value)}
+        onChange={(d) => onChange(year, month, d)}
+        options={dayOptions.map((d) => ({
+          value: String(d).padStart(2, '0'),
+          label: `${d}일`,
+        }))}
+        placeholder="일 (선택)"
         disabled={disabled}
-        aria-label="일 (선택)"
-        className={selectClass}
-      >
-        <option value="">일 (선택)</option>
-        {dayOptions.map((d) => (
-          <option key={d} value={String(d).padStart(2, '0')}>
-            {d}일
-          </option>
-        ))}
-      </select>
+        ariaLabel="일"
+      />
     </div>
   );
 }
@@ -2281,6 +2317,7 @@ function SimpleTextarea({
   showHint,
   example,
   assets,
+  allAssetsForAlias,
   onAddAsset,
 }: {
   value: string;
@@ -2288,8 +2325,10 @@ function SimpleTextarea({
   placeholder?: string;
   showHint?: boolean;
   example?: string;
-  /** 자료 풀 — 새 alias 생성 시 충돌 방지 */
+  /** 이 질문에 보여줄 자료 풀 (단계별 필터된 목록) */
   assets?: Asset[];
+  /** 새 alias 발급 시 충돌 방지를 위한 전체 풀. 미지정 시 assets 사용. */
+  allAssetsForAlias?: Asset[];
   /** 자료 등록 + alias 생성. 제공되면 본문 위에 [이미지/파일 첨부] 버튼 노출 */
   onAddAsset?: (a: Asset) => void;
 }) {
@@ -2297,25 +2336,23 @@ function SimpleTextarea({
   const imageInputId = useRef(`tx-img-${Math.random().toString(36).slice(2, 8)}`);
   const fileInputId = useRef(`tx-file-${Math.random().toString(36).slice(2, 8)}`);
 
-  const insertAtCursor = (token: string) => {
-    const ta = taRef.current;
-    if (!ta) {
-      onChange((value ? value + '\n\n' : '') + token);
-      return;
-    }
-    const start = ta.selectionStart ?? value.length;
-    const end = ta.selectionEnd ?? value.length;
-    const before = value.slice(0, start);
-    const after = value.slice(end);
-    // 토큰을 별도 줄로 두고 앞뒤로 빈 줄 보장
-    const sep1 = before && !/\n\n$/.test(before) ? (before.endsWith('\n') ? '\n' : '\n\n') : '';
-    const sep2 = after && !/^\n\n/.test(after) ? (after.startsWith('\n') ? '\n' : '\n\n') : '';
-    const next = `${before}${sep1}${token}${sep2}${after}`;
+  // @ 멘션 팝업 상태 — 사용자가 본문에서 '@' 를 치면 alias 선택 리스트가 뜬다.
+  // start: '@' 의 인덱스, query: '@' 다음에 입력된 부분 문자열 (alias 필터)
+  const [mention, setMention] = useState<{ start: number; query: string } | null>(null);
+
+  /** 현재 textarea 의 cursor 위치 기준으로 '@<query>' 토큰 문자열을 alias 토큰으로 교체. */
+  const insertAlias = (alias: string) => {
+    if (!mention) return;
+    const before = value.slice(0, mention.start);
+    const after = value.slice(mention.start + 1 + mention.query.length);
+    const inserted = `@[${alias}]`;
+    const next = `${before}${inserted}${after}`;
     onChange(next);
+    setMention(null);
     requestAnimationFrame(() => {
       const t = taRef.current;
       if (!t) return;
-      const pos = before.length + sep1.length + token.length;
+      const pos = before.length + inserted.length;
       t.focus();
       try {
         t.setSelectionRange(pos, pos);
@@ -2325,26 +2362,66 @@ function SimpleTextarea({
     });
   };
 
-  const handleUpload = async (file: File | null, kind: 'image' | 'file') => {
-    if (!file) return;
-    if (!onAddAsset) return;
-    if (kind === 'image' && !file.type.startsWith('image/')) return;
-    try {
-      const dataUrl = await fileToDataUrl(file);
-      const alias = nextAlias(assets ?? []);
-      const asset: Asset = {
-        id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
-        alias,
-        filename: file.name,
-        dataUrl,
-        kind,
-      };
-      onAddAsset(asset);
-      insertAtCursor(`@[${alias}]`);
-    } catch {
-      // 무시
+  /** 입력값 변경 시 cursor 직전의 '@<query>' 패턴을 감지해 멘션 팝업 토글. */
+  const handleTextChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = e.target.value;
+    const cursor = e.target.selectionStart ?? newValue.length;
+    onChange(newValue);
+
+    if (!assets || assets.length === 0) {
+      setMention(null);
+      return;
+    }
+    const before = newValue.slice(0, cursor);
+    // '@' 가 토큰 시작 위치인지 확인 — 직전이 줄 시작이거나 공백이어야 한다.
+    // (이미 완성된 '@[xxx]' 안의 '@' 는 트리거하지 않는다.)
+    const m = before.match(/(?:^|\s)@([^\s@\[\]]*)$/);
+    if (m) {
+      const atIdx = before.length - 1 - m[1].length;
+      setMention({ start: atIdx, query: m[1] });
+    } else {
+      setMention(null);
     }
   };
+
+  /** 한 번에 여러 파일을 업로드. 각 파일마다 alias 를 발급해 풀에만 추가하고
+   *  본문에는 자동으로 삽입하지 않는다 (사용자가 본문에서 @ 로 호출해 사용). */
+  const handleUpload = async (
+    files: FileList | null,
+    kind: 'image' | 'file',
+  ) => {
+    if (!files || !onAddAsset) return;
+    // alias 발급용 풀 — 프로젝트 전체 자료가 주입돼있으면 그걸 쓰고,
+    // 아니면 보이는 풀로 fallback.
+    let pool = allAssetsForAlias ?? assets ?? [];
+    for (const file of Array.from(files)) {
+      if (kind === 'image' && !file.type.startsWith('image/')) continue;
+      try {
+        const dataUrl = await fileToDataUrl(file);
+        // 같은 배치 안에서 alias 충돌 방지 — 로컬 pool 을 갱신해 가며 발급.
+        const alias = nextAlias(pool);
+        const asset: Asset = {
+          id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+          alias,
+          filename: file.name,
+          dataUrl,
+          kind,
+        };
+        pool = [...pool, asset];
+        onAddAsset(asset);
+      } catch {
+        // 무시
+      }
+    }
+  };
+
+  // 이 답변에 첨부된 자료들 (alias 풀)
+  const pool = assets ?? [];
+  const filteredPool = mention
+    ? pool.filter((a) =>
+        a.alias.toLowerCase().startsWith(mention.query.toLowerCase()),
+      )
+    : [];
 
   return (
     <div>
@@ -2360,14 +2437,19 @@ function SimpleTextarea({
 
       {onAddAsset && (
         <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-          <span>이미지·파일을 첨부하면 본문에 @[A] 형태로 들어갑니다.</span>
+          <span>
+            업로드한 자료는 풀에 보관됩니다. 본문에서 <code className="rounded bg-gray-100 px-1 font-mono">@</code>
+            를 입력하면 자료를 골라 <code className="rounded bg-gray-100 px-1 font-mono">@[A]</code>
+            형태로 삽입할 수 있어요.
+          </span>
           <input
             id={imageInputId.current}
             type="file"
             accept="image/*"
+            multiple
             className="hidden"
             onChange={(e) => {
-              handleUpload(e.target.files?.[0] ?? null, 'image');
+              handleUpload(e.target.files, 'image');
               e.currentTarget.value = '';
             }}
           />
@@ -2380,9 +2462,10 @@ function SimpleTextarea({
           <input
             id={fileInputId.current}
             type="file"
+            multiple
             className="hidden"
             onChange={(e) => {
-              handleUpload(e.target.files?.[0] ?? null, 'file');
+              handleUpload(e.target.files, 'file');
               e.currentTarget.value = '';
             }}
           />
@@ -2395,64 +2478,102 @@ function SimpleTextarea({
         </div>
       )}
 
-      <textarea
-        ref={taRef}
-        autoFocus
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        rows={4}
-        placeholder={placeholder}
-        className="w-full resize-none rounded-lg border border-gray-200 px-4 py-4 text-sm leading-8 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 field-sizing-content"
-      />
+      {/* 풀에 있는 자료 미리보기 — 어떤 alias 가 사용 가능한지 한눈에 */}
+      {pool.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {pool.map((a) => {
+            const used = new RegExp(
+              `@\\[${a.alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\]`,
+            ).test(value);
+            const isImg = a.kind === 'image';
+            return (
+              <span
+                key={a.id}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] ${
+                  used
+                    ? 'border-blue-200 bg-blue-50 text-blue-700'
+                    : 'border-gray-200 bg-gray-50 text-gray-600'
+                }`}
+                title={a.filename}
+              >
+                <span className="font-mono">@[{a.alias}]</span>
+                {isImg ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={a.dataUrl}
+                    alt=""
+                    className="h-4 w-4 rounded object-cover"
+                  />
+                ) : (
+                  <span>📎</span>
+                )}
+                <span className="max-w-[10rem] truncate">{a.filename}</span>
+              </span>
+            );
+          })}
+        </div>
+      )}
 
-      {/* 본문에 참조된 @[A] 토큰의 파일명 미리보기 — 어떤 자료가 들어가 있는지 한눈에 */}
-      {(() => {
-        if (!assets || assets.length === 0) return null;
-        const aliases = Array.from(
-          new Set(
-            Array.from(value.matchAll(/@\[([^\]]+)\]/g)).map((m) => m[1]),
-          ),
-        );
-        if (aliases.length === 0) return null;
-        return (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {aliases.map((al) => {
-              const a = assets.find((x) => x.alias === al);
-              if (!a) {
-                return (
-                  <span
-                    key={al}
-                    className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700"
-                  >
-                    @[{al}] (자료 없음)
-                  </span>
-                );
-              }
-              const isImg = a.kind === 'image';
-              return (
-                <span
-                  key={al}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[11px] text-gray-600"
-                  title={a.filename}
+      <div className="relative">
+        <textarea
+          ref={taRef}
+          autoFocus
+          value={value}
+          onChange={handleTextChange}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape' && mention) {
+              setMention(null);
+              e.preventDefault();
+            }
+          }}
+          onBlur={() => {
+            // 외부 클릭으로 닫힘 — 팝업 클릭 직전 onMouseDown 으로 alias 가 들어가도록
+            // 약간 지연시켜 선택을 놓치지 않게 한다.
+            setTimeout(() => setMention(null), 150);
+          }}
+          rows={4}
+          placeholder={placeholder}
+          className="w-full resize-none rounded-lg border border-gray-200 px-4 py-4 text-sm leading-8 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 field-sizing-content"
+        />
+        {mention && filteredPool.length > 0 && (
+          <ul
+            role="listbox"
+            className="absolute left-0 right-0 top-full z-50 mt-1 max-h-48 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+          >
+            {filteredPool.map((a) => (
+              <li key={a.id}>
+                <button
+                  type="button"
+                  onMouseDown={(e) => {
+                    // textarea blur 보다 먼저 실행되도록 onMouseDown 에서 처리
+                    e.preventDefault();
+                    insertAlias(a.alias);
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-blue-50"
                 >
-                  <span className="font-mono text-gray-500">@[{al}]</span>
-                  {isImg ? (
+                  <span className="font-mono text-blue-600">@[{a.alias}]</span>
+                  {a.kind === 'image' ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={a.dataUrl}
                       alt=""
-                      className="h-4 w-4 rounded object-cover"
+                      className="h-5 w-5 rounded object-cover"
                     />
                   ) : (
-                    <span>📎</span>
+                    <span aria-hidden>📎</span>
                   )}
-                  <span className="max-w-[12rem] truncate">{a.filename}</span>
-                </span>
-              );
-            })}
+                  <span className="truncate text-gray-600">{a.filename}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {mention && filteredPool.length === 0 && pool.length > 0 && (
+          <div className="absolute left-0 right-0 top-full z-50 mt-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-500 shadow-lg">
+            일치하는 자료가 없어요. 위쪽 [이미지/파일 추가] 로 먼저 업로드 해주세요.
           </div>
-        );
-      })()}
+        )}
+      </div>
     </div>
   );
 }
@@ -3961,6 +4082,28 @@ function SummaryView({
               }
               placeholder="(제목 없음)"
               className="w-full rounded-lg border border-transparent bg-transparent px-2 py-1 text-2xl font-bold leading-snug text-gray-900 outline-none hover:border-gray-200 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
+            />
+          </div>
+
+          {/* 한 줄 요약 — 피드 카드에 노출. 비어있으면 placeholder 안내, 있으면 표시.
+              포커스/입력 시 자동 저장. 수정버튼 따로 없이 input 자체가 편집 가능. */}
+          <div>
+            <div className="mb-1 flex items-center justify-between">
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                한 줄 요약
+              </label>
+              <span className="text-[11px] text-blue-600">
+                ⓘ 작성한 내용이 피드에 올라갑니다.
+              </span>
+            </div>
+            <input
+              type="text"
+              value={draft.pitch}
+              onChange={(e) =>
+                setDraft((d) => ({ ...d, pitch: e.target.value.slice(0, 120) }))
+              }
+              placeholder="피드 카드에 보일 한 줄 소개를 입력해주세요."
+              className="w-full rounded-lg border border-transparent bg-transparent px-2 py-1 text-sm leading-relaxed text-gray-700 outline-none hover:border-gray-200 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
             />
           </div>
 

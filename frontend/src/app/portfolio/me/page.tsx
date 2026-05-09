@@ -73,7 +73,10 @@ export default function MyFeedPage() {
         <PortfolioSegmentedNav current="me" />
       </div>
 
-      <div className="relative">
+      {/* overflow-x-clip — 우측 패널이 닫힌 상태(translate-x-full)에서 viewport
+          바깥으로 painting 되며 가로 스크롤이 생기는 걸 잘라낸다. clip 은
+          sticky/fixed stacking context 를 만들지 않아 sticky 패널 동작 유지. */}
+      <div className="relative overflow-x-clip">
         <div
           className={`relative z-20 mx-auto max-w-2xl transition-transform duration-300 ease-out ${
             detailOpen

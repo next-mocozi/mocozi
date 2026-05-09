@@ -78,7 +78,10 @@ export default function PortfolioFeedPage() {
         <PortfolioSegmentedNav current="feed" />
       </div>
 
-      <div className="relative">
+      {/* overflow-x-clip — 닫혀있을 때 우측 패널이 translate-x-full 로 viewport 바깥에
+          painting 되어 가로 스크롤이 생기던 문제를 잘라낸다. clip 은 sticky/fixed
+          stacking context 를 만들지 않아 우측 패널 sticky 동작에 영향이 없다. */}
+      <div className="relative overflow-x-clip">
         {/* 좌측: 피드 컬럼 — 크기 유지한 채 좌측으로 슬라이드만 한다. */}
         <div
           className={`relative z-20 mx-auto max-w-2xl transition-transform duration-300 ease-out ${

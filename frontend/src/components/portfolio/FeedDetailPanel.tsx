@@ -37,11 +37,21 @@ export default function FeedDetailPanel({
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
+  // author 모드일 때 헤더에 표시할 이름 (없으면 fallback '프로필')
+  const authorName =
+    target.mode === 'author'
+      ? findMockFeedUser(target.userId)?.name
+      : undefined;
+
   return (
     <aside className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-lg">
       <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-5 py-3">
         <p className="text-sm font-semibold text-gray-700">
-          {target.mode === 'post' ? '게시물' : '작성자 포트폴리오'}
+          {target.mode === 'post'
+            ? '게시물'
+            : authorName
+              ? `${authorName}님의 프로필`
+              : '프로필'}
         </p>
         <button
           type="button"
@@ -148,6 +158,7 @@ function PostBody({ post }: { post: Exclude<FeedPost, { kind: 'item' }> }) {
         <div>
           <p className="text-sm font-semibold text-gray-700">
             {post.career.year}년
+            {post.career.month ? ` ${Number(post.career.month)}월` : ''}
           </p>
           <h2 className="mt-1 text-lg font-semibold leading-relaxed text-gray-900">
             {post.career.content}
@@ -201,7 +212,7 @@ function AuthorDetail({ userId }: { userId: string }) {
   const portfolio = feedUser.portfolio;
   return (
     <div className="space-y-5">
-      {/* 프로필 헤더 */}
+      {/* 프로필 헤더 — 이름 오른쪽에 [포트폴리오로 →] 버튼 */}
       <div className="flex items-start gap-3">
         <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary-100 text-2xl text-primary-600">
           {feedUser.profileImage ? (
@@ -216,9 +227,17 @@ function AuthorDetail({ userId }: { userId: string }) {
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-lg font-bold text-gray-900">
-            {feedUser.name}
-          </h2>
+          <div className="flex items-start justify-between gap-2">
+            <h2 className="min-w-0 truncate text-lg font-bold text-gray-900">
+              {feedUser.name}
+            </h2>
+            <Link
+              href={`/portfolio/${feedUser.userId}`}
+              className="inline-flex shrink-0 items-center gap-1 rounded-full border border-gray-200 px-3 py-1 text-xs text-gray-700 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+            >
+              포트폴리오로 →
+            </Link>
+          </div>
           <p className="text-xs text-gray-500">
             {feedUser.university} · {feedUser.department}
             {feedUser.grade &&
@@ -276,47 +295,45 @@ function AuthorDetail({ userId }: { userId: string }) {
         </div>
       )}
 
-      {/* 항목 미리보기 — 최근 3개 */}
-      {portfolio.items.length > 0 && (
-        <div>
-          <h3 className="mb-2 text-xs font-semibold text-gray-500">
-            포트폴리오 항목
-          </h3>
-          <ul className="space-y-2">
-            {portfolio.items.slice(0, 3).map((item) => {
-              const meta = TYPE_META[item.type];
-              return (
-                <li
-                  key={item.id}
-                  className="rounded-lg border border-gray-100 px-3 py-2"
-                >
-                  <div className="mb-1 flex flex-wrap items-center gap-2">
-                    <span
-                      className={`rounded px-2 py-0.5 text-[10px] ${meta.bg} ${meta.text}`}
-                    >
-                      {meta.label}
-                    </span>
-                    <span className="text-[11px] text-gray-500">
-                      {item.period}
-                    </span>
-                  </div>
-                  <p className="text-sm font-semibold text-gray-800">
-                    {item.title}
-                  </p>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
+      {/* 항목 미리보기 — 작성자가 직접 고른 대표 항목만.
+         프로젝트 4 + 연구 2 + 스터디 2 = 최대 8개. 모두 다 보이면 번잡해지므로 대표만 노출. */}
+      {(() => {
+        const featured = portfolio.items.filter((it) => it.featured);
+        if (featured.length === 0) return null;
+        return (
+          <div>
+            <h3 className="mb-2 text-xs font-semibold text-gray-500">
+              대표 프로젝트·연구·스터디
+            </h3>
+            <ul className="space-y-2">
+              {featured.map((item) => {
+                const meta = TYPE_META[item.type];
+                return (
+                  <li
+                    key={item.id}
+                    className="rounded-lg border border-gray-100 px-3 py-2"
+                  >
+                    <div className="mb-1 flex flex-wrap items-center gap-2">
+                      <span
+                        className={`rounded px-2 py-0.5 text-[10px] ${meta.bg} ${meta.text}`}
+                      >
+                        {meta.label}
+                      </span>
+                      <span className="text-[11px] text-gray-500">
+                        {item.period}
+                      </span>
+                    </div>
+                    <p className="text-sm font-semibold text-gray-800">
+                      {item.title}
+                    </p>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        );
+      })()}
 
-      {/* 전체 페이지로 이동 */}
-      <Link
-        href={`/portfolio/${feedUser.userId}`}
-        className="inline-flex items-center gap-1 rounded-full border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
-      >
-        전체 포트폴리오 보기 →
-      </Link>
     </div>
   );
 }

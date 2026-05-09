@@ -9,6 +9,8 @@ import {
   DEFAULT_ITEMS,
   FeaturedStar,
   MAX_FEATURED,
+  MAX_FEATURED_RESEARCH,
+  MAX_FEATURED_STUDY,
   ITEMS_STORAGE_KEY,
   type PortfolioItem,
 } from '../../../_lib';
@@ -112,13 +114,24 @@ export default function PortfolioItemPage({
       const list: PortfolioItem[] = raw ? JSON.parse(raw) : [];
       const willBeFeatured = !item.featured;
       if (willBeFeatured) {
-        const featuredCount = list.filter(
-          (it) => it.featured && it.type !== 'study',
+        // 항목 종류별 대표 개수 제한 (project=4 / research=2 / study=2)
+        const limit =
+          item.type === 'research'
+            ? MAX_FEATURED_RESEARCH
+            : item.type === 'study'
+              ? MAX_FEATURED_STUDY
+              : MAX_FEATURED;
+        const sameTypeFeatured = list.filter(
+          (it) => it.featured && it.type === item.type,
         ).length;
-        if (featuredCount >= MAX_FEATURED) {
-          alert(
-            `대표 프로젝트는 최대 ${MAX_FEATURED}개까지만 지정할 수 있어요.`,
-          );
+        const label =
+          item.type === 'research'
+            ? '대표 연구'
+            : item.type === 'study'
+              ? '대표 스터디'
+              : '대표 프로젝트';
+        if (sameTypeFeatured >= limit) {
+          alert(`${label}는 최대 ${limit}개까지만 지정할 수 있어요.`);
           return;
         }
       }

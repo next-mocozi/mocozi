@@ -160,6 +160,7 @@ function PostMetaTags({ post }: { post: FeedPost }) {
       return (
         <span className="text-xs font-semibold text-gray-700">
           {post.career.year}년
+          {post.career.month ? ` ${Number(post.career.month)}월` : ''}
         </span>
       );
     case 'profile':
@@ -175,9 +176,16 @@ function PostTitleAndBody({ post }: { post: FeedPost }) {
   switch (post.kind) {
     case 'item':
       return (
-        <h3 className="text-xl font-bold leading-snug text-gray-900">
-          {post.item.title}
-        </h3>
+        <>
+          <h3 className="text-xl font-bold leading-snug text-gray-900">
+            {post.item.title}
+          </h3>
+          {post.item.summary && (
+            <p className="mt-2 text-sm leading-relaxed text-gray-600 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3] overflow-hidden">
+              {post.item.summary}
+            </p>
+          )}
+        </>
       );
     case 'experience':
       return (

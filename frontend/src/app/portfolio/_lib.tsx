@@ -5,7 +5,7 @@
 // 백엔드 미연동 상태 — localStorage 기반 mock.
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ProfileLink } from './_platforms';
 
 // ──────── localStorage 키 ────────
@@ -24,6 +24,8 @@ export const FIRST_POST_STORAGE_KEY = 'mock_portfolio_first_post_at';
 export const INTRO_MAX = 500;
 export const CAREER_CONTENT_MAX = 200;
 export const MAX_FEATURED = 4;
+export const MAX_FEATURED_RESEARCH = 2;
+export const MAX_FEATURED_STUDY = 2;
 
 // ──────── 타입 ────────
 export type PortfolioVisibility = 'public' | 'private';
@@ -40,6 +42,8 @@ export type PortfolioItem = {
   type: PortfolioItemType;
   title: string;
   description: string;
+  /** 피드 카드에 노출되는 한 줄 요약. 작성자가 직접 입력. */
+  summary?: string;
   period: string;
   current: boolean;
   domain?: string;
@@ -65,6 +69,8 @@ export type Experience = {
 export type CareerItem = {
   id: number;
   year: string;
+  /** 1~12 zero-padded 문자열. 신규 항목은 항상 채우지만 기존 데이터 호환을 위해 optional. */
+  month?: string;
   content: string;
 };
 
@@ -88,6 +94,7 @@ export const EMPTY_EXP_FORM: ExpFormState = {
 
 export const EMPTY_CAREER_FORM: Omit<CareerItem, 'id'> = {
   year: '',
+  month: '',
   content: '',
 };
 
@@ -173,12 +180,133 @@ export function getMyPortfolioPath(): string {
 }
 
 // ──────── 년/월 드롭다운 옵션 ────────
+// 최대 연도는 오늘 연도, 12년치(=월 옵션 수와 동일한 높이)만 보여 줘
+// 네이티브 select 가 위쪽으로 펴지지 않고 월·일과 같이 아래로 펴지도록 한다.
 const CURRENT_YEAR = new Date().getFullYear();
 export const YEAR_OPTIONS = Array.from(
-  { length: 32 },
-  (_, i) => CURRENT_YEAR + 1 - i,
+  { length: 12 },
+  (_, i) => CURRENT_YEAR - i,
 );
 export const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1);
+
+// ──────── 컴포넌트: DownSelect ────────
+// 항상 트리거 아래로 펴지는 커스텀 드롭다운.
+// 네이티브 <select> 는 항목 수가 많거나 뷰포트 위치에 따라 위로 펴지는 경우가
+// 있어 디자인 일관성을 위해 직접 구현. 외부 클릭/Esc 로 닫힘, 키보드 포커스
+// 가능, 비활성 상태 지원.
+export type DownSelectOption = { value: string; label: string };
+
+export function DownSelect({
+  value,
+  onChange,
+  options,
+  placeholder,
+  disabled,
+  ariaLabel,
+  className,
+  triggerClassName,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  options: DownSelectOption[];
+  placeholder?: string;
+  disabled?: boolean;
+  ariaLabel?: string;
+  className?: string;
+  triggerClassName?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    };
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', onDocClick);
+    document.addEventListener('keydown', onEsc);
+    return () => {
+      document.removeEventListener('mousedown', onDocClick);
+      document.removeEventListener('keydown', onEsc);
+    };
+  }, [open]);
+
+  const selected = options.find((o) => o.value === value);
+  const trigger =
+    triggerClassName ??
+    'inline-flex min-w-[5rem] items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm leading-relaxed outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400';
+
+  return (
+    <div
+      ref={containerRef}
+      className={`relative inline-block ${className ?? ''}`}
+    >
+      <button
+        type="button"
+        disabled={disabled}
+        aria-label={ariaLabel}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => !disabled && setOpen((v) => !v)}
+        className={trigger}
+      >
+        <span className={selected ? 'text-gray-900' : 'text-gray-500'}>
+          {selected?.label ?? placeholder ?? ''}
+        </span>
+        <span aria-hidden className="text-[10px] text-gray-400">▾</span>
+      </button>
+      {open && !disabled && (
+        <ul
+          role="listbox"
+          className="absolute left-0 top-full z-50 mt-1 max-h-60 min-w-full overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+        >
+          {placeholder && (
+            <li>
+              <button
+                type="button"
+                onClick={() => {
+                  onChange('');
+                  setOpen(false);
+                }}
+                className={`block w-full px-3 py-1.5 text-left text-sm hover:bg-gray-50 ${
+                  value === '' ? 'bg-blue-50 text-blue-600' : 'text-gray-500'
+                }`}
+              >
+                {placeholder}
+              </button>
+            </li>
+          )}
+          {options.map((o) => (
+            <li key={o.value}>
+              <button
+                type="button"
+                onClick={() => {
+                  onChange(o.value);
+                  setOpen(false);
+                }}
+                className={`block w-full px-3 py-1.5 text-left text-sm hover:bg-gray-50 ${
+                  o.value === value
+                    ? 'bg-blue-50 text-blue-600'
+                    : 'text-gray-700'
+                }`}
+              >
+                {o.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 // ──────── 컴포넌트: YearMonthPicker ────────
 export function YearMonthPicker({
@@ -200,45 +328,36 @@ export function YearMonthPicker({
 
   const emit = (y: string, m: string) => onChange(y && m ? `${y}-${m}` : '');
 
-  const selectClass =
-    'rounded-lg border border-gray-200 bg-white px-2.5 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400';
-
   return (
     <div className="inline-flex gap-1.5">
-      <select
+      <DownSelect
         value={year}
-        onChange={(e) => {
-          setYear(e.target.value);
-          emit(e.target.value, month);
+        onChange={(y) => {
+          setYear(y);
+          emit(y, month);
         }}
+        options={YEAR_OPTIONS.map((y) => ({
+          value: String(y),
+          label: `${y}년`,
+        }))}
+        placeholder="년"
         disabled={disabled}
-        aria-label="년"
-        className={selectClass}
-      >
-        <option value="">년</option>
-        {YEAR_OPTIONS.map((y) => (
-          <option key={y} value={String(y)}>
-            {y}년
-          </option>
-        ))}
-      </select>
-      <select
+        ariaLabel="년"
+      />
+      <DownSelect
         value={month}
-        onChange={(e) => {
-          setMonth(e.target.value);
-          emit(year, e.target.value);
+        onChange={(m) => {
+          setMonth(m);
+          emit(year, m);
         }}
+        options={MONTH_OPTIONS.map((m) => ({
+          value: String(m).padStart(2, '0'),
+          label: `${m}월`,
+        }))}
+        placeholder="월"
         disabled={disabled}
-        aria-label="월"
-        className={selectClass}
-      >
-        <option value="">월</option>
-        {MONTH_OPTIONS.map((m) => (
-          <option key={m} value={String(m).padStart(2, '0')}>
-            {m}월
-          </option>
-        ))}
-      </select>
+        ariaLabel="월"
+      />
     </div>
   );
 }

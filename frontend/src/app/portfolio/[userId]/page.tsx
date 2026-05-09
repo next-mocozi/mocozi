@@ -22,6 +22,7 @@ import {
   DEFAULT_INTRO,
   DEFAULT_ITEMS,
   DEFAULT_LINKS,
+  DownSelect,
   EMPTY_CAREER_FORM,
   EMPTY_EXP_FORM,
   EXPS_STORAGE_KEY,
@@ -32,10 +33,14 @@ import {
   ItemMgrModal,
   LINKS_STORAGE_KEY,
   MAX_FEATURED,
+  MAX_FEATURED_RESEARCH,
+  MAX_FEATURED_STUDY,
+  MONTH_OPTIONS,
   OWNER_STORAGE_KEY,
   ROLES_STORAGE_KEY,
   TYPE_META,
   VISIBILITY_STORAGE_KEY,
+  YEAR_OPTIONS,
   YearMonthPicker,
   formatPeriod,
   parsePeriod,
@@ -401,7 +406,7 @@ export default function PortfolioDetailPage({
 
   const loadCareerToForm = (c: CareerItem) => {
     setCareerEditId(c.id);
-    setCareerForm({ year: c.year, content: c.content });
+    setCareerForm({ year: c.year, month: c.month ?? '', content: c.content });
     setCareerError('');
   };
 
@@ -413,13 +418,18 @@ export default function PortfolioDetailPage({
 
   const saveCareer = () => {
     const year = careerForm.year.trim();
+    const month = (careerForm.month ?? '').trim();
     const content = careerForm.content.trim();
     if (!year) {
-      setCareerError('연도를 입력해주세요.');
+      setCareerError('연도를 선택해주세요.');
       return;
     }
     if (!/^\d{4}$/.test(year)) {
       setCareerError('연도는 4자리 숫자여야 합니다. (예: 2024)');
+      return;
+    }
+    if (!month) {
+      setCareerError('월을 선택해주세요.');
       return;
     }
     if (!content) {
@@ -428,9 +438,9 @@ export default function PortfolioDetailPage({
     }
     const next: CareerItem[] =
       careerEditId === null
-        ? [...careers, { id: Date.now(), year, content }]
+        ? [...careers, { id: Date.now(), year, month, content }]
         : careers.map((c) =>
-            c.id === careerEditId ? { id: c.id, year, content } : c,
+            c.id === careerEditId ? { id: c.id, year, month, content } : c,
           );
     setCareers(next);
     persist(CAREERS_STORAGE_KEY, next);
@@ -453,11 +463,14 @@ export default function PortfolioDetailPage({
     persist(ITEMS_STORAGE_KEY, next);
   };
 
-  // 연도 내림차순 정렬 (최신이 위)
+  // 연/월 내림차순 정렬 (최신이 위). month 없는 레거시 항목은 0 으로 취급.
   const sortedCareers = [...careers].sort((a, b) => {
     const ya = Number(a.year);
     const yb = Number(b.year);
     if (yb !== ya) return yb - ya;
+    const ma = Number(a.month ?? 0);
+    const mb = Number(b.month ?? 0);
+    if (mb !== ma) return mb - ma;
     return b.id - a.id;
   });
 
@@ -468,22 +481,45 @@ export default function PortfolioDetailPage({
       (it) => it.type !== 'study' && it.type !== 'research' && !it.draft,
     ),
   );
-  const researchItems = items.filter(
-    (it) => it.type === 'research' && !it.draft,
+  const researchItems = sortPortfolioItems(
+    items.filter((it) => it.type === 'research' && !it.draft),
   );
-  const studyItems = items.filter((it) => it.type === 'study' && !it.draft);
+  const studyItems = sortPortfolioItems(
+    items.filter((it) => it.type === 'study' && !it.draft),
+  );
   const featuredCount = portfolioItems.filter((it) => it.featured).length;
+  const featuredResearchCount = researchItems.filter((it) => it.featured).length;
+  const featuredStudyCount = studyItems.filter((it) => it.featured).length;
 
-  /** 대표 프로젝트 토글 — 최대 MAX_FEATURED 개 제한 */
+  /** 대표 토글 — 항목 종류별 최대 개수 제한.
+   *  project=4 / research=2 / study=2. 다른 type 은 토글 자체를 호출하지 않는다. */
   const toggleFeatured = (id: number) => {
     const target = items.find((it) => it.id === id);
     if (!target) return;
     const willBeFeatured = !target.featured;
-    if (willBeFeatured && featuredCount >= MAX_FEATURED) {
-      alert(
-        `대표 프로젝트는 최대 ${MAX_FEATURED}개까지만 지정할 수 있어요.`,
-      );
-      return;
+    if (willBeFeatured) {
+      const limit =
+        target.type === 'research'
+          ? MAX_FEATURED_RESEARCH
+          : target.type === 'study'
+            ? MAX_FEATURED_STUDY
+            : MAX_FEATURED;
+      const current =
+        target.type === 'research'
+          ? featuredResearchCount
+          : target.type === 'study'
+            ? featuredStudyCount
+            : featuredCount;
+      const label =
+        target.type === 'research'
+          ? '대표 연구'
+          : target.type === 'study'
+            ? '대표 스터디'
+            : '대표 프로젝트';
+      if (current >= limit) {
+        alert(`${label}는 최대 ${limit}개까지만 지정할 수 있어요.`);
+        return;
+      }
     }
     const next = items.map((it) =>
       it.id === id ? { ...it, featured: willBeFeatured } : it,
@@ -805,7 +841,7 @@ export default function PortfolioDetailPage({
                   />
                   <p className="flex-1 text-sm leading-relaxed text-gray-700">
                     <span className="font-semibold text-gray-900">
-                      {c.year}년
+                      {c.year}년{c.month ? ` ${Number(c.month)}월` : ''}
                     </span>{' '}
                     {c.content}
                   </p>
@@ -940,8 +976,20 @@ export default function PortfolioDetailPage({
 
       {/* ─────── 연구 — owner 만 편집 가능 ─────── */}
       <div className="mb-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">연구</h2>
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">연구</h2>
+            {isOwner && (
+              <p className="mt-1 text-xs leading-relaxed text-gray-500">
+                <span className="mr-0.5 text-amber-400">★</span>
+                표시로 대표 연구를 최대 {MAX_FEATURED_RESEARCH}개까지 지정할 수
+                있어요.{' '}
+                <span className="font-medium text-gray-700">
+                  ({featuredResearchCount}/{MAX_FEATURED_RESEARCH})
+                </span>
+              </p>
+            )}
+          </div>
           {isOwner && (
             <button
               type="button"
@@ -979,7 +1027,13 @@ export default function PortfolioDetailPage({
                   href={`/portfolio/${paramUserId}/items/${item.id}`}
                   className="card relative block transition-all hover:shadow-md"
                 >
-                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                  {isOwner && (
+                    <FeaturedStar
+                      featured={!!item.featured}
+                      onToggle={() => toggleFeatured(item.id)}
+                    />
+                  )}
+                  <div className="mb-2 flex flex-wrap items-center gap-2 pr-8">
                     <span
                       className={`rounded px-2 py-0.5 text-xs ${meta.bg} ${meta.text}`}
                     >
@@ -1025,8 +1079,20 @@ export default function PortfolioDetailPage({
 
       {/* ─────── 스터디 — owner 만 편집 가능 ─────── */}
       <div>
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">스터디</h2>
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">스터디</h2>
+            {isOwner && (
+              <p className="mt-1 text-xs leading-relaxed text-gray-500">
+                <span className="mr-0.5 text-amber-400">★</span>
+                표시로 대표 스터디를 최대 {MAX_FEATURED_STUDY}개까지 지정할 수
+                있어요.{' '}
+                <span className="font-medium text-gray-700">
+                  ({featuredStudyCount}/{MAX_FEATURED_STUDY})
+                </span>
+              </p>
+            )}
+          </div>
           {isOwner && (
             <button
               type="button"
@@ -1065,7 +1131,13 @@ export default function PortfolioDetailPage({
                   href={`/portfolio/${paramUserId}/items/${item.id}`}
                   className="card relative block transition-all hover:shadow-md"
                 >
-                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                  {isOwner && (
+                    <FeaturedStar
+                      featured={!!item.featured}
+                      onToggle={() => toggleFeatured(item.id)}
+                    />
+                  )}
+                  <div className="mb-2 flex flex-wrap items-center gap-2 pr-8">
                     <span
                       className={`rounded px-2 py-0.5 text-xs ${meta.bg} ${meta.text}`}
                     >
@@ -1342,7 +1414,7 @@ export default function PortfolioDetailPage({
           >
             <div className="flex items-center justify-between border-b border-gray-100 px-4 py-2">
               <h2 className="text-lg font-bold px-1 py-2 text-gray-900">
-                경력
+                대외 경험
               </h2>
               <button
                 onClick={() => setCareerModalOpen(false)}
@@ -1391,25 +1463,36 @@ export default function PortfolioDetailPage({
                 <div className="space-y-2 rounded-xl bg-gray-50/70 p-5">
                   <div>
                     <label className="mb-2 block text-sm font-medium text-gray-700">
-                      연도
+                      연/월
                     </label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={careerForm.year}
-                      onChange={(e) => {
-                        setCareerForm((f) => ({
-                          ...f,
-                          year: e.target.value
-                            .replace(/[^0-9]/g, '')
-                            .slice(0, 4),
-                        }));
-                        if (careerError) setCareerError('');
-                      }}
-                      placeholder="예: 2024"
-                      maxLength={4}
-                      className="w-32 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                    />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <DownSelect
+                        value={careerForm.year}
+                        onChange={(v) => {
+                          setCareerForm((f) => ({ ...f, year: v }));
+                          if (careerError) setCareerError('');
+                        }}
+                        options={YEAR_OPTIONS.map((y) => ({
+                          value: String(y),
+                          label: `${y}년`,
+                        }))}
+                        placeholder="연도"
+                        ariaLabel="연도"
+                      />
+                      <DownSelect
+                        value={careerForm.month ?? ''}
+                        onChange={(v) => {
+                          setCareerForm((f) => ({ ...f, month: v }));
+                          if (careerError) setCareerError('');
+                        }}
+                        options={MONTH_OPTIONS.map((m) => ({
+                          value: String(m).padStart(2, '0'),
+                          label: `${m}월`,
+                        }))}
+                        placeholder="월"
+                        ariaLabel="월"
+                      />
+                    </div>
                   </div>
 
                   <div>
@@ -1476,7 +1559,7 @@ export default function PortfolioDetailPage({
                           />
                           <p className="flex-1 text-sm leading-relaxed text-gray-700">
                             <span className="font-semibold text-gray-900">
-                              {c.year}년
+                              {c.year}년{c.month ? ` ${Number(c.month)}월` : ''}
                             </span>{' '}
                             {c.content}
                           </p>
