@@ -172,6 +172,17 @@ html {
   scrollbar-gutter: stable;
 }
 
+/* Tailwind v4 preflight는 <button>에 cursor를 주지 않아 OS 기본 커서가 노출됨.
+   v3까지의 클래식 웹 UX(pointer)로 복원 + disabled는 not-allowed. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+button:disabled,
+[role="button"][aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
 body {
   @apply bg-slate-50 text-gray-900 antialiased;
   font-family: var(--font-jakarta), var(--font-noto), 'Noto Sans KR', sans-serif;
