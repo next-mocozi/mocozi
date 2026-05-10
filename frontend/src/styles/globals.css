@@ -40,9 +40,14 @@
 .markdown-content li > p {
   margin: 0;
 }
-.markdown-content code:not(pre code) {
-  background-color: rgb(243 244 246);
-  padding: 0.125rem 0.25rem;
+/* inline code — vsDark 테마(코드 블록)와 통일.
+   isMine 풍선(파란 배경 + 흰 글자)에서 light bg + light text 충돌 회피용.
+   prism은 <pre> 안에 <code>가 아니라 <div>/<span>으로 렌더 → 일반 .markdown-content code
+   셀렉터는 항상 inline code만 매칭됨 (복잡한 :not() 불필요). */
+.markdown-content code {
+  background-color: rgb(30 30 30);
+  color: rgb(212 212 212);
+  padding: 0.125rem 0.3rem;
   border-radius: 0.25rem;
   font-size: 0.85em;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -51,6 +56,31 @@
   margin: 0.5rem 0;
   border-radius: 0.5rem;
   overflow-x: auto;
+  /* fallback: prism inline style이 어떤 사유로 적용 안 됐을 때 흰 배경 → 어두운 배경 보장.
+     prism의 style={vsDark}가 적용되면 inline > class라 이 값은 자동으로 override됨. */
+  background-color: rgb(30 30 30);
+  color: rgb(212 212 212);
+  /* Firefox — track는 vsDark bg에 녹임, thumb은 gray-500로 대비 */
+  scrollbar-width: thin;
+  scrollbar-color: rgb(107 114 128) rgb(30 30 30);
+}
+/* Webkit (Chrome/Safari) — vsDark 배경 위 어두운 기본 thumb이 거의 안 보이는 문제 해결.
+   thumb은 gray-500(평소) → gray-400(hover) 으로 명도 대비 확보. */
+.markdown-content pre::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+.markdown-content pre::-webkit-scrollbar-track {
+  background: rgb(30 30 30);
+  border-radius: 0 0 0.5rem 0.5rem;
+}
+.markdown-content pre::-webkit-scrollbar-thumb {
+  background: rgb(107 114 128);
+  border-radius: 0.25rem;
+  border: 2px solid rgb(30 30 30);
+}
+.markdown-content pre::-webkit-scrollbar-thumb:hover {
+  background: rgb(156 163 175);
 }
 .markdown-content blockquote {
   border-left: 3px solid rgb(203 213 225);
@@ -65,6 +95,38 @@
 }
 .markdown-content a:hover {
   color: rgb(67 56 202);
+}
+/* isMine 풍선(bg-primary-600 = #4f46e5 = indigo-600) 안에서는 link/del/blockquote 색
+   override — 기본 indigo-* 계열은 흰 글자와 hue가 거의 같아 분간 어려움.
+   cyan/sky 계열로 바꿔 풍선 흰 글자(text-white)와 hue 자체가 다르게 — 한눈에 구별. */
+.bg-primary-600 .markdown-content a {
+  color: rgb(103 232 249); /* cyan-300 */
+  text-decoration-thickness: 2px;
+}
+.bg-primary-600 .markdown-content a:hover {
+  color: rgb(165 243 252); /* cyan-200 */
+}
+/* 취소선 — 흰 글자와 톤 다르되 "약화된 텍스트" 느낌 유지하려고 light slate */
+.bg-primary-600 .markdown-content del {
+  color: rgb(203 213 225); /* slate-300 */
+}
+/* 인용 — 흰 글자보다 살짝 sky 톤 + 좌측 border 강조 */
+.bg-primary-600 .markdown-content blockquote {
+  border-left-color: rgb(125 211 252); /* sky-300 */
+  color: rgb(186 230 253); /* sky-200 */
+}
+/* 표 헤더(th) — 기본 gray-50 배경은 !isMine(gray-100 풍선)에선 살짝 밝은 톤이라 OK,
+   isMine(indigo-600 풍선 + 흰 글자)에선 거의 흰 배경 + 흰 글자라 헤더가 안 보임.
+   primary-700(더 어두운 indigo)로 override해 td(투명 = primary-600)와 구분. */
+.bg-primary-600 .markdown-content th {
+  background-color: rgb(67 56 202); /* primary-700 */
+  color: white;
+}
+/* 표 셀 border도 isMine에선 기본 gray-200이 indigo-600 위에서 약함 →
+   살짝 밝은 색으로 명도 대비 보강 */
+.bg-primary-600 .markdown-content th,
+.bg-primary-600 .markdown-content td {
+  border-color: rgb(165 180 252); /* indigo-300 */
 }
 .markdown-content table {
   border-collapse: collapse;
