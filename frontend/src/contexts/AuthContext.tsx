@@ -61,8 +61,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('accessToken');
-    if (token) {
+    const accessToken = localStorage.getItem('accessToken');
+    const refreshToken = localStorage.getItem('refreshToken');
+    if (accessToken || refreshToken) {
       api
         .get('/api/users/me')
         .then((res) => {
@@ -71,7 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(u);
         })
         .catch(() => {
-          localStorage.removeItem('accessToken');
+          // 토큰 정리는 api.ts 인터셉터가 담당
         })
         .finally(() => setLoading(false));
     } else {

@@ -14,30 +14,24 @@ import { UpdatePortfolioDto } from './dto/update-portfolio.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
-/** 포트폴리오 컨트롤러 - 포트폴리오 CRUD API */
 @Controller('portfolios')
+@UseGuards(JwtAuthGuard)
 export class PortfolioController {
   constructor(private readonly portfolioService: PortfolioService) {}
 
-  /** GET /portfolios/me - 내 포트폴리오 조회 */
-  @UseGuards(JwtAuthGuard)
+  /** GET /portfolios/me */
   @Get('me')
   getMyPortfolio(@CurrentUser() user: { id: string }) {
     return this.portfolioService.getMyPortfolio(user.id);
   }
 
-  /** POST /portfolios/items - 포트폴리오 아이템 추가 */
-  @UseGuards(JwtAuthGuard)
+  /** POST /portfolios/items */
   @Post('items')
-  createItem(
-    @CurrentUser() user: { id: string },
-    @Body() dto: CreatePortfolioDto,
-  ) {
+  createItem(@CurrentUser() user: { id: string }, @Body() dto: CreatePortfolioDto) {
     return this.portfolioService.createItem(user.id, dto);
   }
 
-  /** PUT /portfolios/items/:id - 포트폴리오 아이템 수정 */
-  @UseGuards(JwtAuthGuard)
+  /** PUT /portfolios/items/:id */
   @Put('items/:id')
   updateItem(
     @CurrentUser() user: { id: string },
@@ -47,8 +41,7 @@ export class PortfolioController {
     return this.portfolioService.updateItem(user.id, id, dto);
   }
 
-  /** DELETE /portfolios/items/:id - 포트폴리오 아이템 삭제 */
-  @UseGuards(JwtAuthGuard)
+  /** DELETE /portfolios/items/:id */
   @Delete('items/:id')
   deleteItem(@CurrentUser() user: { id: string }, @Param('id') id: string) {
     return this.portfolioService.deleteItem(user.id, id);
