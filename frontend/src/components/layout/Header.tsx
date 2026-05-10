@@ -1,20 +1,25 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useChatNotifications } from '@/providers/SocketProvider';
 
 /** 공통 헤더 - 네비게이션 바 */
 export default function Header() {
-  const { isAuthenticated, loading, logout } = useAuth();
+  const { user, isAuthenticated, loading, logout } = useAuth();
   const { totalUnread } = useChatNotifications();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);  // 사이드바 열림/닫힘 상태 (true = 열림)
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement | null>(null);
 
-  // (A) ESC 키로 사이드바 닫기
+  // (A) ESC 키로 사이드바/프로필 메뉴 닫기
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsSidebarOpen(false);
+      if (e.key === 'Escape') {
+        setIsSidebarOpen(false);
+        setIsProfileMenuOpen(false);
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -36,6 +41,23 @@ export default function Header() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // (D) 프로필 메뉴 바깥 클릭 시 닫기
+  useEffect(() => {
+    if (!isProfileMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        profileMenuRef.current &&
+        !profileMenuRef.current.contains(e.target as Node)
+      ) {
+        setIsProfileMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isProfileMenuOpen]);
+
+  const initial = user?.name?.trim().charAt(0).toUpperCase() ?? '?';
 
   return (
     <header className="sticky top-0 z-50 border-b border-gray-200 bg-white">
@@ -87,14 +109,67 @@ export default function Header() {
         {/* 인증 버튼 — loading 끝난 뒤에만 렌더 (서버/클라 mismatch 방지) */}
         <div className="flex items-center gap-3">
           {!loading && isAuthenticated && (
-            // 로그인 상태: 프로필/로그아웃은 데스크톱에만 (모바일은 사이드바에 있음)
-            <div className="hidden items-center gap-3 md:flex">
-              <Link href="/profile" className="btn-secondary text-sm">
-                프로필
-              </Link>
-              <button onClick={logout} className="btn-secondary text-sm">
-                로그아웃
+            // 로그인 상태: 프로필 아바타 드롭다운은 데스크톱에만 (모바일은 사이드바에 있음)
+            <div
+              ref={profileMenuRef}
+              className="relative hidden items-center md:flex"
+            >
+              <button
+                type="button"
+                onClick={() => setIsProfileMenuOpen((v) => !v)}
+                className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-primary-100 text-sm font-semibold text-primary-700 ring-1 ring-inset ring-primary-200 transition hover:bg-primary-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                aria-label="프로필 메뉴 열기"
+                aria-haspopup="menu"
+                aria-expanded={isProfileMenuOpen}
+              >
+                {user?.profileImage ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={user.profileImage}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  initial
+                )}
               </button>
+
+              {isProfileMenuOpen && (
+                <div
+                  role="menu"
+                  className="absolute right-0 top-full z-50 mt-2 w-44 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg"
+                >
+                  {user && (
+                    <div className="border-b border-gray-100 px-4 py-3">
+                      <p className="truncate text-sm font-medium text-gray-900">
+                        {user.name}
+                      </p>
+                      <p className="truncate text-xs text-gray-500">
+                        {user.email}
+                      </p>
+                    </div>
+                  )}
+                  <Link
+                    href="/profile"
+                    role="menuitem"
+                    onClick={() => setIsProfileMenuOpen(false)}
+                    className="block px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50 hover:text-primary-600"
+                  >
+                    프로필
+                  </Link>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      logout();
+                    }}
+                    className="block w-full px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 hover:text-primary-600"
+                  >
+                    로그아웃
+                  </button>
+                </div>
+              )}
             </div>
           )}
           {!loading && !isAuthenticated && (

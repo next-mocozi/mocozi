@@ -16,6 +16,7 @@ export interface AuthUser {
   skills: string[];
   roles: string[];
   careerSummary: string | null;
+  profileImage: string | null;
 }
 
 interface AuthContextType {
