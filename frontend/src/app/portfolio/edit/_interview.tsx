@@ -4,6 +4,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, Dispatch, ReactNode, SetStateAction } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { DownSelect, getMyPortfolioPath, type PortfolioItem } from '../_lib';
+import {
+  syncItemToBackend,
+  deleteItemFromBackend,
+} from '@/lib/portfolio-mapper';
 
 // ─────── Storage keys ───────
 const ITEMS_STORAGE_KEY = 'mock_portfolio_items';
@@ -1070,6 +1074,8 @@ export default function ProjectInterview() {
         localStorage.setItem(DETAILS_STORAGE_KEY, JSON.stringify(map));
       }
       setDraftsList((prev) => prev.filter((it) => it.id !== id));
+      // 매핑 정리 + 혹시 백엔드에 올라간 경우 삭제 (없으면 no-op)
+      void deleteItemFromBackend(id);
     } catch {
       // 무시
     }
@@ -1163,6 +1169,9 @@ export default function ProjectInterview() {
           it.id === projectId ? { ...it, draft: false } : it,
         );
         localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(nextList));
+        // 최종 저장 시점에만 백엔드 동기화 (auto-save 단계에선 호출 X)
+        const finalItem = nextList.find((it) => it.id === projectId);
+        if (finalItem) void syncItemToBackend(finalItem);
       } catch {
         // 무시
       }

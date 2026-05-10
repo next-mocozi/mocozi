@@ -1,4 +1,10 @@
-import { IsString, IsArray, IsEnum, IsOptional } from 'class-validator';
+import {
+  IsString,
+  IsArray,
+  IsEnum,
+  IsOptional,
+  IsBoolean,
+} from 'class-validator';
 import { PortfolioItemType } from './create-portfolio.dto';
 
 /** 포트폴리오 아이템 수정 DTO */
@@ -36,4 +42,29 @@ export class UpdatePortfolioDto {
   @IsArray()
   @IsString({ each: true })
   tags?: string[];
+
+  // ─── 확장 필드 ─────────────────────────────
+
+  @IsOptional()
+  @IsString()
+  summary?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  featured?: boolean;
+
+  @IsOptional()
+  @IsString()
+  thumbnail?: string;
+
+  @IsOptional()
+  @IsString()
+  period?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  current?: boolean;
+
+  @IsOptional()
+  details?: unknown;
 }

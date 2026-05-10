@@ -11,6 +11,10 @@ import {
   type PortfolioItem,
   type PortfolioItemType,
 } from '../_lib';
+import {
+  syncItemToBackend,
+  deleteItemFromBackend,
+} from '@/lib/portfolio-mapper';
 import ProjectInterview from './_interview';
 import ResearchForm from './_research';
 import StudyForm from './_study';
@@ -170,20 +174,19 @@ function SimpleForm() {
       setTitleError('제목을 입력해주세요.');
       return;
     }
-    // TODO: POST/PUT /api/portfolios 호출 (현재는 mock 저장)
+    const payload: PortfolioItem = {
+      id: isEdit && editId !== null ? editId : Date.now(),
+      type,
+      title: title.trim(),
+      description: description.trim(),
+      period: period.trim(),
+      current,
+      domain: domain.trim() || undefined,
+      tags,
+    };
     try {
       const raw = localStorage.getItem(ITEMS_STORAGE_KEY);
       const list: PortfolioItem[] = raw ? JSON.parse(raw) : DEFAULT_ITEMS;
-      const payload: PortfolioItem = {
-        id: isEdit && editId !== null ? editId : Date.now(),
-        type,
-        title: title.trim(),
-        description: description.trim(),
-        period: period.trim(),
-        current,
-        domain: domain.trim() || undefined,
-        tags,
-      };
       const next = isEdit
         ? list.map((it) => (it.id === editId ? payload : it))
         : [...list, payload];
@@ -191,12 +194,14 @@ function SimpleForm() {
     } catch {
       // 저장 실패해도 이동은 진행
     }
+    void syncItemToBackend(payload);
     router.push(getMyPortfolioPath());
   };
 
   const handleDelete = () => {
     if (!isEdit || editId === null) return;
     if (!confirm('이 포트폴리오 항목을 삭제하시겠어요?')) return;
+    const deletedId = editId;
     try {
       const raw = localStorage.getItem(ITEMS_STORAGE_KEY);
       const list: PortfolioItem[] = raw ? JSON.parse(raw) : DEFAULT_ITEMS;
@@ -205,6 +210,7 @@ function SimpleForm() {
     } catch {
       // 삭제 실패해도 이동은 진행
     }
+    void deleteItemFromBackend(deletedId);
     router.push(getMyPortfolioPath());
   };
 

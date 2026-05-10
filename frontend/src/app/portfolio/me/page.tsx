@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { useMyPortfolioStatus } from '@/hooks/useMyPortfolioStatus';
 import { buildOwnerFeedPosts } from '@/lib/feed/buildOwnerFeed';
+import { hydratePortfolioFromBackend } from '@/lib/portfolio-mapper';
 import type { FeedPost } from '@/lib/feed/types';
 import PortfolioSegmentedNav from '@/components/portfolio/PortfolioSegmentedNav';
 import FeedPostCard from '@/components/portfolio/FeedPostCard';
@@ -43,6 +44,13 @@ export default function MyFeedPage() {
       router.replace('/portfolio/onboarding');
     }
   }, [loading, status, user, router]);
+
+  // 백엔드에서 내 포트폴리오 가져와 localStorage와 머지 (다른 기기/세션 복원).
+  // 인증된 사용자에 한해 1회 호출, 실패해도 localStorage 기반 동작은 유지.
+  useEffect(() => {
+    if (!user || loading) return;
+    void hydratePortfolioFromBackend();
+  }, [user, loading]);
 
   // 본인 게시물 — 비공개 여부와 무관하게 표시. isOwnerPrivate 플래그로
   // 카드/패널에 "공개로 전환하면 노출됨" 힌트를 표시할지 결정한다.

@@ -1,4 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePortfolioDto } from './dto/create-portfolio.dto';
 import { UpdatePortfolioDto } from './dto/update-portfolio.dto';
@@ -29,10 +30,14 @@ export class PortfolioService {
   async createItem(userId: string, dto: CreatePortfolioDto) {
     const portfolio = await this.getMyPortfolio(userId);
 
+    const { details, ...rest } = dto;
     return this.prisma.portfolioItem.create({
       data: {
         portfolioId: portfolio.id,
-        ...dto,
+        ...rest,
+        ...(details !== undefined
+          ? { details: details as Prisma.InputJsonValue }
+          : {}),
       },
     });
   }
@@ -52,9 +57,15 @@ export class PortfolioService {
       throw new ForbiddenException('본인의 포트폴리오 아이템만 수정할 수 있습니다.');
     }
 
+    const { details, ...rest } = dto;
     return this.prisma.portfolioItem.update({
       where: { id: itemId },
-      data: dto,
+      data: {
+        ...rest,
+        ...(details !== undefined
+          ? { details: details as Prisma.InputJsonValue }
+          : {}),
+      },
     });
   }
 

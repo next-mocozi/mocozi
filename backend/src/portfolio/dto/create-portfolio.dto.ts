@@ -1,9 +1,17 @@
-import { IsString, IsArray, IsEnum, IsNotEmpty } from 'class-validator';
+import {
+  IsString,
+  IsArray,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsBoolean,
+} from 'class-validator';
 
 /** 포트폴리오 아이템 유형 */
 export enum PortfolioItemType {
   PROJECT = 'PROJECT',
   RESEARCH = 'RESEARCH',
+  STUDY = 'STUDY',
   ACTIVITY = 'ACTIVITY',
   ETC = 'ETC',
 }
@@ -48,4 +56,35 @@ export class CreatePortfolioDto {
   @IsArray()
   @IsString({ each: true })
   tags: string[];
+
+  // ─── 확장 필드 (옵셔널) ─────────────────────────────
+
+  /** 한 줄 요약 (피드 노출용) */
+  @IsOptional()
+  @IsString()
+  summary?: string;
+
+  /** 대표(featured) 여부 */
+  @IsOptional()
+  @IsBoolean()
+  featured?: boolean;
+
+  /** 썸네일 이미지 URL/Data URL */
+  @IsOptional()
+  @IsString()
+  thumbnail?: string;
+
+  /** 표시용 기간 문자열 (예: "2024.03 - 2024.07") */
+  @IsOptional()
+  @IsString()
+  period?: string;
+
+  /** 진행중 여부 */
+  @IsOptional()
+  @IsBoolean()
+  current?: boolean;
+
+  /** type별 상세 데이터 (인터뷰 답변, 에셋 등) — 자유 형식 JSON */
+  @IsOptional()
+  details?: unknown;
 }

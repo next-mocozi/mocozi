@@ -4,6 +4,10 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { DownSelect, getMyPortfolioPath, type PortfolioItem } from '../_lib';
+import {
+  syncItemToBackend,
+  deleteItemFromBackend,
+} from '@/lib/portfolio-mapper';
 
 // ─────── Storage keys ───────
 const ITEMS_STORAGE_KEY = 'mock_portfolio_items';
@@ -225,12 +229,15 @@ export default function ResearchForm() {
     } catch {
       // 무시
     }
+    // 백엔드 동기화 (fire-and-forget — 실패해도 localStorage 보존)
+    void syncItemToBackend(item);
     router.push(getMyPortfolioPath());
   };
 
   const handleDelete = () => {
     if (!isEdit || editId === null) return;
     if (!confirm('이 연구 항목을 삭제하시겠어요?')) return;
+    const deletedId = editId;
     try {
       const itemsRaw = localStorage.getItem(ITEMS_STORAGE_KEY);
       const list: PortfolioItem[] = itemsRaw ? JSON.parse(itemsRaw) : [];
@@ -248,6 +255,8 @@ export default function ResearchForm() {
     } catch {
       // 무시
     }
+    // 백엔드 삭제 동기화
+    void deleteItemFromBackend(deletedId);
     router.push(getMyPortfolioPath());
   };
 

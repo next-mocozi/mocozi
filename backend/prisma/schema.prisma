@@ -197,6 +197,15 @@ model PortfolioItem {
   tags        String[]
   createdAt   DateTime          @default(now())
 
+  // 프론트 카드 표시용 추가 필드 (확장)
+  summary     String?
+  featured    Boolean           @default(false)
+  thumbnail   String?
+  period      String?
+  current     Boolean           @default(false)
+  details     Json?             // 인터뷰 답변/에셋 등 type별 상세 데이터
+  updatedAt   DateTime          @updatedAt @default(now())
+
   portfolio Portfolio @relation(fields: [portfolioId], references: [id])
 
   @@map("portfolio_items")
@@ -205,6 +214,7 @@ model PortfolioItem {
 enum PortfolioItemType {
   PROJECT
   RESEARCH
+  STUDY
   ACTIVITY
   ETC
 }
