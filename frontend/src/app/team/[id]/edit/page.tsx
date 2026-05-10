@@ -216,9 +216,9 @@ export default function EditTeamPage({
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
       {/* 페이지 헤더 */}
-      <div className="mb-8">
+      <div className="mb-6 sm:mb-8">
         <Link
           href={`/team/${id}`}
           className="mb-3 inline-flex items-center gap-1.5 text-sm text-slate-400 transition-colors hover:text-slate-700"
@@ -228,7 +228,7 @@ export default function EditTeamPage({
           </svg>
           팀 상세로
         </Link>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">팀 정보 수정</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl md:text-4xl">팀 정보 수정</h1>
         <p className="mt-1 text-sm text-slate-400">변경한 내용은 즉시 반영됩니다.</p>
       </div>
 
@@ -252,13 +252,13 @@ export default function EditTeamPage({
 
             <div>
               <FieldLabel required>팀 유형</FieldLabel>
-              <div className="inline-flex rounded-2xl border border-slate-200 bg-slate-100 p-1 gap-1">
+              <div className="grid grid-cols-2 gap-1 rounded-2xl border border-slate-200 bg-slate-100 p-1 sm:inline-flex">
                 {TEAM_TYPE_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
                     type="button"
                     onClick={() => setTeamType(opt.value)}
-                    className={`rounded-xl px-3.5 py-2 text-sm font-medium transition-all ${
+                    className={`whitespace-nowrap rounded-xl px-3.5 py-2 text-sm font-medium transition-all ${
                       teamType === opt.value
                         ? 'bg-white text-indigo-700 shadow-sm'
                         : 'text-slate-500 hover:text-slate-700'

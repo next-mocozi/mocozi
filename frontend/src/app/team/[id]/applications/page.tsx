@@ -92,7 +92,7 @@ export default function ApplicationsPage({
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
       <Link
         href={`/team/${id}`}
         className="mb-6 inline-flex items-center gap-1.5 text-sm text-slate-400 transition-colors hover:text-slate-700"
@@ -104,7 +104,7 @@ export default function ApplicationsPage({
       </Link>
 
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-900">지원자 목록</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl md:text-4xl">지원자 목록</h1>
         <span className="rounded-full bg-indigo-50 px-3 py-1 text-sm font-medium text-indigo-600">
           대기 {pending.length}명
         </span>
