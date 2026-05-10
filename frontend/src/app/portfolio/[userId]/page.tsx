@@ -6,6 +6,7 @@ import { use, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { findMockFeedUser, type FeedUser } from '@/lib/mock/portfolioFeed';
 import { notifyPortfolioChanged } from '@/hooks/useMyPortfolioStatus';
+import { updateMyMeta } from '@/lib/portfolio-api';
 import PortfolioSegmentedNav from '@/components/portfolio/PortfolioSegmentedNav';
 import {
   PlatformIcon,
@@ -210,9 +211,17 @@ export default function PortfolioDetailPage({
     }
     try {
       const i = localStorage.getItem(INTRO_STORAGE_KEY);
-      if (i !== null) {
-        setIntroSaved(i);
-        setIntroDraft(i);
+      // localStorage 가 reconcileMockOwner 등으로 정리됐을 때를 대비해 user.bio 폴백.
+      // (다른 계정으로 로그인했다 돌아오면 mock_* 가 정리되어 자기소개가 비어보이는 문제 방지)
+      const fallback = user?.bio ?? '';
+      const value = i && i.trim().length > 0 ? i : fallback;
+      if (value) {
+        setIntroSaved(value);
+        setIntroDraft(value);
+        // localStorage 가 비어있고 backend bio가 있으면 채워두기 (다음 진입 시 hot path)
+        if ((i === null || i.trim().length === 0) && fallback) {
+          localStorage.setItem(INTRO_STORAGE_KEY, fallback);
+        }
       }
     } catch {
       // 기본값 유지
@@ -294,6 +303,8 @@ export default function PortfolioDetailPage({
     persist(VISIBILITY_STORAGE_KEY, v);
     notifyPortfolioChanged();
     setSettingsOpen(false);
+    // 백엔드 동기화 (실패해도 localStorage로 폴백)
+    void updateMyMeta({ isPublic: v === 'public' }).catch(() => {});
   };
 
   // ───────── 자기소개 ─────────

@@ -36,6 +36,8 @@ export type BackendPortfolioItem = {
 export type BackendPortfolio = {
   id: string;
   userId: string;
+  isPublic?: boolean;
+  firstPostAt?: string | null;
   items: BackendPortfolioItem[];
 };
 
@@ -89,4 +91,13 @@ export async function updateItem(
 
 export async function deleteItem(id: string): Promise<void> {
   await api.delete(`/api/portfolios/items/${id}`);
+}
+
+/** 메타 부분 수정 — isPublic, firstPostAt */
+export async function updateMyMeta(payload: {
+  isPublic?: boolean;
+  firstPostAt?: string; // ISO string
+}): Promise<BackendPortfolio> {
+  const res = await api.patch('/api/portfolios/me', payload);
+  return unwrap<BackendPortfolio>(res);
 }

@@ -63,8 +63,14 @@ export function useMyPortfolioStatus(): {
   if (!user) return { status: 'unauthenticated', visibility: null, refresh };
   if (!snapshot) return { status: 'loading', visibility: null, refresh };
 
+  // 자기소개는 localStorage(intro) 또는 백엔드(user.bio) 둘 중 하나라도 있으면 인정.
+  // 다른 기기/브라우저에서 로그인해도 user.bio가 백엔드에 있으면 자기소개는 작성된 것으로 판단.
+  const introFilled =
+    snapshot.introFilled || (user.bio?.trim().length ?? 0) > 0;
+  // skills는 백엔드(user.skills)가 진실의 원천. 1개 이상 있어야 onboarding 완료로 인정.
+  // bio만 있고 skills가 비어있으면 (예: /profile/edit 에서 bio 만 채운 경우) onboarding 으로.
   const skillsFilled = (user.skills?.length ?? 0) >= 1;
-  const written = snapshot.introFilled && skillsFilled;
+  const written = introFilled && skillsFilled;
   if (!written) return { status: 'unwritten', visibility: null, refresh };
   return {
     status: snapshot.visibility,

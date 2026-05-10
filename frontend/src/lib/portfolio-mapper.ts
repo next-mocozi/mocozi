@@ -8,7 +8,11 @@ import type {
   PortfolioItem,
   PortfolioItemType,
 } from '@/app/portfolio/_lib';
-import { ITEMS_STORAGE_KEY } from '@/app/portfolio/_lib';
+import {
+  ITEMS_STORAGE_KEY,
+  VISIBILITY_STORAGE_KEY,
+  FIRST_POST_STORAGE_KEY,
+} from '@/app/portfolio/_lib';
 import {
   createItem as apiCreateItem,
   updateItem as apiUpdateItem,
@@ -205,6 +209,21 @@ export async function hydratePortfolioFromBackend(): Promise<void> {
     if (toAdd.length > 0) {
       const merged = [...localList, ...toAdd];
       localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(merged));
+    }
+
+    // 메타(visibility, firstPostAt)도 백엔드 → localStorage 머지.
+    // 다른 기기/세션에서 로그인 시 백엔드 값으로 정정.
+    if (typeof remote.isPublic === 'boolean') {
+      localStorage.setItem(
+        VISIBILITY_STORAGE_KEY,
+        remote.isPublic ? 'public' : 'private',
+      );
+    }
+    if (remote.firstPostAt) {
+      const ts = new Date(remote.firstPostAt).getTime();
+      if (!Number.isNaN(ts)) {
+        localStorage.setItem(FIRST_POST_STORAGE_KEY, String(ts));
+      }
     }
   } catch (err) {
     if (process.env.NODE_ENV !== 'production') {

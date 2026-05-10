@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
+import { updateMyMeta } from '@/lib/portfolio-api';
 import { notifyPortfolioChanged } from '@/hooks/useMyPortfolioStatus';
 import {
   FIRST_POST_STORAGE_KEY,
@@ -130,16 +131,17 @@ export default function PortfolioOnboardingPage() {
     setError('');
     setSaving(true);
     try {
-      // 1) skills 백엔드 저장 (기존 사용자 정보 유지하며 skills 만 갱신)
+      // 1) 자기소개(bio) + skills 백엔드 저장. 기존엔 user.bio(옛 값)를 그대로 보내서
+      //    새로 입력한 intro 가 백엔드에 반영되지 않는 버그가 있었음 → trimmed 로 변경.
       await api.put('/api/users/me', {
         name: user.name,
         university: user.university,
         department: user.department,
         grade: user.grade,
-        bio: user.bio,
+        bio: trimmed,
         skills,
       });
-      // 2) 자기소개 + 소유자 저장 (visibility 는 모달에서 선택 후 저장)
+      // 2) localStorage 캐시 (빠른 읽기용) + 소유자 저장 (visibility 는 모달에서 선택 후 저장)
       localStorage.setItem(INTRO_STORAGE_KEY, trimmed);
       localStorage.setItem(OWNER_STORAGE_KEY, user.id);
       await refreshUser();
@@ -152,13 +154,23 @@ export default function PortfolioOnboardingPage() {
     }
   };
 
-  const handleConfirmVisibility = () => {
+  const handleConfirmVisibility = async () => {
     if (!user) return;
     setFinalizing(true);
     try {
+      const firstPostAt = new Date();
       localStorage.setItem(VISIBILITY_STORAGE_KEY, pickedVisibility);
       // 첫 게시물 timestamp — 메인 피드/내 피드의 ProfilePost 정렬 기준
-      localStorage.setItem(FIRST_POST_STORAGE_KEY, String(Date.now()));
+      localStorage.setItem(FIRST_POST_STORAGE_KEY, String(firstPostAt.getTime()));
+      // 백엔드에 visibility + firstPostAt 동기화 (실패해도 localStorage로 폴백)
+      try {
+        await updateMyMeta({
+          isPublic: pickedVisibility === 'public',
+          firstPostAt: firstPostAt.toISOString(),
+        });
+      } catch {
+        // 무시 — localStorage 만으로도 동작
+      }
       notifyPortfolioChanged();
       router.replace(`/portfolio/${user.id}`);
     } catch {

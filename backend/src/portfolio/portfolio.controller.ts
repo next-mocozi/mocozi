@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Body,
   Param,
@@ -11,6 +12,7 @@ import {
 import { PortfolioService } from './portfolio.service';
 import { CreatePortfolioDto } from './dto/create-portfolio.dto';
 import { UpdatePortfolioDto } from './dto/update-portfolio.dto';
+import { UpdatePortfolioMetaDto } from './dto/update-portfolio-meta.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
@@ -23,6 +25,15 @@ export class PortfolioController {
   @Get('me')
   getMyPortfolio(@CurrentUser() user: { id: string }) {
     return this.portfolioService.getMyPortfolio(user.id);
+  }
+
+  /** PATCH /portfolios/me - 내 포트폴리오 메타(isPublic, firstPostAt) 부분 수정 */
+  @Patch('me')
+  updateMyMeta(
+    @CurrentUser() user: { id: string },
+    @Body() dto: UpdatePortfolioMetaDto,
+  ) {
+    return this.portfolioService.updateMyMeta(user.id, dto);
   }
 
   /** POST /portfolios/items */

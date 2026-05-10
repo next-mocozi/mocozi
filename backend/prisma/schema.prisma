@@ -175,10 +175,14 @@ enum ScoutStatus {
 
 // 포트폴리오 모델
 model Portfolio {
-  id     String          @id @default(uuid())
-  userId String          @unique
-  user   User            @relation(fields: [userId], references: [id])
-  items  PortfolioItem[]
+  id          String          @id @default(uuid())
+  userId      String          @unique
+  // 공개/비공개 — true 면 메인 피드에 노출, false 면 owner 만 열람
+  isPublic    Boolean         @default(false)
+  // 첫 게시 시각 — 메인/내 피드 정렬 기준
+  firstPostAt DateTime?
+  user        User            @relation(fields: [userId], references: [id])
+  items       PortfolioItem[]
 
   @@map("portfolios")
 }

@@ -4,9 +4,13 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
-import { useMyPortfolioStatus } from '@/hooks/useMyPortfolioStatus';
+import {
+  useMyPortfolioStatus,
+  notifyPortfolioChanged,
+} from '@/hooks/useMyPortfolioStatus';
 import { buildOwnerFeedPosts } from '@/lib/feed/buildOwnerFeed';
 import { hydratePortfolioFromBackend } from '@/lib/portfolio-mapper';
+import { INTRO_STORAGE_KEY } from '@/app/portfolio/_lib';
 import type { FeedPost } from '@/lib/feed/types';
 import PortfolioSegmentedNav from '@/components/portfolio/PortfolioSegmentedNav';
 import FeedPostCard from '@/components/portfolio/FeedPostCard';
@@ -49,7 +53,19 @@ export default function MyFeedPage() {
   // 인증된 사용자에 한해 1회 호출, 실패해도 localStorage 기반 동작은 유지.
   useEffect(() => {
     if (!user || loading) return;
-    void hydratePortfolioFromBackend();
+    void hydratePortfolioFromBackend().then(() => {
+      // 자기소개(bio)도 백엔드 → localStorage 머지. localStorage 가 비어있을 때만 채움.
+      try {
+        const cached = localStorage.getItem(INTRO_STORAGE_KEY);
+        if ((!cached || cached.trim().length === 0) && user.bio?.trim()) {
+          localStorage.setItem(INTRO_STORAGE_KEY, user.bio);
+        }
+        // status 재계산 트리거
+        notifyPortfolioChanged();
+      } catch {
+        // 무시
+      }
+    });
   }, [user, loading]);
 
   // 본인 게시물 — 비공개 여부와 무관하게 표시. isOwnerPrivate 플래그로
