@@ -44,6 +44,16 @@ export function MessageMarkdown({ content }: { content: string }) {
               {children}
             </a>
           ),
+          // 표 — 풍선(max-w-[70%])보다 넓을 수 있어 그대로 두면 풍선을 뚫고 나감.
+          // overflow-x-auto wrapper로 감싸 풍선 안에서 가로 스크롤(슬라이딩)되게.
+          // -mx-4 px-4 — 스크롤 영역을 풍선 좌우 padding 끝까지 확장 (GitHub/Slack 스타일).
+          // 스크롤바는 wrapper 하단에 위치 — 표 직후에 붙음 (사용자 의도: 표↔스크롤바 가깝게).
+          // mb-6 — 스크롤바와 다음 줄 글자 사이 24px 여유 (글자 가림 확실히 방지).
+          table: ({ children, ...props }) => (
+            <div className="-mx-4 mb-6 mt-2 overflow-x-auto px-4">
+              <table {...props}>{children}</table>
+            </div>
+          ),
           code: ({ className, children, ...props }) => {
             const match = /language-(\w+)/.exec(className ?? '');
             if (!match) {
@@ -66,8 +76,16 @@ export function MessageMarkdown({ content }: { content: string }) {
                   getTokenProps,
                 }) => (
                   <pre
-                    className={`${cls} overflow-x-auto rounded-lg p-3 text-xs`}
-                    style={style}
+                    className={`${cls} overflow-x-auto rounded-lg text-xs`}
+                    // 패딩을 inline style로 — Tailwind class는 prism cls/style와 cascade 충돌 가능.
+                    // 인라인이 무조건 이김. 좌측 32px(눈에 띄게 넓게)·우 12px·상하 12px.
+                    style={{
+                      ...style,
+                      paddingTop: '12px',
+                      paddingBottom: '12px',
+                      paddingLeft: '32px',
+                      paddingRight: '12px',
+                    }}
                   >
                     {tokens.map((line, i) => {
                       const lineProps = getLineProps({ line });

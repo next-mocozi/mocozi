@@ -18,12 +18,7 @@ import type { ChatRoomWithMembers, RoomsPageResponse } from '@/types/chat';
  */
 const SHOW_NEW_CHAT_BUTTON = false;
 
-/**
- * Props
- *  - compact: 패널 열림 시 채팅방 좌측 컬럼 폭이 줄어들 때(w-72 → w-32) 사용.
- *    아바타 + 이름(짧게 truncate) + unread 빨간 점만 노출. 시간/preview/⋯메뉴 등 숨김.
- */
-export default function RoomList({ compact = false }: { compact?: boolean } = {}) {
+export default function RoomList() {
   const router = useRouter();
   const pathname = usePathname();
   const { user } = useAuth();
@@ -222,40 +217,27 @@ export default function RoomList({ compact = false }: { compact?: boolean } = {}
 
   return (
     <div className="flex h-full flex-col">
-      <div
-        className={`flex items-center justify-between border-b border-slate-200 py-3 ${
-          compact ? 'px-2' : 'px-4'
-        }`}
-      >
-        {compact ? (
-          // compact: 좁은 폭에서 텍스트 헤더는 안 어울림 — 작은 아이콘만
-          <h2 className="mx-auto text-base" aria-label={showingHidden ? '숨긴 채팅' : '채팅'}>
-            💬
-          </h2>
-        ) : (
-          <>
-            <h2 className="text-base font-bold">
-              {showingHidden ? '숨긴 채팅' : '채팅'}
-            </h2>
-            {SHOW_NEW_CHAT_BUTTON && !showingHidden && (
-              <button
-                type="button"
-                onClick={() => setNewChatOpen(true)}
-                className="btn-primary text-xs"
-              >
-                + 새 채팅
-              </button>
-            )}
-            {showingHidden && (
-              <button
-                type="button"
-                onClick={() => setShowingHidden(false)}
-                className="text-xs text-indigo-600 hover:underline"
-              >
-                ← 활성 채팅
-              </button>
-            )}
-          </>
+      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+        <h2 className="text-base font-bold">
+          {showingHidden ? '숨긴 채팅' : '채팅'}
+        </h2>
+        {SHOW_NEW_CHAT_BUTTON && !showingHidden && (
+          <button
+            type="button"
+            onClick={() => setNewChatOpen(true)}
+            className="btn-primary text-xs"
+          >
+            + 새 채팅
+          </button>
+        )}
+        {showingHidden && (
+          <button
+            type="button"
+            onClick={() => setShowingHidden(false)}
+            className="text-xs text-indigo-600 hover:underline"
+          >
+            ← 활성 채팅
+          </button>
         )}
       </div>
 
@@ -299,87 +281,65 @@ export default function RoomList({ compact = false }: { compact?: boolean } = {}
               >
                 <Link
                   href={`/chat/${room.id}`}
-                  className={`flex min-w-0 flex-1 items-center transition-colors ${
-                    compact ? 'gap-2 p-2' : 'gap-3 p-3'
-                  }`}
+                  className="flex min-w-0 flex-1 items-center gap-3 p-3 transition-colors"
                 >
-                  {/* 아바타 — compact 시 우상단 빨간 점으로 unread 표시 */}
-                  <div className="relative shrink-0">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-base text-indigo-600">
-                      {room.type === 'DIRECT' ? '👤' : '👥'}
-                    </div>
-                    {compact && unread > 0 && (
-                      <span
-                        className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white"
-                        aria-label={`안 읽은 메시지 ${unread}개`}
-                        title={`안 읽은 메시지 ${unread}개`}
-                      />
-                    )}
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-base text-indigo-600">
+                    {room.type === 'DIRECT' ? '👤' : '👥'}
                   </div>
-
-                  {compact ? (
-                    // compact: 이름만 짧게 truncate, 그 외 정보 모두 숨김
-                    <span className="min-w-0 flex-1 truncate text-xs font-medium text-slate-700">
-                      {displayName}
-                    </span>
-                  ) : (
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex min-w-0 items-center gap-1">
-                          <h3 className="truncate text-sm font-medium">{displayName}</h3>
-                          {mutedRoomIds.has(room.id) && (
-                            <span
-                              className="shrink-0 text-xs text-slate-400"
-                              aria-label="알림 꺼짐"
-                              title="알림 꺼짐"
-                            >
-                              🔕
-                            </span>
-                          )}
-                        </div>
-                        {time && (
-                          <span className="shrink-0 text-xs text-slate-500">{time}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex min-w-0 items-center gap-1">
+                        <h3 className="truncate text-sm font-medium">{displayName}</h3>
+                        {mutedRoomIds.has(room.id) && (
+                          <span
+                            className="shrink-0 text-xs text-slate-400"
+                            aria-label="알림 꺼짐"
+                            title="알림 꺼짐"
+                          >
+                            🔕
+                          </span>
                         )}
                       </div>
-                      <p className="truncate text-xs text-slate-500">
-                        {/* 미리보기 — 메시지 본문이 multi-line이거나 attachment 마커
-                            ([[link:...]])를 포함할 수 있어 한 줄로 요약 + 마커 제거 */}
-                        {sanitizePreview(room.lastMessage)}
-                      </p>
+                      {time && (
+                        <span className="shrink-0 text-xs text-slate-500">{time}</span>
+                      )}
                     </div>
-                  )}
-                  {!compact && unread > 0 && (
+                    <p className="truncate text-xs text-slate-500">
+                      {/* 미리보기 — 메시지 본문이 multi-line이거나 attachment 마커
+                          ([[link:...]])를 포함할 수 있어 한 줄로 요약 + 마커 제거 */}
+                      {sanitizePreview(room.lastMessage)}
+                    </p>
+                  </div>
+                  {unread > 0 && (
                     <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-indigo-600 px-1.5 text-xs text-white">
                       {unread}
                     </span>
                   )}
                 </Link>
 
-                {/* ⋯ 메뉴 버튼 — compact 시 숨김 (좁아서 어울리지 않고, 메뉴는 풀 모드에서만 노출) */}
-                {!compact && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setOpenMenuRoomId(menuOpen ? null : room.id);
-                    }}
-                    className="mr-2 rounded-full p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700"
-                    aria-label="채팅방 메뉴"
+                {/* ⋯ 메뉴 버튼 */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenMenuRoomId(menuOpen ? null : room.id);
+                  }}
+                  className="mr-2 rounded-full p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700"
+                  aria-label="채팅방 메뉴"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <circle cx="4" cy="10" r="1.5" />
-                      <circle cx="10" cy="10" r="1.5" />
-                      <circle cx="16" cy="10" r="1.5" />
-                    </svg>
-                  </button>
-                )}
+                    <circle cx="4" cy="10" r="1.5" />
+                    <circle cx="10" cy="10" r="1.5" />
+                    <circle cx="16" cy="10" r="1.5" />
+                  </svg>
+                </button>
 
-                {!compact && menuOpen && (
+                {menuOpen && (
                   <div
                     className="absolute right-2 top-12 z-10 w-36 rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
                     onClick={(e) => e.stopPropagation()}
@@ -458,8 +418,8 @@ export default function RoomList({ compact = false }: { compact?: boolean } = {}
         )}
       </div>
 
-      {/* 숨긴 채팅 보기 토글 (활성 목록 하단) — compact 시 숨김 (좁아서 텍스트 어색) */}
-      {!compact && !showingHidden && (
+      {/* 숨긴 채팅 보기 토글 (활성 목록 하단) */}
+      {!showingHidden && (
         <button
           type="button"
           onClick={() => setShowingHidden(true)}

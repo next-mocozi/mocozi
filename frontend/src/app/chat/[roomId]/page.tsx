@@ -811,36 +811,17 @@ export default function ChatRoomPage({ params }: PageProps) {
     }
   };
 
-  // 어떤 사이드 패널이든 열렸는지 — 채팅창/RoomList 레이아웃 shift 트리거
-  // (포트폴리오 page.tsx의 detailOpen 패턴 차용 — backdrop 없는 split-shift)
-  const anyPanelOpen = panelOpen || previewOpen;
-
   return (
-    <div className="flex h-[calc(100vh-11rem)] gap-4 overflow-hidden">
-      {/* 좌측 RoomList — lg(1024px) 이상 항상 visible. 패널 열리면 width 애니메이션
-          (w-72 → w-32). 우측 끝이 좌측으로 슬라이딩, 좌측 끝은 flex 좌측 anchor 유지.
-          compact prop으로 RoomList가 아바타 + 짧은 이름 + unread 빨간점만 노출. */}
-      <aside
-        className={`hidden h-full shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-300 ease-out lg:block ${
-          anyPanelOpen ? 'lg:w-32' : 'lg:w-72'
-        }`}
-      >
-        <RoomList compact={anyPanelOpen} />
+    <div className="relative h-[calc(100vh-11rem)] overflow-hidden">
+      {/* 좌측 사이드바 — 채팅창 가운데 정렬은 그대로 두고, 좌측 빈 공간에 absolute로 배치.
+          xl(1280px) 미만에선 채팅창과 겹쳐서 hidden 처리 (upstream develop 레이아웃 환원).
+          overflow-hidden 필수 — SlidingPanel이 closed 상태에서 translate-x-full로 우측 off-screen에
+          있는데, overflow-hidden 없으면 horizontal swipe/scroll로 그 panel이 노출됨 */}
+      <aside className="absolute right-[calc(50%+21rem)] top-0 hidden h-full w-72 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white xl:flex">
+        <RoomList />
       </aside>
 
-      {/* 채팅 zone — flex-1로 남은 폭 차지. 내부에 채팅창 가운데 정렬 + SlidingPanel(absolute right-0)
-          relative + overflow-hidden — SlidingPanel이 이 zone 내부에서 슬라이드 인. */}
-      <div className="relative flex-1 overflow-hidden">
-
-      {/* 채팅창 — 패널 열리면 좌측으로 translate (포트폴리오 패턴). RoomList가 이미 자기
-          자리 차지하므로 translate량은 이전(-56/-64)보다 작게: -32/-40 (8rem/10rem). */}
-      <div
-        className={`mx-auto flex h-full max-w-[40rem] flex-col overflow-hidden rounded-xl border border-gray-200 bg-white transition-transform duration-300 ease-out ${
-          anyPanelOpen
-            ? 'md:-translate-x-32 xl:-translate-x-40'
-            : 'translate-x-0'
-        }`}
-      >
+      <div className="mx-auto flex h-full max-w-[40rem] flex-col overflow-hidden rounded-xl border border-gray-200 bg-white">
       {/* 헤더 */}
       <div className="flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-3">
         <Link href="/chat" className="text-gray-500 hover:text-gray-700">
@@ -1080,7 +1061,6 @@ export default function ChatRoomPage({ params }: PageProps) {
           </p>
         )}
       </SlidingPanel>
-      </div>
     </div>
   );
 }
@@ -1272,7 +1252,7 @@ function MessageItem({
       )}
 
       <div
-        className={`max-w-[70%] rounded-2xl px-4 py-2 ${
+        className={`min-w-0 max-w-[70%] rounded-2xl px-4 py-2 ${
           isMine ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-900'
         } ${stateClass}`}
       >
