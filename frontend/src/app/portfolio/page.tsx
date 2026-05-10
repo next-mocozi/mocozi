@@ -3,9 +3,14 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useMyPortfolioStatus } from '@/hooks/useMyPortfolioStatus';
+import {
+  useMyPortfolioStatus,
+  notifyPortfolioChanged,
+} from '@/hooks/useMyPortfolioStatus';
 import { getMockFeedPosts } from '@/lib/mock/portfolioFeed';
 import { buildOwnerFeedPosts } from '@/lib/feed/buildOwnerFeed';
+import { hydratePortfolioFromBackend } from '@/lib/portfolio-mapper';
+import { INTRO_STORAGE_KEY } from '@/app/portfolio/_lib';
 import type { FeedPost } from '@/lib/feed/types';
 import PortfolioSegmentedNav from '@/components/portfolio/PortfolioSegmentedNav';
 import FeedPostCard from '@/components/portfolio/FeedPostCard';
@@ -47,6 +52,24 @@ export default function PortfolioFeedPage() {
       router.replace('/portfolio/onboarding');
     }
   }, [loading, status, user, router]);
+
+  // 백엔드에서 내 포트폴리오 hydrate (다른 기기/세션 복원).
+  // /portfolio/me 와 동일하게 메인 피드 진입 시점에도 실행해서,
+  // localStorage 비어있을 때(다른 계정 reconcile 직후 등) 본인 게시물이 누락되는 현상 방지.
+  useEffect(() => {
+    if (!user || loading) return;
+    void hydratePortfolioFromBackend().then(() => {
+      try {
+        const cached = localStorage.getItem(INTRO_STORAGE_KEY);
+        if ((!cached || cached.trim().length === 0) && user.bio?.trim()) {
+          localStorage.setItem(INTRO_STORAGE_KEY, user.bio);
+        }
+        notifyPortfolioChanged();
+      } catch {
+        // 무시
+      }
+    });
+  }, [user, loading]);
 
   // 피드 데이터: mock 사용자 게시물 + 본인이 공개 상태일 때 본인 게시물
   const posts: FeedPost[] = useMemo(() => {
