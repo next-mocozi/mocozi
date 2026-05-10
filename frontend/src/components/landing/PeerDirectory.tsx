@@ -148,6 +148,7 @@ const ROLE_FILTERS = [
 export default function PeerDirectory() {
   const [school, setSchool] = useState<string>('전체');
   const [role, setRole] = useState<string>('전체');
+  const [expanded, setExpanded] = useState<boolean>(false);
 
   const filtered = useMemo(
     () =>
@@ -164,7 +165,7 @@ export default function PeerDirectory() {
       <div className="mx-auto max-w-7xl px-4">
         <div className="mb-8 flex flex-col items-start justify-between gap-2 md:flex-row md:items-end">
           <div>
-            <h2 className="text-3xl font-bold text-gray-900">
+            <h2 className="text-2xl font-bold text-gray-900 sm:text-3xl md:text-4xl">
               지금 모코지에 있는 동료들
             </h2>
             <p className="mt-2 text-gray-600">
@@ -176,7 +177,8 @@ export default function PeerDirectory() {
           </span>
         </div>
 
-        <div className="mb-3 flex flex-wrap gap-2">
+        {/* 모바일: 가로 스크롤 (줄넘김 회피) + 우측 페이드 마스크로 스크롤 어포던스. md+: 기존 wrap */}
+        <div className="-mx-4 mb-3 flex gap-2 overflow-x-auto px-4 [mask-image:linear-gradient(to_right,black_85%,transparent)] [scrollbar-width:none] md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:[mask-image:none] [&::-webkit-scrollbar]:hidden">
           {SCHOOL_FILTERS.map((s) => (
             <FilterChip
               key={s}
@@ -186,7 +188,7 @@ export default function PeerDirectory() {
             />
           ))}
         </div>
-        <div className="mb-8 flex flex-wrap gap-2">
+        <div className="-mx-4 mb-8 flex gap-2 overflow-x-auto px-4 [mask-image:linear-gradient(to_right,black_85%,transparent)] [scrollbar-width:none] md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:[mask-image:none] [&::-webkit-scrollbar]:hidden">
           {ROLE_FILTERS.map((r) => (
             <FilterChip
               key={r}
@@ -203,8 +205,15 @@ export default function PeerDirectory() {
           </p>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filtered.map((p) => (
-              <article key={p.name} className="card flex flex-col gap-3">
+            {filtered.map((p, idx) => {
+              // 모바일: 4개 / sm-md: 8개 / lg+: 전체. expanded면 모두 노출.
+              let visibility = '';
+              if (!expanded) {
+                if (idx >= 8) visibility = 'hidden lg:flex';
+                else if (idx >= 4) visibility = 'hidden sm:flex';
+              }
+              return (
+              <article key={p.name} className={`card flex flex-col gap-3 ${visibility}`}>
                 <div className="flex items-start gap-3">
                   <div
                     className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-base font-semibold ${p.accent}`}
@@ -245,7 +254,22 @@ export default function PeerDirectory() {
                   ))}
                 </div>
               </article>
-            ))}
+              );
+            })}
+          </div>
+        )}
+
+        {!expanded && filtered.length > 4 && (
+          <div
+            className={`mt-6 flex justify-center ${filtered.length > 8 ? 'lg:hidden' : 'sm:hidden'}`}
+          >
+            <button
+              type="button"
+              onClick={() => setExpanded(true)}
+              className="rounded-full border border-gray-200 bg-white px-5 py-2 text-sm font-medium text-gray-700 transition-colors hover:border-gray-300 hover:bg-gray-50"
+            >
+              더 보기
+            </button>
           </div>
         )}
 
@@ -278,8 +302,8 @@ function FilterChip({
       onClick={onClick}
       className={
         active
-          ? 'rounded-full bg-primary-600 px-3.5 py-1.5 text-sm font-medium text-white shadow-sm'
-          : 'rounded-full border border-gray-200 bg-white px-3.5 py-1.5 text-sm text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50'
+          ? 'shrink-0 whitespace-nowrap rounded-full bg-primary-600 px-3.5 py-1.5 text-sm font-medium text-white shadow-sm'
+          : 'shrink-0 whitespace-nowrap rounded-full border border-gray-200 bg-white px-3.5 py-1.5 text-sm text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50'
       }
     >
       {label}

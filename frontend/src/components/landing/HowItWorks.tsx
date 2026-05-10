@@ -7,7 +7,7 @@ export default function HowItWorks() {
           <span className="inline-flex items-center gap-2 rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-medium text-primary-700">
             가입부터 첫 만남까지
           </span>
-          <h2 className="mt-4 text-3xl font-bold text-gray-900">
+          <h2 className="mt-4 text-2xl font-bold text-gray-900 sm:text-3xl md:text-4xl">
             모코지는 이렇게 흘러가요
           </h2>
           <p className="mt-2 text-gray-600">

@@ -47,38 +47,38 @@ export default function HomePage() {
   return (
     <div>
       {/* 히어로 섹션: 좌 카피+CTA / 우 학생 프로필 카드 스택 */}
-      <section className="bg-gradient-to-b from-primary-50 to-white py-16 md:py-24">
-        <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 md:grid-cols-2">
+      <section className="bg-gradient-to-b from-primary-50 to-white py-12 sm:py-16 md:py-24">
+        <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 sm:px-6 md:grid-cols-2 lg:px-8">
           {/* 좌측: 카피 + CTA */}
           <div className="text-center md:text-left">
             <span className="inline-flex items-center gap-2 rounded-full border border-primary-200 bg-white px-3 py-1 text-xs font-medium text-primary-700">
               <span className="h-1.5 w-1.5 rounded-full bg-primary-500" />
               .ac.kr 인증된 IT 대학생만
             </span>
-            <h1 className="mt-5 text-4xl font-bold leading-tight text-gray-900 md:text-5xl">
+            <h1 className="mt-5 text-3xl font-bold leading-tight text-gray-900 sm:text-4xl md:text-5xl">
               코만하게 팀을 찾으세요
               <br />
               <span className="text-primary-600">검증된 동료들과</span>
             </h1>
-            <p className="mt-5 text-lg text-gray-600">
+            <p className="mt-5 text-base text-gray-600 sm:text-lg">
               프로젝트, 해커톤, 스터디 — 학교 이메일로 인증된 IT 대학생들이
               기다리고 있어요.
             </p>
             <p className="mt-3 text-sm text-gray-500">
               지난 7일간 <span className="font-semibold text-gray-700">24개</span> 팀이 매칭됐어요
             </p>
-            <div className="mt-8 flex flex-wrap justify-center gap-3 md:justify-start">
-              <Link href="/register" className="btn-primary px-7 py-3 text-base">
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center md:justify-start">
+              <Link href="/register" className="btn-primary px-7 py-3 text-base text-center">
                 시작하기
               </Link>
-              <Link href="/recruit" className="btn-secondary px-7 py-3 text-base">
+              <Link href="/recruit" className="btn-secondary px-7 py-3 text-base text-center">
                 먼저 둘러보기
               </Link>
             </div>
           </div>
 
-          {/* 우측: 프로필 카드 스택 */}
-          <div className="relative mx-auto h-[420px] w-full max-w-md md:h-[460px]">
+          {/* 우측: 프로필 카드 스택 (md 이상에서만 노출) */}
+          <div className="relative mx-auto hidden h-[460px] w-full max-w-md md:block">
             <p className="absolute -top-2 right-0 text-[11px] font-medium uppercase tracking-wider text-gray-400">
               미리보기 예시
             </p>
@@ -134,8 +134,8 @@ export default function HomePage() {
 
       {/* CTA 섹션 */}
       <section className="bg-primary-600 py-16">
-        <div className="mx-auto max-w-7xl px-4 text-center">
-          <h2 className="text-3xl font-bold text-white">
+        <div className="mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
+          <h2 className="text-2xl font-bold text-white sm:text-3xl md:text-4xl">
             지금 바로 팀을 만들어보세요
           </h2>
           <p className="mt-4 text-primary-100">

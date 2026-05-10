@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePagination } from '@/hooks/usePagination';
 import { Pagination } from '@/components/ui/Pagination';
@@ -73,6 +73,17 @@ export default function RecruitListPage() {
   const [scoutError, setScoutError] = useState<string | null>(null);
   const [scoutSuccess, setScoutSuccess] = useState(false);
 
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+
+  // 바텀시트 열린 동안 body 스크롤 잠금
+  useEffect(() => {
+    if (!mobileFilterOpen) return;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileFilterOpen]);
+
   useEffect(() => {
     setFetchLoading(true);
     api
@@ -85,7 +96,10 @@ export default function RecruitListPage() {
       .finally(() => setFetchLoading(false));
   }, [user?.id]);
 
-  const applySearch = () => setAppliedKeyword(keyword.trim());
+  const applySearch = () => {
+    setAppliedKeyword(keyword.trim());
+    setMobileFilterOpen(false);
+  };
 
   const filteredProfiles = useMemo(() => {
     return profiles.filter((p) => {
@@ -113,6 +127,12 @@ export default function RecruitListPage() {
   const hasActiveFilters =
     appliedKeyword !== '' || appliedRoles.length > 0 || appliedSkills.length > 0 || appliedSameSchool;
 
+  const activeFilterCount =
+    (appliedKeyword ? 1 : 0) +
+    appliedRoles.length +
+    appliedSkills.length +
+    (appliedSameSchool ? 1 : 0);
+
   const { currentPage, setPage, totalPages, startIndex, endIndex } = usePagination({
     totalItems: filteredProfiles.length,
     pageSize: PAGE_SIZE,
@@ -123,8 +143,19 @@ export default function RecruitListPage() {
     [filteredProfiles, startIndex, endIndex],
   );
 
+  const initialFilterMount = useRef(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { setPage(1); }, [appliedKeyword, appliedRoles, appliedSkills, appliedSameSchool]);
+  useEffect(() => {
+    setPage(1);
+    if (initialFilterMount.current) {
+      initialFilterMount.current = false;
+      return;
+    }
+    // 필터 적용 시 페이지 상단으로 부드럽게 이동 (이미 상단이면 no-op)
+    if (typeof window !== 'undefined' && window.scrollY > 0) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [appliedKeyword, appliedRoles, appliedSkills, appliedSameSchool]);
 
   const openScoutModal = async (target: UserProfile) => {
     setScoutError(null);
@@ -162,121 +193,127 @@ export default function RecruitListPage() {
     setAppliedSameSchool(false);
   };
 
+  // 사이드바·바텀시트 공유 콘텐츠 (전체 초기화 버튼은 각 위치에서 별도 배치)
+  const filterControls = (
+    <>
+      {/* 검색 */}
+      <p className="mb-2 text-sm font-semibold text-slate-700">검색</p>
+      <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 transition-all focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100">
+        <svg className="h-4 w-4 flex-shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <input
+          type="text"
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') applySearch(); }}
+          placeholder="이름, 학과, 스킬"
+          className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-slate-400"
+        />
+        {keyword && (
+          <button
+            type="button"
+            onClick={() => { setKeyword(''); setAppliedKeyword(''); }}
+            className="text-slate-300 hover:text-slate-500"
+            aria-label="검색어 지우기"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={applySearch}
+        className="mt-2 w-full rounded-lg bg-indigo-600 py-1.5 text-xs font-medium text-white transition-colors hover:bg-indigo-700"
+      >
+        검색
+      </button>
+
+      {/* 같은 학교 */}
+      {isAuthenticated && (
+        <button
+          onClick={() => setAppliedSameSchool(!appliedSameSchool)}
+          className={`mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl border px-4 py-1.5 text-sm font-medium transition-all ${
+            appliedSameSchool
+              ? 'border-indigo-600 bg-indigo-600 text-white'
+              : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          🏫 같은 학교만 보기
+        </button>
+      )}
+
+      {/* 직군 */}
+      <p className="mb-2 mt-5 text-sm font-semibold text-slate-700">직군</p>
+      <div className="flex flex-wrap gap-1.5 rounded-xl border border-slate-100 bg-slate-50/50 p-2.5">
+        {ROLE_OPTIONS.map((role) => (
+          <button
+            key={role}
+            onClick={() => toggleItem(role, appliedRoles, setAppliedRoles)}
+            className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-all ${
+              appliedRoles.includes(role)
+                ? 'border-indigo-600 bg-indigo-600 text-white'
+                : 'border-indigo-200 text-indigo-600 hover:bg-indigo-50'
+            }`}
+          >
+            {role}
+          </button>
+        ))}
+      </div>
+
+      {/* 기술 스택 */}
+      <p className="mb-2 mt-5 text-sm font-semibold text-slate-700">기술 스택</p>
+      <input
+        type="text"
+        value={skillSearch}
+        onChange={(e) => setSkillSearch(e.target.value)}
+        placeholder="스킬 검색..."
+        className="mb-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm transition-all placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+      />
+      <div className="flex max-h-72 flex-col gap-3 overflow-y-auto rounded-xl border border-slate-100 p-2.5">
+        {SKILL_GROUPS.map(({ label, skills }) => {
+          const filtered = skills.filter((s) => s.toLowerCase().includes(skillSearch.toLowerCase()));
+          if (filtered.length === 0) return null;
+          return (
+            <div key={label}>
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-400">{label}</p>
+              <div className="flex flex-wrap gap-1">
+                {filtered.map((skill) => (
+                  <button
+                    key={skill}
+                    onClick={() => toggleItem(skill, appliedSkills, setAppliedSkills)}
+                    className={`rounded-full border px-2.5 py-1 text-xs transition-all ${
+                      appliedSkills.includes(skill)
+                        ? 'border-slate-700 bg-slate-700 text-white'
+                        : 'border-slate-200 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    {skill}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       {/* 상단 헤더 */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">팀원 찾기</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl md:text-4xl">팀원 찾기</h1>
         <p className="mt-0.5 text-sm text-slate-400">함께할 팀원을 찾아보세요</p>
       </div>
 
-      <div className="flex gap-6">
-        {/* 좌 사이드바 */}
-        <aside className="w-[280px] flex-shrink-0">
+      <div className="lg:flex lg:gap-6">
+        {/* 좌 사이드바 — lg 이상에서만 인라인 노출 (모바일은 바텀시트로) */}
+        <aside className="hidden w-[280px] flex-shrink-0 lg:block">
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            {/* 검색 */}
-            <p className="mb-2 text-sm font-semibold text-slate-700">검색</p>
-            <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 transition-all focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100">
-              <svg className="h-4 w-4 flex-shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <input
-                type="text"
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') applySearch(); }}
-                placeholder="이름, 학과, 스킬"
-                className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-slate-400"
-              />
-              {keyword && (
-                <button
-                  type="button"
-                  onClick={() => { setKeyword(''); setAppliedKeyword(''); }}
-                  className="text-slate-300 hover:text-slate-500"
-                  aria-label="검색어 지우기"
-                >
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={applySearch}
-              className="mt-2 w-full rounded-lg bg-indigo-600 py-1.5 text-xs font-medium text-white transition-colors hover:bg-indigo-700"
-            >
-              검색
-            </button>
-
-            {/* 같은 학교 */}
-            {isAuthenticated && (
-              <button
-                onClick={() => setAppliedSameSchool(!appliedSameSchool)}
-                className={`mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl border px-4 py-1.5 text-sm font-medium transition-all ${
-                  appliedSameSchool
-                    ? 'border-indigo-600 bg-indigo-600 text-white'
-                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                🏫 같은 학교만 보기
-              </button>
-            )}
-
-            {/* 직군 */}
-            <p className="mb-2 mt-5 text-sm font-semibold text-slate-700">직군</p>
-            <div className="flex flex-wrap gap-1.5 rounded-xl border border-slate-100 bg-slate-50/50 p-2.5">
-              {ROLE_OPTIONS.map((role) => (
-                <button
-                  key={role}
-                  onClick={() => toggleItem(role, appliedRoles, setAppliedRoles)}
-                  className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-all ${
-                    appliedRoles.includes(role)
-                      ? 'border-indigo-600 bg-indigo-600 text-white'
-                      : 'border-indigo-200 text-indigo-600 hover:bg-indigo-50'
-                  }`}
-                >
-                  {role}
-                </button>
-              ))}
-            </div>
-
-            {/* 기술 스택 */}
-            <p className="mb-2 mt-5 text-sm font-semibold text-slate-700">기술 스택</p>
-            <input
-              type="text"
-              value={skillSearch}
-              onChange={(e) => setSkillSearch(e.target.value)}
-              placeholder="스킬 검색..."
-              className="mb-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm transition-all placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-            />
-            <div className="flex max-h-72 flex-col gap-3 overflow-y-auto rounded-xl border border-slate-100 p-2.5">
-              {SKILL_GROUPS.map(({ label, skills }) => {
-                const filtered = skills.filter((s) => s.toLowerCase().includes(skillSearch.toLowerCase()));
-                if (filtered.length === 0) return null;
-                return (
-                  <div key={label}>
-                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-400">{label}</p>
-                    <div className="flex flex-wrap gap-1">
-                      {filtered.map((skill) => (
-                        <button
-                          key={skill}
-                          onClick={() => toggleItem(skill, appliedSkills, setAppliedSkills)}
-                          className={`rounded-full border px-2.5 py-1 text-xs transition-all ${
-                            appliedSkills.includes(skill)
-                              ? 'border-slate-700 bg-slate-700 text-white'
-                              : 'border-slate-200 text-slate-600 hover:bg-slate-100'
-                          }`}
-                        >
-                          {skill}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
+            {filterControls}
             {hasActiveFilters && (
               <button
                 onClick={clearAll}
@@ -290,7 +327,7 @@ export default function RecruitListPage() {
 
         {/* 우 메인 */}
         <main className="min-w-0 flex-1">
-          {/* 결과 수 + 활성 필터 칩 */}
+          {/* 결과 수 + 활성 필터 (모바일: 컴팩트 요약 / lg+: 개별 칩) */}
           <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
             <span className="text-slate-500">
               검색 결과 <span className="font-semibold text-indigo-600">{filteredProfiles.length}</span>명
@@ -298,47 +335,61 @@ export default function RecruitListPage() {
             {hasActiveFilters && (
               <>
                 <span className="text-slate-300">·</span>
-                {appliedKeyword && (
-                  <span className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">
-                    <span className="text-xs text-slate-400">키워드</span>
-                    {appliedKeyword}
-                    <button onClick={() => { setAppliedKeyword(''); setKeyword(''); }} className="text-slate-300 hover:text-slate-600" aria-label="키워드 제거">
-                      <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </span>
-                )}
-                {appliedSameSchool && (
-                  <span className="flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-indigo-700">
-                    🏫 같은 학교
-                    <button onClick={() => setAppliedSameSchool(false)} className="text-indigo-300 hover:text-indigo-600" aria-label="같은 학교 필터 제거">
-                      <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </span>
-                )}
-                {appliedRoles.map((role) => (
-                  <span key={role} className="flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-indigo-700">
-                    {role}
-                    <button onClick={() => setAppliedRoles(appliedRoles.filter((r) => r !== role))} className="text-indigo-300 hover:text-indigo-600" aria-label={`${role} 필터 제거`}>
-                      <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </span>
-                ))}
-                {appliedSkills.map((skill) => (
-                  <span key={skill} className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600">
-                    {skill}
-                    <button onClick={() => setAppliedSkills(appliedSkills.filter((s) => s !== skill))} className="text-slate-300 hover:text-slate-600" aria-label={`${skill} 필터 제거`}>
-                      <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </span>
-                ))}
+                {/* 모바일: 카운트 + 탭 시 바텀시트 */}
+                <button
+                  type="button"
+                  onClick={() => setMobileFilterOpen(true)}
+                  className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700 transition-colors hover:bg-indigo-100 lg:hidden"
+                >
+                  필터 {activeFilterCount}개
+                  <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {/* lg+: 개별 칩 (즉시 제거 가능) */}
+                <div className="hidden flex-wrap items-center gap-2 lg:flex">
+                  {appliedKeyword && (
+                    <span className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">
+                      <span className="text-xs text-slate-400">키워드</span>
+                      {appliedKeyword}
+                      <button onClick={() => { setAppliedKeyword(''); setKeyword(''); }} className="text-slate-300 hover:text-slate-600" aria-label="키워드 제거">
+                        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </span>
+                  )}
+                  {appliedSameSchool && (
+                    <span className="flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-indigo-700">
+                      🏫 같은 학교
+                      <button onClick={() => setAppliedSameSchool(false)} className="text-indigo-300 hover:text-indigo-600" aria-label="같은 학교 필터 제거">
+                        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </span>
+                  )}
+                  {appliedRoles.map((role) => (
+                    <span key={role} className="flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-indigo-700">
+                      {role}
+                      <button onClick={() => setAppliedRoles(appliedRoles.filter((r) => r !== role))} className="text-indigo-300 hover:text-indigo-600" aria-label={`${role} 필터 제거`}>
+                        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </span>
+                  ))}
+                  {appliedSkills.map((skill) => (
+                    <span key={skill} className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600">
+                      {skill}
+                      <button onClick={() => setAppliedSkills(appliedSkills.filter((s) => s !== skill))} className="text-slate-300 hover:text-slate-600" aria-label={`${skill} 필터 제거`}>
+                        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </span>
+                  ))}
+                </div>
               </>
             )}
           </div>
@@ -394,18 +445,18 @@ export default function RecruitListPage() {
                           person.name[0]
                         )}
                       </div>
-                      <div className="flex translate-y-[2px] gap-1.5">
+                      <div className="flex translate-y-[8px] gap-1.5">
                         {isAuthenticated && (
                           <button
                             onClick={() => openScoutModal(person)}
-                            className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 transition-all hover:border-slate-700 hover:bg-slate-700 hover:text-white"
+                            className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition-all hover:border-slate-700 hover:bg-slate-700 hover:text-white sm:px-2.5 sm:py-1 sm:text-xs"
                           >
                             스카우트
                           </button>
                         )}
                         <Link
                           href={`/profile/${person.id}`}
-                          className="rounded-lg border border-indigo-200 px-2.5 py-1 text-xs font-medium text-indigo-600 transition-all hover:bg-indigo-600 hover:text-white"
+                          className="rounded-lg border border-indigo-200 px-3 py-1.5 text-sm font-medium text-indigo-600 transition-all hover:bg-indigo-600 hover:text-white sm:px-2.5 sm:py-1 sm:text-xs"
                         >
                           프로필
                         </Link>
@@ -469,6 +520,81 @@ export default function RecruitListPage() {
             <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setPage} className="mt-8" />
           )}
         </main>
+      </div>
+
+      {/* 모바일 필터 — 플로팅 버튼 + 백드롭 + 바텀시트 */}
+      <button
+        type="button"
+        onClick={() => setMobileFilterOpen(true)}
+        className="fixed bottom-6 right-4 z-30 flex items-center gap-2 rounded-full bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-md shadow-indigo-200 transition-all hover:bg-indigo-700 hover:shadow-lg active:scale-95 lg:hidden"
+        aria-label="필터 열기"
+      >
+        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+        </svg>
+        필터
+        {activeFilterCount > 0 && (
+          <span className="ml-0.5 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white/20 px-1.5 text-[11px] font-bold">
+            {activeFilterCount}
+          </span>
+        )}
+      </button>
+
+      <div
+        onClick={() => setMobileFilterOpen(false)}
+        className={`fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity duration-300 lg:hidden ${
+          mobileFilterOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
+        }`}
+        aria-hidden="true"
+      />
+
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="필터"
+        className={`fixed inset-x-0 bottom-0 z-50 flex max-h-[85vh] flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl transition-transform duration-300 ease-out lg:hidden ${
+          mobileFilterOpen ? 'translate-y-0' : 'translate-y-full'
+        }`}
+      >
+        {/* 핸들 + 헤더 */}
+        <div className="flex flex-col items-center border-b border-slate-100 pb-3 pt-3">
+          <span className="h-1.5 w-10 rounded-full bg-slate-200" aria-hidden="true" />
+          <div className="mt-3 flex w-full items-center justify-between px-5">
+            <h2 className="text-base font-bold text-slate-900">필터</h2>
+            <button
+              type="button"
+              onClick={() => setMobileFilterOpen(false)}
+              className="rounded-full p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+              aria-label="필터 닫기"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* 시트 본문 */}
+        <div className="flex-1 overflow-y-auto px-5 py-4">{filterControls}</div>
+
+        {/* 시트 하단 액션 */}
+        <div className="flex gap-2 border-t border-slate-100 bg-white px-5 py-3">
+          <button
+            type="button"
+            onClick={clearAll}
+            disabled={!hasActiveFilters}
+            className="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50"
+          >
+            초기화
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileFilterOpen(false)}
+            className="flex-[2] rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700"
+          >
+            결과 보기 ({filteredProfiles.length}명)
+          </button>
+        </div>
       </div>
 
       {/* 스카우트 모달 */}
