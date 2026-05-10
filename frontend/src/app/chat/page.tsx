@@ -116,7 +116,7 @@ export default function ChatListPage() {
       <div
         className="
           mx-auto h-full max-w-[40rem] overflow-hidden rounded-xl
-          border border-gray-200 bg-white
+          border border-slate-200 bg-white
           xl:absolute xl:right-[calc(50%+21rem)] xl:top-0 xl:mx-0 xl:w-72 xl:max-w-none
         "
       >
@@ -127,18 +127,18 @@ export default function ChatListPage() {
       <div
         className="
           mx-auto hidden h-full max-w-[40rem] flex-col items-center justify-center
-          gap-4 overflow-hidden rounded-xl border border-gray-200 bg-white p-8 text-center
+          gap-4 overflow-hidden rounded-xl border border-slate-200 bg-white p-8 text-center
           xl:flex
         "
       >
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary-100 text-3xl">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-indigo-100 text-3xl">
           💬
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-gray-800">
+          <h2 className="text-lg font-semibold text-slate-800">
             채팅방을 선택하세요
           </h2>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-slate-500">
             왼쪽 목록에서 방을 선택하거나 새 채팅을 시작하세요.
           </p>
         </div>

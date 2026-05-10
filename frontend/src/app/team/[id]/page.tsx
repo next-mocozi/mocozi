@@ -166,7 +166,7 @@ export default function TeamDetailPage({
 
   if (notFound || !team) {
     return (
-      <div className="mx-auto flex min-h-[60vh] max-w-4xl flex-col items-center justify-center gap-4 px-4 py-8 text-center">
+      <div className="mx-auto flex min-h-[60vh] max-w-4xl flex-col items-center justify-center gap-4 px-4 py-8 text-center sm:px-6 lg:px-8">
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-3xl">
           🔍
         </div>
@@ -197,7 +197,7 @@ export default function TeamDetailPage({
   const applyBtn = applyButtonContent();
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
+    <div className="mx-auto max-w-5xl px-4 py-8 pb-28 sm:px-6 lg:px-8 lg:pb-8">
       <Link
         href="/team"
         className="mb-6 inline-flex items-center gap-1.5 text-sm text-slate-400 transition-colors hover:text-slate-700"
@@ -210,7 +210,7 @@ export default function TeamDetailPage({
 
       {/* 헤더 */}
       <div
-        className={`relative overflow-hidden rounded-3xl px-8 py-10 text-white shadow-lg ${
+        className={`relative overflow-hidden rounded-3xl px-6 py-8 text-white shadow-lg sm:px-8 sm:py-10 ${
           !team.isRecruiting
             ? 'bg-gradient-to-br from-slate-500 via-slate-600 to-slate-700'
             : 'bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-700'
@@ -237,7 +237,7 @@ export default function TeamDetailPage({
             </span>
           </div>
 
-          <h1 className="text-3xl font-bold tracking-tight">{team.name}</h1>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">{team.name}</h1>
           {team.description && (
             <p className="mt-2 text-white/75 text-sm leading-relaxed">{team.description}</p>
           )}
@@ -453,23 +453,44 @@ export default function TeamDetailPage({
             </div>
           )}
 
-          {/* 지원 버튼 — 채팅 양식 진입 (Phase A) */}
-          {applyBtn.disabled ? (
-            <button
-              disabled
-              className="w-full cursor-not-allowed rounded-xl bg-slate-100 py-3.5 text-sm font-semibold text-slate-400"
-            >
-              {applyBtn.label}
-            </button>
-          ) : (
-            <Link
-              href={`/chat?teamId=${team.id}&context=RECRUIT_TEAM`}
-              className="block w-full rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 py-3.5 text-center text-sm font-semibold text-white shadow-md shadow-indigo-200 transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-indigo-300"
-            >
-              {applyBtn.label}
-            </Link>
-          )}
+          {/* 지원 버튼 — 데스크톱은 사이드바, 모바일은 화면 하단 sticky 바로 분리 */}
+          <div className="hidden lg:block">
+            {applyBtn.disabled ? (
+              <button
+                disabled
+                className="w-full cursor-not-allowed rounded-xl bg-slate-100 py-3.5 text-sm font-semibold text-slate-400"
+              >
+                {applyBtn.label}
+              </button>
+            ) : (
+              <Link
+                href={`/chat?teamId=${team.id}&context=RECRUIT_TEAM`}
+                className="block w-full rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 py-3.5 text-center text-sm font-semibold text-white shadow-md shadow-indigo-200 transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-indigo-300"
+              >
+                {applyBtn.label}
+              </Link>
+            )}
+          </div>
         </div>
+      </div>
+
+      {/* 모바일 sticky 지원 CTA — lg 이상에선 사이드바 버튼이 대신함 */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-sm lg:hidden">
+        {applyBtn.disabled ? (
+          <button
+            disabled
+            className="w-full cursor-not-allowed rounded-xl bg-slate-100 py-3.5 text-sm font-semibold text-slate-400"
+          >
+            {applyBtn.label}
+          </button>
+        ) : (
+          <Link
+            href={`/chat?teamId=${team.id}&context=RECRUIT_TEAM`}
+            className="block w-full rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 py-3.5 text-center text-sm font-semibold text-white shadow-md shadow-indigo-200 transition-all hover:shadow-lg hover:shadow-indigo-300 active:scale-[0.99]"
+          >
+            {applyBtn.label}
+          </Link>
+        )}
       </div>
 
       {/* 지원 모달 */}
