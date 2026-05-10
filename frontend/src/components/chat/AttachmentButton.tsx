@@ -1,6 +1,13 @@
 'use client';
 
 import Link from 'next/link';
+import {
+  ExternalLinkIcon,
+  FolderIcon,
+  PaperclipIcon,
+  UserIcon,
+  UsersIcon,
+} from '@/components/icons/ChatIcons';
 import type { ParsedAttachment } from '@/lib/messageTemplate';
 
 interface AttachmentButtonProps {
@@ -34,7 +41,7 @@ export function AttachmentButton({ attachment, isMine }: AttachmentButtonProps) 
       `}
     >
       <span className="flex items-center gap-2">
-        <span className="text-base">{iconFor(attachment.type)}</span>
+        <IconFor type={attachment.type} className="h-4 w-4" />
         <span className="font-medium">{attachment.label}</span>
       </span>
       <svg
@@ -70,17 +77,23 @@ function resolveHref(a: ParsedAttachment): string {
   }
 }
 
-function iconFor(type: ParsedAttachment['type']): string {
+function IconFor({
+  type,
+  className,
+}: {
+  type: ParsedAttachment['type'];
+  className?: string;
+}) {
   switch (type) {
     case 'profile':
-      return '👤';
+      return <UserIcon className={className} />;
     case 'portfolio':
-      return '📁';
+      return <FolderIcon className={className} />;
     case 'team':
-      return '👥';
+      return <UsersIcon className={className} />;
     case 'external':
-      return '🔗';
+      return <ExternalLinkIcon className={className} />;
     default:
-      return '📎';
+      return <PaperclipIcon className={className} />;
   }
 }

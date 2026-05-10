@@ -72,7 +72,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(u);
         })
         .catch(() => {
-          // 토큰 정리는 api.ts 인터셉터가 담당
+          // 토큰 정리는 api.ts 인터셉터가 담당 (401 → refresh 시도 → 실패 시 로그아웃).
+          // 여기선 transient 에러(요청 abort, 네트워크 5xx 등)에서 토큰 건드리지 않음.
         })
         .finally(() => setLoading(false));
     } else {

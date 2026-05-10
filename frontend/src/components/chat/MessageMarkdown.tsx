@@ -57,9 +57,23 @@ export function MessageMarkdown({ content }: { content: string }) {
           code: ({ className, children, ...props }) => {
             const match = /language-(\w+)/.exec(className ?? '');
             if (!match) {
-              // 인라인 코드
+              // 인라인 코드 — 배경/글자색을 inline style로 강제 (최고 specificity).
+              // CSS class 규칙(.markdown-content code)이 cascade/cache 사유로 override돼
+              // 흰 배경으로 보이는 케이스가 반복돼서, inline style로 항상 어두운 배경 보장.
               return (
-                <code className={className} {...props}>
+                <code
+                  className={className}
+                  style={{
+                    backgroundColor: 'rgb(30 30 30)',
+                    color: 'rgb(212 212 212)',
+                    padding: '0.125rem 0.3rem',
+                    borderRadius: '0.25rem',
+                    fontSize: '0.85em',
+                    fontFamily:
+                      'ui-monospace, SFMono-Regular, Menlo, monospace',
+                  }}
+                  {...props}
+                >
                   {children}
                 </code>
               );

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { CheckIcon, UserIcon, XIcon } from '@/components/icons/ChatIcons';
 import api from '@/lib/api';
 import type { ChatRoomWithMembers } from '@/types/chat';
 
@@ -116,7 +117,7 @@ export function NewChatModal({ open, onClose, onCreated, myId }: Props) {
             className="rounded p-1 text-gray-500 hover:bg-gray-100"
             aria-label="닫기"
           >
-            ×
+            <XIcon className="h-5 w-5" />
           </button>
         </div>
 
@@ -163,7 +164,7 @@ export function NewChatModal({ open, onClose, onCreated, myId }: Props) {
                     checked ? 'bg-primary-50' : 'hover:bg-gray-50'
                   }`}
                 >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-sm">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-500">
                     {u.profileImage ? (
                       <img
                         src={u.profileImage}
@@ -171,7 +172,7 @@ export function NewChatModal({ open, onClose, onCreated, myId }: Props) {
                         className="h-full w-full rounded-full object-cover"
                       />
                     ) : (
-                      '👤'
+                      <UserIcon className="h-5 w-5" />
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
@@ -181,13 +182,13 @@ export function NewChatModal({ open, onClose, onCreated, myId }: Props) {
                     </div>
                   </div>
                   <div
-                    className={`h-5 w-5 rounded border ${
+                    className={`flex h-5 w-5 items-center justify-center rounded border ${
                       checked
                         ? 'border-primary-600 bg-primary-600 text-white'
                         : 'border-gray-300'
-                    } flex items-center justify-center text-xs`}
+                    }`}
                   >
-                    {checked && '✓'}
+                    {checked && <CheckIcon className="h-3.5 w-3.5" />}
                   </div>
                 </button>
               );

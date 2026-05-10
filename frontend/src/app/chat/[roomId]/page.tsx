@@ -11,6 +11,21 @@ import { SlidingPanel } from '@/components/chat/SlidingPanel';
 import { TemplatePreview } from '@/components/chat/TemplatePreview';
 import { TemplateTrigger } from '@/components/chat/TemplateTrigger';
 import { PreviewIcon } from '@/components/icons/PreviewIcon';
+import {
+  AlertTriangleIcon,
+  ArrowLeftIcon,
+  ArrowUpIcon,
+  CheckIcon,
+  ClipboardIcon,
+  DotFilledIcon,
+  DotOutlineIcon,
+  PencilIcon,
+  ReplyIcon,
+  SmilePlusIcon,
+  TrashIcon,
+  UserIcon,
+  UsersIcon,
+} from '@/components/icons/ChatIcons';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import {
@@ -824,17 +839,33 @@ export default function ChatRoomPage({ params }: PageProps) {
       <div className="mx-auto flex h-full max-w-[40rem] flex-col overflow-hidden rounded-xl border border-gray-200 bg-white">
       {/* 헤더 */}
       <div className="flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-3">
-        <Link href="/chat" className="text-gray-500 hover:text-gray-700">
-          ← 뒤로
+        <Link
+          href="/chat"
+          className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+          aria-label="채팅 목록으로"
+        >
+          <ArrowLeftIcon className="h-4 w-4" />
+          <span>뒤로</span>
         </Link>
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-100 text-sm text-primary-600">
-          {room?.type === 'DIRECT' ? '👤' : '👥'}
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-100 text-primary-600">
+          {room?.type === 'DIRECT' ? (
+            <UserIcon className="h-4 w-4" />
+          ) : (
+            <UsersIcon className="h-4 w-4" />
+          )}
         </div>
         <h2 className="font-medium">{loading ? '…' : roomTitle(room, user?.id)}</h2>
         <span
-          className={`ml-auto text-xs ${isConnected ? 'text-green-600' : 'text-gray-400'}`}
+          className={`ml-auto inline-flex items-center gap-1 text-xs ${
+            isConnected ? 'text-green-600' : 'text-gray-400'
+          }`}
         >
-          {isConnected ? '● 연결됨' : '○ 연결 끊김'}
+          {isConnected ? (
+            <DotFilledIcon className="h-3 w-3" />
+          ) : (
+            <DotOutlineIcon className="h-3 w-3" />
+          )}
+          <span>{isConnected ? '연결됨' : '연결 끊김'}</span>
         </span>
       </div>
 
@@ -850,7 +881,14 @@ export default function ChatRoomPage({ params }: PageProps) {
               ref={topSentinelRef}
               className="py-2 text-center text-xs text-gray-400"
             >
-              {loadingMore ? '이전 메시지 불러오는 중…' : '↑ 더 위로 스크롤하여 이전 메시지 보기'}
+              {loadingMore ? (
+              '이전 메시지 불러오는 중…'
+            ) : (
+              <span className="inline-flex items-center gap-1">
+                <ArrowUpIcon className="h-3 w-3" />
+                <span>더 위로 스크롤하여 이전 메시지 보기</span>
+              </span>
+            )}
             </div>
           )}
 
@@ -1187,11 +1225,14 @@ function MessageItem({
       ? 'opacity-80 ring-2 ring-red-400'
       : '';
 
-  const stateLabel = message.__pending
-    ? '전송 중…'
-    : message.__failed
-      ? '⚠ 전송 실패'
-      : null;
+  const stateLabel: React.ReactNode = message.__pending ? (
+    '전송 중…'
+  ) : message.__failed ? (
+    <span className="inline-flex items-center gap-1">
+      <AlertTriangleIcon className="h-3 w-3" />
+      <span>전송 실패</span>
+    </span>
+  ) : null;
 
   // 편집/삭제 가능 여부 — 본인 + 정상 상태(아직 미확정 메시지 X)
   const canMutate = isMine && !message.__pending && !message.__failed;
@@ -1204,47 +1245,51 @@ function MessageItem({
     <div className={`group flex ${isMine ? 'justify-end' : 'justify-start'} gap-1`}>
       {/* 본인 메시지 좌측 액션 버튼 (편집/삭제/답글/반응/원문 복사) */}
       {isMine && (
-        <div className="flex items-center self-center opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="pointer-events-none mb-0.5 flex items-center self-end opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
           {canReact && (
             <ReactionPicker onPick={onToggleReaction} />
           )}
           <button
             type="button"
             onClick={onReply}
-            className="rounded p-1 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+            className="rounded p-[3px] text-gray-400 hover:bg-gray-100 hover:text-gray-700"
             aria-label="답글"
             title="답글"
           >
-            ↩
+            <ReplyIcon className="h-3 w-3" />
           </button>
           <button
             type="button"
             onClick={handleCopyRaw}
-            className="rounded p-1 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+            className="rounded p-[3px] text-gray-400 hover:bg-gray-100 hover:text-gray-700"
             aria-label="원문 복사 (마크다운 그대로)"
             title={copied ? '복사됨!' : '원문 복사 (마크다운 그대로)'}
           >
-            {copied ? '✓' : '📋'}
+            {copied ? (
+              <CheckIcon className="h-3 w-3 text-green-600" />
+            ) : (
+              <ClipboardIcon className="h-3 w-3" />
+            )}
           </button>
           {canMutate && (
             <>
               <button
                 type="button"
                 onClick={onStartEdit}
-                className="rounded p-1 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                className="rounded p-[3px] text-gray-400 hover:bg-gray-100 hover:text-gray-700"
                 aria-label="메시지 편집"
                 title="편집"
               >
-                ✎
+                <PencilIcon className="h-3 w-3" />
               </button>
               <button
                 type="button"
                 onClick={onDelete}
-                className="rounded p-1 text-xs text-gray-400 hover:bg-gray-100 hover:text-red-600"
+                className="rounded p-[3px] text-gray-400 hover:bg-gray-100 hover:text-red-600"
                 aria-label="메시지 삭제"
                 title="삭제"
               >
-                🗑
+                <TrashIcon className="h-3 w-3" />
               </button>
             </>
           )}
@@ -1265,11 +1310,13 @@ function MessageItem({
                 : 'border-gray-400 text-gray-500'
             }`}
           >
-            <p className="truncate italic">
-              ↩{' '}
-              {message.parent.deletedAt
-                ? '(삭제된 메시지)'
-                : message.parent.content}
+            <p className="flex items-center gap-1 truncate italic">
+              <ReplyIcon className="h-3 w-3 shrink-0" />
+              <span className="truncate">
+                {message.parent.deletedAt
+                  ? '(삭제된 메시지)'
+                  : message.parent.content}
+              </span>
             </p>
           </div>
         )}
@@ -1347,25 +1394,29 @@ function MessageItem({
 
       {/* 타인 메시지 우측 액션 버튼 (답글/반응/원문 복사) — 편집·삭제는 권한 없음 */}
       {!isMine && (
-        <div className="flex items-center self-center opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="pointer-events-none mb-0.5 flex items-center self-end opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
           {canReact && <ReactionPicker onPick={onToggleReaction} />}
           <button
             type="button"
             onClick={onReply}
-            className="rounded p-1 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+            className="rounded p-[3px] text-gray-400 hover:bg-gray-100 hover:text-gray-700"
             aria-label="답글"
             title="답글"
           >
-            ↩
+            <ReplyIcon className="h-3 w-3" />
           </button>
           <button
             type="button"
             onClick={handleCopyRaw}
-            className="rounded p-1 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+            className="rounded p-[3px] text-gray-400 hover:bg-gray-100 hover:text-gray-700"
             aria-label="원문 복사 (마크다운 그대로)"
             title={copied ? '복사됨!' : '원문 복사 (마크다운 그대로)'}
           >
-            {copied ? '✓' : '📋'}
+            {copied ? (
+              <CheckIcon className="h-3 w-3 text-green-600" />
+            ) : (
+              <ClipboardIcon className="h-3 w-3" />
+            )}
           </button>
         </div>
       )}
@@ -1381,11 +1432,11 @@ function ReactionPicker({ onPick }: { onPick: (emoji: string) => void }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="rounded p-1 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+        className="rounded p-[3px] text-gray-400 hover:bg-gray-100 hover:text-gray-700"
         aria-label="반응 추가"
         title="반응"
       >
-        😀
+        <SmilePlusIcon className="h-3 w-3" />
       </button>
       {open && (
         <div className="absolute bottom-full left-1/2 z-10 mb-1 flex -translate-x-1/2 gap-0.5 rounded-full border border-gray-200 bg-white p-1 shadow-md">
@@ -1397,7 +1448,7 @@ function ReactionPicker({ onPick }: { onPick: (emoji: string) => void }) {
                 onPick(e);
                 setOpen(false);
               }}
-              className="rounded p-1 text-base hover:bg-gray-100"
+              className="rounded p-[3px] text-xs hover:bg-gray-100"
               aria-label={`${e} 반응 추가`}
             >
               {e}

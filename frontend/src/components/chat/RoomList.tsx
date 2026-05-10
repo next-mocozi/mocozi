@@ -4,6 +4,12 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { NewChatModal } from '@/components/chat/NewChatModal';
+import {
+  ArrowLeftIcon,
+  BellOffIcon,
+  UserIcon,
+  UsersIcon,
+} from '@/components/icons/ChatIcons';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import { timeAgo } from '@/lib/utils';
@@ -234,9 +240,10 @@ export default function RoomList() {
           <button
             type="button"
             onClick={() => setShowingHidden(false)}
-            className="text-xs text-indigo-600 hover:underline"
+            className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:underline"
           >
-            ← 활성 채팅
+            <ArrowLeftIcon className="h-3 w-3" />
+            <span>활성 채팅</span>
           </button>
         )}
       </div>
@@ -283,21 +290,22 @@ export default function RoomList() {
                   href={`/chat/${room.id}`}
                   className="flex min-w-0 flex-1 items-center gap-3 p-3 transition-colors"
                 >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-base text-indigo-600">
-                    {room.type === 'DIRECT' ? '👤' : '👥'}
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
+                    {room.type === 'DIRECT' ? (
+                      <UserIcon className="h-5 w-5" />
+                    ) : (
+                      <UsersIcon className="h-5 w-5" />
+                    )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex min-w-0 items-center gap-1">
                         <h3 className="truncate text-sm font-medium">{displayName}</h3>
                         {mutedRoomIds.has(room.id) && (
-                          <span
-                            className="shrink-0 text-xs text-slate-400"
+                          <BellOffIcon
+                            className="h-3.5 w-3.5 shrink-0 text-slate-400"
                             aria-label="알림 꺼짐"
-                            title="알림 꺼짐"
-                          >
-                            🔕
-                          </span>
+                          />
                         )}
                       </div>
                       {time && (

@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { NewChatModal } from '@/components/chat/NewChatModal';
 import RoomList from '@/components/chat/RoomList';
+import { MessageSquareIcon } from '@/components/icons/ChatIcons';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import type {
@@ -131,8 +132,8 @@ export default function ChatListPage() {
           xl:flex
         "
       >
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-indigo-100 text-3xl">
-          💬
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
+          <MessageSquareIcon className="h-8 w-8" />
         </div>
         <div>
           <h2 className="text-lg font-semibold text-slate-800">
