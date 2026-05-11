@@ -75,7 +75,7 @@ function PortfolioEditPageContent() {
 
   if (authLoading || !accessChecked) {
     return (
-      <div className="mx-auto max-w-2xl px-6 py-8">
+      <div className="flex min-h-[60vh] items-center justify-center">
         <p className="text-sm text-gray-400">로딩 중…</p>
       </div>
     );

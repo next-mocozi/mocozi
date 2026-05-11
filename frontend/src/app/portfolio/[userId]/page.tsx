@@ -370,8 +370,8 @@ export default function PortfolioDetailPage({
   // 로그인 가드 — 모든 훅 호출 이후에 위치
   if (loading)
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        로딩 중...
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <p className="text-sm text-gray-400">로딩 중…</p>
       </div>
     );
   if (!user) return null;

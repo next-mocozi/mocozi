@@ -108,12 +108,11 @@ export default function PortfolioFeedPage() {
     return [...others].sort((a, b) => b.createdAt - a.createdAt);
   }, [user, status, remotePortfolios]);
 
-  // backend 메인 피드 fetch 가 끝나기 전에는 본인 게시물도 같이 가려둔다.
-  // (이전엔 본인 피드가 먼저 깜빡 보였다가 backend 응답 후 남의 피드가 쭈르륵
-  //  추가되는 어색한 깜빡임이 있었음.)
-  if (loading || status === 'loading' || remotePortfolios === null) {
+  // 아주 초기(auth/status 자체가 미정) 만 전체 화면 로딩. backend 메인 피드 fetch
+  // 자체는 nav 까지 가리지 않고, 아래쪽 posts 영역에서만 로딩 표시.
+  if (loading || status === 'loading') {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-8">
+      <div className="flex min-h-[60vh] items-center justify-center">
         <p className="text-sm text-gray-400">로딩 중…</p>
       </div>
     );
@@ -174,7 +173,11 @@ export default function PortfolioFeedPage() {
             </div>
           )}
 
-          {posts.length === 0 ? (
+          {remotePortfolios === null ? (
+            <div className="flex min-h-[40vh] items-center justify-center">
+              <p className="text-sm text-gray-400">로딩 중…</p>
+            </div>
+          ) : posts.length === 0 ? (
             <p className="card text-center text-sm text-gray-500">
               아직 공개된 게시물이 없어요.
             </p>

@@ -76,7 +76,7 @@ export default function PortfolioItemPage({
 
   if (authLoading || !loaded) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-8">
+      <div className="flex min-h-[60vh] items-center justify-center">
         <p className="text-sm text-gray-400">로딩 중…</p>
       </div>
     );
