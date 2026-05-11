@@ -982,16 +982,26 @@ export class ChatService {
   private preview(content: string, max = 100) {
     // 마커는 절대 raw로 잘리면 안 됨 — 100자 슬라이스 전에 사람용 문구로 치환.
     // (잘린 마커가 frontend regex와 안 매치되면 raw `[[file:rooms/...` 같은 게 그대로 노출됨)
+    // 텍스트 + 첨부 혼합 시 "텍스트 (이미지)" / "텍스트 (파일)" 형식.
+    // 혼합 시 (이미지+파일 동시) → "(파일)"로 통합. frontend `summarizePreview`와 동일 로직.
+    const hasFile = /\[\[file:[^|\]]+\|[^|\]]*\|\d+\|[^\]]+\]\]/.test(content);
+    const hasImage = /\[\[image:[^|\]]+\|[^|\]]*\|\d+\|[^\]]+\]\]/.test(content);
+
     let s = content
       .replace(/\[\[link:[^|\]]+\|([^\]]+)\]\]/g, '$1')
       .replace(/\[\[file:[^|\]]+\|[^|\]]*\|\d+\|[^\]]+\]\]/g, '')
       .replace(/\[\[image:[^|\]]+\|[^|\]]*\|\d+\|[^\]]+\]\]/g, '')
       .replace(/\s+/g, ' ')
       .trim();
-    // 텍스트가 비고 첨부만 있던 경우 — file 우선 (이미지+파일 혼합도 file 표시)
-    if (!s) {
-      if (/\[\[file:/.test(content)) s = '파일을 보냈습니다.';
-      else if (/\[\[image:/.test(content)) s = '이미지를 보냈습니다.';
+
+    if (s) {
+      // 텍스트 + 첨부 — 라벨 append
+      if (hasFile) s = `${s} (파일)`;
+      else if (hasImage) s = `${s} (이미지)`;
+    } else {
+      // 텍스트 없음 — 첨부 안내 문구
+      if (hasFile) s = '파일을 보냈습니다.';
+      else if (hasImage) s = '이미지를 보냈습니다.';
     }
     return s.length > max ? `${s.slice(0, max)}…` : s;
   }
