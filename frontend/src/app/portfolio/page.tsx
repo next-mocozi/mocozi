@@ -74,9 +74,13 @@ export default function PortfolioFeedPage() {
   }, [user, loading]);
 
   // 백엔드 메인 피드 — 실제 공개 사용자들의 게시물.
-  // 응답 실패/네트워크 오류 시 빈 배열로 두고 "아직 공개된 게시물이 없어요" 안내 표시.
-  // (이전엔 mock 8명으로 fallback 했지만, 진짜 운영에선 더미가 보이면 안 되므로 제거.)
-  const [remotePortfolios, setRemotePortfolios] = useState<FeedPortfolio[]>([]);
+  // null = 아직 fetch 안 됨 (로딩 중 표시), [] = fetch 완료 + 결과 없음.
+  // (이전엔 본인 피드가 먼저 깜빡 보였다가 backend 응답 도착 후 남의 피드가
+  //  쭈르륵 추가되는 어색함이 있었음. null 동안엔 로딩 화면을 보여주고 fetch
+  //  완료 후 한 번에 렌더.)
+  const [remotePortfolios, setRemotePortfolios] = useState<
+    FeedPortfolio[] | null
+  >(null);
   useEffect(() => {
     if (!user || loading) return;
     let cancelled = false;
@@ -96,7 +100,7 @@ export default function PortfolioFeedPage() {
 
   // 피드 데이터: 백엔드(타인 공개) + 본인(공개일 때).
   const posts: FeedPost[] = useMemo(() => {
-    const others = buildBackendFeedPosts(remotePortfolios);
+    const others = buildBackendFeedPosts(remotePortfolios ?? []);
     if (user && status === 'public') {
       const mine = buildOwnerFeedPosts(user, { isPrivate: false });
       return [...others, ...mine].sort((a, b) => b.createdAt - a.createdAt);
@@ -104,7 +108,10 @@ export default function PortfolioFeedPage() {
     return [...others].sort((a, b) => b.createdAt - a.createdAt);
   }, [user, status, remotePortfolios]);
 
-  if (loading || status === 'loading') {
+  // backend 메인 피드 fetch 가 끝나기 전에는 본인 게시물도 같이 가려둔다.
+  // (이전엔 본인 피드가 먼저 깜빡 보였다가 backend 응답 후 남의 피드가 쭈르륵
+  //  추가되는 어색한 깜빡임이 있었음.)
+  if (loading || status === 'loading' || remotePortfolios === null) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-8">
         <p className="text-sm text-gray-400">로딩 중…</p>
