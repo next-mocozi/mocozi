@@ -7,6 +7,11 @@ import {
 } from '@nestjs/common';
 import { ChatRoomType, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  ATTACHMENT_MIME_WHITELIST,
+  getSizeLimitFor,
+  StorageService,
+} from './storage.service';
 
 const MESSAGE_PAGE_DEFAULT = 50;
 const MESSAGE_PAGE_MAX = 100;
@@ -58,7 +63,140 @@ export interface MemberNotification {
 
 @Injectable()
 export class ChatService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private storage: StorageService,
+  ) {}
+
+  // ---------------------------------------------------------
+  // 첨부 마커 파싱·검증 — §16 정책
+  //
+  // 메시지 본문에 [[file:path|name|size|mime]] / [[image:path|name|size|mime]]
+  // 마커가 inline으로 들어옴. saveMessage / editMessage에서 호출해 마커 형식을
+  // 검증(path 형식, MIME 화이트리스트, size 한도). 검증 실패 시 400.
+  //
+  // 메시지가 실제로 path에 파일이 업로드됐는지까지는 검증 X — 사용자가 upload-url을
+  // 정상 흐름으로 받았다면 path는 backend가 발급한 형식. 위조 시도 시 isValidPath
+  // 정규식이 차단. 위조 path는 다음 sign 단계에서 404로 자연 차단(파일 없음).
+  // ---------------------------------------------------------
+
+  private readonly ATTACHMENT_MARKER_REGEX =
+    /\[\[(file|image):([^|\]]+)\|([^|\]]*)\|(\d+)\|([^\]]+)\]\]/g;
+
+  validateAttachmentMarkers(content: string): void {
+    let m: RegExpExecArray | null;
+    const re = new RegExp(this.ATTACHMENT_MARKER_REGEX.source, 'g');
+    let count = 0;
+    while ((m = re.exec(content)) !== null) {
+      count += 1;
+      if (count > 10) {
+        throw new BadRequestException('한 메시지에 최대 10개까지 첨부할 수 있습니다.');
+      }
+      const [, , path, , sizeStr, mime] = m;
+      if (!this.storage.isValidPath(path)) {
+        throw new BadRequestException('유효하지 않은 첨부 경로입니다.');
+      }
+      if (!ATTACHMENT_MIME_WHITELIST.has(mime)) {
+        throw new BadRequestException(`지원하지 않는 첨부 형식입니다: ${mime}`);
+      }
+      const size = Number(sizeStr);
+      const limit = getSizeLimitFor(mime);
+      if (limit !== null && size > limit) {
+        const mb = Math.round(limit / 1024 / 1024);
+        throw new BadRequestException(`첨부 파일이 한도(${mb}MB)를 초과합니다.`);
+      }
+    }
+  }
+
+  /**
+   * 메시지 본문에서 첨부 path 추출.
+   *
+   * sign-url endpoint가 path별 채팅방 멤버 검증 + deletedAt 검증할 때 사용.
+   * 한 사용자가 자기 멤버십 외 path에 sign 요청해도 검증으로 막힘.
+   */
+  extractAttachmentPaths(content: string): string[] {
+    const paths: string[] = [];
+    const re = new RegExp(this.ATTACHMENT_MARKER_REGEX.source, 'g');
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(content)) !== null) {
+      paths.push(m[2]);
+    }
+    return paths;
+  }
+
+  /**
+   * 표시/다운로드용 signed URL 일괄 발급.
+   *
+   * 검증:
+   *  1. 각 path가 어떤 ChatMessage.content에 포함되어 있는지 prisma 조회
+   *  2. 그 메시지의 채팅방 멤버여야 발급 (사용자가 보지 못할 path는 access 차단)
+   *  3. 메시지 deletedAt이면 발급 X (null)
+   *
+   * 결과: { path, url, expiresAt } 배열. url이 null이면 사용자가 접근 불가.
+   */
+  async signAttachmentUrls(
+    userId: string,
+    paths: string[],
+  ): Promise<
+    Array<{
+      path: string;
+      url: string | null;
+      expiresAt: string | null;
+    }>
+  > {
+    // 1. paths 중 유효 형식인 것만 통과
+    const validPaths = paths.filter((p) => this.storage.isValidPath(p));
+
+    // 2. 그 paths를 content에 포함하는 메시지 + 멤버십 일괄 조회
+    //    (path는 UUID 기반이라 cross-room 충돌 X — content LIKE로 충분)
+    //    효율: 메시지 한 번 조회 + per-path filter. N+1 회피.
+    const messages = await this.prisma.chatMessage.findMany({
+      where: {
+        OR: validPaths.map((p) => ({ content: { contains: p } })),
+      },
+      select: {
+        roomId: true,
+        deletedAt: true,
+        content: true,
+        room: {
+          select: {
+            members: {
+              where: { userId },
+              select: { leftAt: true },
+            },
+          },
+        },
+      },
+    });
+
+    // path → {roomMember 여부, deletedAt} 매핑
+    const pathStatus = new Map<string, { allowed: boolean }>();
+    for (const path of validPaths) {
+      const msg = messages.find((m) => m.content.includes(path));
+      const isMember =
+        msg !== undefined &&
+        msg.room.members.length > 0 &&
+        msg.room.members[0].leftAt === null;
+      const visible = msg !== undefined && msg.deletedAt === null;
+      pathStatus.set(path, { allowed: isMember && visible });
+    }
+
+    // 3. 허용된 path만 signed URL 발급
+    const results = await Promise.all(
+      paths.map(async (path) => {
+        const status = pathStatus.get(path);
+        if (!status || !status.allowed) {
+          return { path, url: null, expiresAt: null };
+        }
+        const signed = await this.storage.createSignedUrl(path, 3600);
+        if (!signed) {
+          return { path, url: null, expiresAt: null };
+        }
+        return { path, url: signed.url, expiresAt: signed.expiresAt };
+      }),
+    );
+    return results;
+  }
 
   // ---------------------------------------------------------
   // 채팅방 생성
@@ -328,6 +466,8 @@ export class ChatService {
     if (!content || content.trim().length === 0) {
       throw new BadRequestException('메시지 내용이 비어 있습니다.');
     }
+    // §16 첨부 마커 검증 (path 형식 / MIME 화이트리스트 / size 한도)
+    this.validateAttachmentMarkers(content);
     if (parentId) {
       const parent = await this.prisma.chatMessage.findUnique({
         where: { id: parentId },
@@ -375,6 +515,8 @@ export class ChatService {
     if (trimmed.length === 0) {
       throw new BadRequestException('메시지 내용이 비어 있습니다.');
     }
+    // §16 첨부 마커 검증 — 편집 시 마커가 새로 들어오거나 변경된 경우 대비
+    this.validateAttachmentMarkers(trimmed);
 
     const existing = await this.prisma.chatMessage.findUnique({
       where: { id: messageId },

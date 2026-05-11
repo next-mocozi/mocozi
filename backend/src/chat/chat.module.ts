@@ -3,6 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ChatController } from './chat.controller';
 import { ChatGateway } from './chat.gateway';
 import { ChatService } from './chat.service';
+import { StorageService } from './storage.service';
 import { WsJwtGuard } from '../auth/guards/ws-jwt.guard';
 
 /**
@@ -19,7 +20,7 @@ import { WsJwtGuard } from '../auth/guards/ws-jwt.guard';
     }),
   ],
   controllers: [ChatController],
-  providers: [ChatGateway, ChatService, WsJwtGuard],
-  exports: [ChatService],
+  providers: [ChatGateway, ChatService, StorageService, WsJwtGuard],
+  exports: [ChatService, StorageService],
 })
 export class ChatModule {}

@@ -10,13 +10,24 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { AddReactionDto } from './dto/add-reaction.dto';
+import {
+  MAX_ATTACHMENTS_PER_REQUEST,
+  SignAttachmentUrlDto,
+  UploadAttachmentUrlDto,
+} from './dto/attachment.dto';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateMessageBodyDto } from './dto/edit-message.dto';
 import { ListMessagesQuery } from './dto/list-messages.query';
 import { ListRoomsQuery } from './dto/list-rooms.query';
 import { MarkAsReadDto } from './dto/mark-as-read.dto';
+import {
+  ATTACHMENT_MIME_WHITELIST,
+  getSizeLimitFor,
+  StorageService,
+} from './storage.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
@@ -31,7 +42,10 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 @UseGuards(JwtAuthGuard)
 @Controller('chat')
 export class ChatController {
-  constructor(private readonly chatService: ChatService) {}
+  constructor(
+    private readonly chatService: ChatService,
+    private readonly storage: StorageService,
+  ) {}
 
   /** POST /api/chat/rooms — 채팅방 생성 (DIRECT는 find-or-create) */
   @Post('rooms')
@@ -146,6 +160,86 @@ export class ChatController {
     @Body() dto: MarkAsReadDto,
   ): Promise<void> {
     await this.chatService.markAsRead(roomId, user.id, dto.messageId);
+  }
+
+  // ---------------------------------------------------------
+  // 첨부 파일/이미지 — §16 정책 (docs/chat/01-decisions.md)
+  // ---------------------------------------------------------
+
+  /**
+   * POST /api/chat/rooms/:roomId/attachments/upload-url
+   *
+   * 업로드용 presigned PUT URL 발급. 클라이언트가 직접 Supabase에 PUT.
+   *  - 채팅방 멤버만 가능
+   *  - 각 파일별 MIME 화이트리스트 + size 한도 검증
+   *  - response의 path를 메시지 마커에 사용
+   */
+  @Post('rooms/:roomId/attachments/upload-url')
+  async createUploadUrls(
+    @CurrentUser() user: { id: string },
+    @Param('roomId') roomId: string,
+    @Body() dto: UploadAttachmentUrlDto,
+  ) {
+    await this.chatService.assertMembership(roomId, user.id);
+    if (!this.storage.isReady()) {
+      throw new BadRequestException(
+        '첨부 기능이 구성되지 않았습니다. 관리자에게 문의하세요.',
+      );
+    }
+    if (dto.files.length > MAX_ATTACHMENTS_PER_REQUEST) {
+      throw new BadRequestException(
+        `한 번에 최대 ${MAX_ATTACHMENTS_PER_REQUEST}개까지 업로드 가능합니다.`,
+      );
+    }
+    // 각 파일별 MIME 화이트리스트 + size 한도 검증
+    for (const file of dto.files) {
+      if (!ATTACHMENT_MIME_WHITELIST.has(file.mime)) {
+        throw new BadRequestException(
+          `지원하지 않는 파일 형식입니다: ${file.mime} (${file.name})`,
+        );
+      }
+      const limit = getSizeLimitFor(file.mime);
+      if (limit !== null && file.size > limit) {
+        const mb = Math.round(limit / 1024 / 1024);
+        throw new BadRequestException(
+          `${file.name}이(가) 한도(${mb}MB)를 초과합니다. (현재 ${Math.round(
+            file.size / 1024 / 1024,
+          )}MB)`,
+        );
+      }
+    }
+
+    const uploads = await Promise.all(
+      dto.files.map(async (file) => {
+        const u = await this.storage.createUploadUrl(roomId, file.mime);
+        return {
+          name: file.name,
+          path: u.path,
+          uploadUrl: u.uploadUrl,
+          token: u.token,
+          expiresAt: u.expiresAt,
+        };
+      }),
+    );
+    return { uploads };
+  }
+
+  /**
+   * POST /api/chat/attachments/sign-url
+   *
+   * 표시/다운로드용 signed URL 일괄 발급(1h TTL). 사용자가 해당 path들과 연결된
+   * 메시지의 채팅방 멤버여야 발급. 메시지 deletedAt이면 null 반환.
+   *
+   * 메시지 ID 대신 path 배치로 받는 이유: marker에 path만 들어있어서 frontend가
+   * message ID 트래킹할 필요 없음. backend가 chat_messages.content에서 검색.
+   */
+  @Post('attachments/sign-url')
+  async signUrls(
+    @CurrentUser() user: { id: string },
+    @Body() dto: SignAttachmentUrlDto,
+  ) {
+    const signed = await this.chatService.signAttachmentUrls(user.id, dto.paths);
+    return { signed };
   }
 
   /**
