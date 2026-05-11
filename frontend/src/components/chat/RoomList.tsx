@@ -12,6 +12,7 @@ import {
 } from '@/components/icons/ChatIcons';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
+import { summarizePreview } from '@/lib/messageTemplate';
 import { timeAgo } from '@/lib/utils';
 import { useChatNotifications, useChatSocket } from '@/providers/SocketProvider';
 import type { ChatRoomWithMembers, RoomsPageResponse } from '@/types/chat';
@@ -378,9 +379,9 @@ export default function RoomList() {
                       )}
                     </div>
                     <p className="truncate text-xs text-stone-500">
-                      {/* 미리보기 — 메시지 본문이 multi-line이거나 attachment 마커
-                          ([[link:...]])를 포함할 수 있어 한 줄로 요약 + 마커 제거 */}
-                      {sanitizePreview(room.lastMessage)}
+                      {/* 미리보기 — 첨부 마커는 "파일/이미지를 보냈습니다."로 요약, 일반 텍스트는 한 줄.
+                          공통 util `summarizePreview` (lib/messageTemplate.ts) */}
+                      {summarizePreview(room.lastMessage)}
                     </p>
                   </div>
                   {unread > 0 && (
@@ -553,22 +554,8 @@ export default function RoomList() {
   );
 }
 
-/**
- * 사이드바 미리보기 텍스트 정제.
- * - 줄바꿈 → 공백 (truncate가 nowrap이라도 multi-line이 시각적으로 어색하게 보일 수 있음)
- * - attachment 마커 [[link:type:target|label]] → label만 남김 (또는 제거)
- * - 연속 공백 압축
- */
-function sanitizePreview(raw: string | null | undefined): string {
-  if (!raw) return '메시지가 없습니다.';
-  // 인앱 link 마커 → label만 남김
-  let s = raw.replace(/\[\[link:[^|\]]+\|([^\]]+)\]\]/g, '$1');
-  // 첨부 마커(파일/이미지) — preview는 "📎 파일명" 단축 표현 (label만 추출, size·mime 버림)
-  s = s.replace(/\[\[file:[^|\]]+\|([^|\]]*)\|\d+\|[^\]]+\]\]/g, '📎 $1');
-  s = s.replace(/\[\[image:[^|\]]+\|([^|\]]*)\|\d+\|[^\]]+\]\]/g, '🖼 $1');
-  const oneLine = s.replace(/\s+/g, ' ').trim();
-  return oneLine || '메시지가 없습니다.';
-}
+// sanitizePreview 로컬 구현 제거 — `lib/messageTemplate.ts`의 `summarizePreview` 공용 util 사용.
+// 그쪽이 ToastContainer와 일관된 동일 함수를 쓰기 위함.
 
 function roomDisplayName(
   room: ChatRoomWithMembers,
