@@ -30,26 +30,63 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-// 포트폴리오/프로필 mock 데이터(localStorage)는 계정별 스코프가 없어,
-// 같은 브라우저에서 다른 계정으로 로그인하면 이전 사용자의 직군·링크·아이템 등이
-// 그대로 남는다. 사용자 id 가 바뀐 시점(소유자 불일치)에만 mock_* 를 정리한다.
-// owner 가 비어있으면 현재 사용자를 새 owner 로 등록해 (재)로그인 시 데이터를 유지한다.
+// 포트폴리오/프로필 mock 데이터(localStorage)는 계정별 스코프가 없어, 같은
+// 브라우저에서 두 계정 옮겨다니면 이전 사용자의 데이터가 새 사용자에게 노출되거나
+// 정리되어 영구 손실됐다.
+//
+// 정책: 정리 대신 "백업·복원".
+//  - 사용자 전환 시 현재 mock_* 를 mock_*__<이전 userId> 로 이름 변경하여 보존.
+//  - 새 사용자 본인의 백업(mock_*__<currentUserId>)이 있으면 mock_* 로 복원.
+//  - 백업 없으면 mock_* 는 비어있는 상태로 시작 (새 사용자가 0부터 작성).
+// 이 패턴 덕에 backend sync 가 아직 안 된 카드/메모도 계정별로 격리 보존되어,
+// 두 계정 옮겨다녀도 본인 데이터가 사라지지 않는다.
 function reconcileMockOwner(currentUserId: string) {
+  if (typeof window === 'undefined') return;
   try {
     const ownerId = localStorage.getItem('mock_portfolio_owner');
     if (ownerId === currentUserId) return; // 같은 사용자 → 데이터 유지
-    if (!ownerId) {
-      // 첫 사용 또는 직전에 데이터가 비어있던 상태 → 현재 사용자로 owner 등록
-      localStorage.setItem('mock_portfolio_owner', currentUserId);
-      return;
+
+    // 1) 이전 사용자 데이터 백업 (이름 변경: mock_X → mock_X__<oldOwner>)
+    if (ownerId) {
+      const baseKeys: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        // 이미 백업된 키(`__` 포함)는 건드리지 않는다.
+        if (k && k.startsWith('mock_') && !k.includes('__')) baseKeys.push(k);
+      }
+      baseKeys.forEach((k) => {
+        const value = localStorage.getItem(k);
+        if (value !== null) {
+          try {
+            localStorage.setItem(`${k}__${ownerId}`, value);
+          } catch {
+            // 백업 실패해도 진행 — 다음 단계로
+          }
+          localStorage.removeItem(k);
+        }
+      });
     }
-    // 다른 사용자 → 이전 사용자의 mock_* 정리 후 owner 갱신
-    const keys: string[] = [];
+
+    // 2) 새 사용자 본인 백업이 있으면 복원 (mock_X__<currentUser> → mock_X)
+    const suffix = `__${currentUserId}`;
+    const backupKeys: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
-      if (k && k.startsWith('mock_')) keys.push(k);
+      if (k && k.startsWith('mock_') && k.endsWith(suffix)) backupKeys.push(k);
     }
-    keys.forEach((k) => localStorage.removeItem(k));
+    backupKeys.forEach((k) => {
+      const value = localStorage.getItem(k);
+      const baseKey = k.slice(0, -suffix.length);
+      if (value !== null) {
+        try {
+          localStorage.setItem(baseKey, value);
+        } catch {
+          // 복원 실패해도 진행
+        }
+        localStorage.removeItem(k);
+      }
+    });
+
     localStorage.setItem('mock_portfolio_owner', currentUserId);
   } catch {
     // 무시

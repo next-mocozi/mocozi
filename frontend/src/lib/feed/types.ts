@@ -31,6 +31,10 @@ export type FeedPostBase = {
 export type FeedPostItem = FeedPostBase & {
   kind: 'item';
   item: PortfolioItem;
+  /** backend PortfolioItem.details 통합 객체 (kind: interview|research|study).
+   *  타인 viewer 가 작성자 미리보기(사진·마크다운·인터뷰 답변 등) 그대로 볼 수
+   *  있도록 본문 sync 시 같이 첨부. 본인 viewer 는 localStorage 에서 별도 로드. */
+  rawDetails?: { kind?: string; data?: unknown } | null;
 };
 
 export type FeedPostExperience = FeedPostBase & {

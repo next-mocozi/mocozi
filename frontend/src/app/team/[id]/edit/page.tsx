@@ -340,7 +340,7 @@ export default function EditTeamPage({
             title="기획서 — 필수 공개"
             subtitle="모든 사용자에게 공개되는 정보입니다."
             icon={
-              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-3xs font-medium text-emerald-700">
                 공개
               </span>
             }
@@ -430,7 +430,7 @@ export default function EditTeamPage({
               <div className="space-y-3 rounded-2xl border border-stone-100 bg-stone-50 p-4">
                 {SKILL_GROUPS.map(({ label, skills }) => (
                   <div key={label}>
-                    <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-stone-400">
+                    <p className="mb-1.5 text-3xs font-semibold uppercase tracking-widest text-stone-400">
                       {label}
                     </p>
                     <div className="flex flex-wrap gap-1.5">
@@ -484,7 +484,7 @@ export default function EditTeamPage({
             title="기획서 — 선택 공개"
             subtitle="공개 여부를 나중에 별도로 설정할 수 있습니다. 아이디어를 보호하세요."
             icon={
-              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-3xs font-medium text-amber-700">
                 선택 공개
               </span>
             }

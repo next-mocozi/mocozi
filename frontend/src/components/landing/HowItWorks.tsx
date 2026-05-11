@@ -87,7 +87,7 @@ function Step1Preview() {
       >
         인증 메일 보내기
       </button>
-      <p className="mt-3 flex items-center gap-1.5 text-[11px] text-stone-500">
+      <p className="mt-3 flex items-center gap-1.5 text-2xs text-stone-500">
         <span className="text-emerald-600">✓</span>
         학교 메일로 본인 인증
       </p>
@@ -100,27 +100,27 @@ function Step2Preview() {
     <div>
       <div className="rounded-xl border border-gray-100 bg-white p-4">
         <div className="flex items-center gap-1.5">
-          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-3xs font-semibold text-emerald-700">
             모집 중
           </span>
-          <span className="text-[10px] text-stone-400">8주 · 11월 데모데이</span>
+          <span className="text-3xs text-stone-400">8주 · 11월 데모데이</span>
         </div>
         <p className="mt-2 text-sm font-bold text-stone-900">AI 헬스케어 해커톤 팀</p>
-        <p className="mt-0.5 line-clamp-1 text-[11px] text-stone-500">
+        <p className="mt-0.5 line-clamp-1 text-2xs text-stone-500">
           의료 영상 기반 진단 보조 AI 프로토타입
         </p>
 
-        <p className="mt-3 text-[10px] font-medium uppercase tracking-wider text-stone-400">
+        <p className="mt-3 text-3xs font-medium uppercase tracking-wider text-stone-400">
           모집 직군
         </p>
         <div className="mt-1 flex flex-wrap gap-1">
-          <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-700">
+          <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-3xs font-medium text-indigo-700">
             ML/AI
           </span>
-          <span className="rounded-full border border-stone-200 bg-stone-50 px-2 py-0.5 text-[10px] text-stone-500">
+          <span className="rounded-full border border-stone-200 bg-stone-50 px-2 py-0.5 text-3xs text-stone-500">
             백엔드
           </span>
-          <span className="rounded-full border border-stone-200 bg-stone-50 px-2 py-0.5 text-[10px] text-stone-500">
+          <span className="rounded-full border border-stone-200 bg-stone-50 px-2 py-0.5 text-3xs text-stone-500">
             디자인
           </span>
         </div>
@@ -129,7 +129,7 @@ function Step2Preview() {
           {['Python', 'PyTorch', 'React'].map((s) => (
             <span
               key={s}
-              className="rounded-md bg-stone-100 px-1.5 py-0.5 text-[10px] text-stone-600"
+              className="rounded-md bg-stone-100 px-1.5 py-0.5 text-3xs text-stone-600"
             >
               {s}
             </span>
@@ -143,7 +143,7 @@ function Step2Preview() {
           지원하기
         </div>
       </div>
-      <p className="mt-2 text-center text-[11px] text-stone-500">
+      <p className="mt-2 text-center text-2xs text-stone-500">
         또는 <span className="font-medium text-primary-700">직접 팀 만들기 →</span>
       </p>
     </div>
@@ -159,7 +159,7 @@ function Step3Preview() {
         </span>
         <div>
           <p className="text-xs font-semibold text-stone-900">김태윤</p>
-          <p className="text-[10px] text-stone-400">고려대 · 백엔드</p>
+          <p className="text-3xs text-stone-400">고려대 · 백엔드</p>
         </div>
         <span className="ml-auto h-1.5 w-1.5 rounded-full bg-emerald-500" />
       </div>
@@ -183,7 +183,7 @@ function Step3Preview() {
       </div>
 
       <div className="flex items-center gap-2 border-t border-gray-100 px-3 py-2">
-        <span className="flex-1 rounded-full bg-stone-50 px-3 py-1 text-[11px] text-stone-400">
+        <span className="flex-1 rounded-full bg-stone-50 px-3 py-1 text-2xs text-stone-400">
           메시지 입력...
         </span>
         <span

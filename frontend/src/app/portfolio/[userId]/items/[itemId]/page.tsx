@@ -2,9 +2,9 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { use, useEffect, useMemo, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { findMockFeedUser } from '@/lib/mock/portfolioFeed';
+import { getPortfolioByUserId } from '@/lib/portfolio-api';
 import {
   DEFAULT_ITEMS,
   FeaturedStar,
@@ -13,17 +13,27 @@ import {
   MAX_FEATURED_STUDY,
   ITEMS_STORAGE_KEY,
   type PortfolioItem,
+  type PortfolioItemType,
 } from '../../../_lib';
 import ItemFullView, { loadItemDetails } from '../../../_ItemFullView';
 import type { Draft } from '../../../edit/_interview';
 import type { ResearchDetail } from '../../../edit/_research';
 import type { StudyDetail } from '../../../edit/_study';
 
-// 본인 데이터(localStorage) 또는 mock 피드 데이터(타인) 에서 항목 로드.
+// 본인 = localStorage, 타인 = backend GET /portfolios/users/:userId 에서 item 로드.
+
+const TYPE_FROM_BACKEND: Record<string, PortfolioItemType> = {
+  PROJECT: 'project',
+  RESEARCH: 'research',
+  STUDY: 'study',
+  ACTIVITY: 'activity',
+  ETC: 'etc',
+};
 
 /** 포트폴리오 항목 상세 페이지 — /portfolio/[userId]/items/[itemId]
  *  본인이면 localStorage 에서 details/research/study 추가 로드.
- *  타인이면 mock 피드 데이터의 PortfolioItem 만 표시(상세 인터뷰 데이터는 없음). */
+ *  타인이면 backend 에서 그 사람 portfolio 가져와 itemId 일치 항목만 표시
+ *  (상세 인터뷰 데이터는 본인 localStorage 전용이라 타인 viewer 엔 없음). */
 export default function PortfolioItemPage({
   params,
 }: {
@@ -34,10 +44,6 @@ export default function PortfolioItemPage({
   const { userId: paramUserId, itemId: itemIdStr } = use(params);
   const itemId = Number(itemIdStr);
   const isOwner = !!user && user.id === paramUserId;
-  const feedUser = useMemo(
-    () => (!isOwner ? findMockFeedUser(paramUserId) : undefined),
-    [isOwner, paramUserId],
-  );
 
   const [item, setItem] = useState<PortfolioItem | null>(null);
   const [details, setDetails] = useState<Draft | null>(null);
@@ -51,6 +57,7 @@ export default function PortfolioItemPage({
       router.replace('/login');
       return;
     }
+    let cancelled = false;
     if (isOwner) {
       try {
         const raw = localStorage.getItem(ITEMS_STORAGE_KEY);
@@ -63,16 +70,83 @@ export default function PortfolioItemPage({
       setDetails(d.details);
       setResearch(d.research);
       setStudy(d.study);
+      setLoaded(true);
     } else {
-      // 타인: mock 피드 데이터에서만 항목 검색. 인터뷰 details 는 없음.
-      const found = feedUser?.portfolio.items.find((it) => it.id === itemId);
-      setItem(found ?? null);
-      setDetails(null);
-      setResearch(null);
-      setStudy(null);
+      // 타인: backend 에서 그 사람 portfolio 호출 → itemId(= createdAt 기반 epoch ms)
+      // 와 일치하는 item 찾기. 비공개 portfolio 면 items 빈 배열로 응답되어 null.
+      (async () => {
+        try {
+          const remote = await getPortfolioByUserId(paramUserId);
+          if (cancelled) return;
+          if (!remote) {
+            setItem(null);
+          } else {
+            const found = (remote.items ?? []).find(
+              (b) => new Date(b.createdAt).getTime() === itemId,
+            );
+            if (found) {
+              setItem({
+                id: new Date(found.createdAt).getTime(),
+                type: TYPE_FROM_BACKEND[found.type] ?? 'project',
+                title: found.title,
+                description: found.description,
+                summary: found.summary ?? undefined,
+                period: found.period ?? found.duration ?? '',
+                current: found.current ?? false,
+                domain: found.domain || undefined,
+                tags: found.tags ?? [],
+                featured: found.featured ?? false,
+                thumbnail: found.thumbnail ?? undefined,
+                createdAt: new Date(found.createdAt).getTime(),
+              });
+              // backend details(Json) → 작성자 미리보기 풀세트 복원.
+              // 통합 형식 { kind: 'interview' | 'research' | 'study', data: ... } 로
+              // 저장돼있다. kind 에 따라 적절한 state 에 넣어 ItemFullView 가 동일하게 렌더.
+              const d = found.details as
+                | { kind?: string; data?: unknown }
+                | undefined
+                | null;
+              if (d && typeof d === 'object' && 'kind' in d) {
+                if (d.kind === 'interview') {
+                  setDetails(d.data as Draft);
+                  setResearch(null);
+                  setStudy(null);
+                } else if (d.kind === 'research') {
+                  setResearch(d.data as ResearchDetail);
+                  setDetails(null);
+                  setStudy(null);
+                } else if (d.kind === 'study') {
+                  setStudy(d.data as StudyDetail);
+                  setDetails(null);
+                  setResearch(null);
+                } else {
+                  setDetails(null);
+                  setResearch(null);
+                  setStudy(null);
+                }
+              } else {
+                setDetails(null);
+                setResearch(null);
+                setStudy(null);
+              }
+            } else {
+              setItem(null);
+              setDetails(null);
+              setResearch(null);
+              setStudy(null);
+            }
+          }
+        } catch {
+          if (!cancelled) setItem(null);
+        } finally {
+          if (!cancelled) setLoaded(true);
+        }
+      })();
     }
-    setLoaded(true);
-  }, [authLoading, user, itemId, router, isOwner, feedUser]);
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, user, itemId, router, isOwner, paramUserId]);
 
   if (authLoading || !loaded) {
     return (

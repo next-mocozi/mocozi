@@ -37,19 +37,16 @@ export class CreatePortfolioDto {
   @IsString({ each: true })
   techStack: string[];
 
-  /** 활동 기간 */
+  /** 활동 기간 — 빈 문자열 허용 (frontend PortfolioItem 의 period 가 비어있는 경우) */
   @IsString()
-  @IsNotEmpty()
   duration: string;
 
-  /** 담당 역할 */
+  /** 담당 역할 — 빈 문자열 허용 (frontend PortfolioItem 에 role 필드 없음, 항상 '' 전송) */
   @IsString()
-  @IsNotEmpty()
   role: string;
 
-  /** 도메인 분류 */
+  /** 도메인 분류 — 빈 문자열 허용 (사용자가 도메인 미설정인 경우) */
   @IsString()
-  @IsNotEmpty()
   domain: string;
 
   /** 태그 목록 */

@@ -172,7 +172,7 @@ export default function PeerDirectory() {
               .ac.kr 메일 인증으로 검증된 IT 대학생들. 가입 전에도 둘러보세요.
             </p>
           </div>
-          <span className="text-[11px] font-medium uppercase tracking-wider text-gray-400">
+          <span className="text-2xs font-medium uppercase tracking-wider text-gray-400">
             미리보기 예시
           </span>
         </div>

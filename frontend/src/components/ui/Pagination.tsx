@@ -75,7 +75,7 @@ export function Pagination({
         type="button"
         onClick={() => handleClick(currentPage - 1)}
         disabled={isFirst}
-        className="rounded-full border border-blue-200 px-3 py-1.5 text-sm text-blue-600 transition-all hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40 sm:px-4"
+        className="rounded-full border border-primary-200 px-3 py-1.5 text-sm text-primary-600 transition-all hover:bg-primary-50 disabled:cursor-not-allowed disabled:opacity-40 sm:px-4"
       >
         이전
       </button>
@@ -84,7 +84,7 @@ export function Pagination({
           return (
             <span
               key={`${item}-${idx}`}
-              className="min-w-[36px] px-2 py-1.5 text-center text-sm text-blue-300"
+              className="min-w-[36px] px-2 py-1.5 text-center text-sm text-primary-300"
               aria-hidden="true"
             >
               ⋯
@@ -99,8 +99,8 @@ export function Pagination({
             aria-current={item === currentPage ? 'page' : undefined}
             className={`min-w-[36px] rounded-full border px-3 py-1.5 text-sm transition-all ${
               item === currentPage
-                ? 'border-blue-600 bg-blue-600 text-white'
-                : 'border-blue-200 text-blue-600 hover:bg-blue-50'
+                ? 'border-primary-600 bg-primary-600 text-white'
+                : 'border-primary-200 text-primary-600 hover:bg-primary-50'
             }`}
           >
             {item}
@@ -111,7 +111,7 @@ export function Pagination({
         type="button"
         onClick={() => handleClick(currentPage + 1)}
         disabled={isLast}
-        className="rounded-full border border-blue-200 px-3 py-1.5 text-sm text-blue-600 transition-all hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40 sm:px-4"
+        className="rounded-full border border-primary-200 px-3 py-1.5 text-sm text-primary-600 transition-all hover:bg-primary-50 disabled:cursor-not-allowed disabled:opacity-40 sm:px-4"
       >
         다음
       </button>

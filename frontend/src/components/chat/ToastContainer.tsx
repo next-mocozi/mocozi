@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { summarizePreview } from '@/lib/messageTemplate';
 import { useChatNotifications } from '@/providers/SocketProvider';
 
 /**
@@ -87,7 +88,7 @@ export function ToastContainer() {
         )}
       </div>
       <p className="truncate text-sm text-gray-600">
-        {latestNotification.senderName}: {latestNotification.preview}
+        {latestNotification.senderName}: {summarizePreview(latestNotification.preview)}
       </p>
     </button>
   );

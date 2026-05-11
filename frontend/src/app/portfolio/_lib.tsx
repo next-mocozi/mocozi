@@ -261,7 +261,7 @@ export function DownSelect({
         <span className={selected ? 'text-gray-900' : 'text-gray-500'}>
           {selected?.label ?? placeholder ?? ''}
         </span>
-        <span aria-hidden className="text-[10px] text-gray-400">▾</span>
+        <span aria-hidden className="text-3xs text-gray-400">▾</span>
       </button>
       {open && !disabled && (
         <ul
@@ -460,16 +460,16 @@ export function ItemMgrModal({
                       <div className="min-w-0 flex-1">
                         <div className="mb-3 flex flex-wrap items-center gap-2">
                           <span
-                            className={`rounded px-2 py-0.5 text-[10px] ${meta.bg} ${meta.text}`}
+                            className={`rounded px-2 py-0.5 text-3xs ${meta.bg} ${meta.text}`}
                           >
                             {meta.label}
                           </span>
                           {item.domain && (
-                            <span className="rounded bg-blue-50 px-2 py-0.5 text-[10px] text-blue-600">
+                            <span className="rounded bg-blue-50 px-2 py-0.5 text-3xs text-blue-600">
                               {item.domain}
                             </span>
                           )}
-                          <span className="text-[11px] text-gray-500">
+                          <span className="text-2xs text-gray-500">
                             {item.period}
                           </span>
                         </div>

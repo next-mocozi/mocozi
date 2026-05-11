@@ -24,7 +24,8 @@ export const SIZE_LIMITS: Record<string, number> = {
     30 * 1024 * 1024,
   'application/vnd.openxmlformats-officedocument.presentationml.presentation':
     30 * 1024 * 1024,
-  'application/zip': 100 * 1024 * 1024,
+  // Free plan 한도(50MB)에 맞춤. Pro 도입 시 100MB+로 늘릴 수 있음.
+  'application/zip': 50 * 1024 * 1024,
 };
 
 export const MAX_ATTACHMENTS_PER_MESSAGE = 10;

@@ -100,12 +100,26 @@ function PostDetail({ post }: { post: FeedPost }) {
   const { user } = useAuth();
   const created = timeAgo(post.createdAt);
 
-  // 본인 게시물의 item 이라면 localStorage 에서 인터뷰/연구/스터디 상세 로드.
-  // 타인(mock) 게시물은 details 가 없어 PortfolioItem.description 만 노출됨.
+  // 본인 게시물의 item — localStorage 에서 인터뷰/연구/스터디 상세 로드.
+  // 타인 게시물 — backend 의 rawDetails(통합 Json) 를 kind 별로 분해해 동일 형식으로
+  // 만들어 ItemFullView 가 작성자 미리보기 그대로(사진·마크다운·인터뷰 답변 등) 노출.
   const itemDetails = useMemo(() => {
     if (post.kind !== 'item') return null;
-    if (!user || user.id !== post.author.userId) return null;
-    return loadItemDetails(post.item.id);
+    if (user && user.id === post.author.userId) {
+      return loadItemDetails(post.item.id);
+    }
+    const raw = post.rawDetails;
+    if (!raw || typeof raw !== 'object') return null;
+    if (raw.kind === 'interview') {
+      return { details: raw.data as never, research: null, study: null };
+    }
+    if (raw.kind === 'research') {
+      return { details: null, research: raw.data as never, study: null };
+    }
+    if (raw.kind === 'study') {
+      return { details: null, research: null, study: raw.data as never };
+    }
+    return null;
   }, [post, user]);
 
   return (
@@ -402,11 +416,11 @@ function AuthorDetail({ userId }: { userId: string }) {
                 >
                   <div className="mb-1 flex flex-wrap items-center gap-2">
                     <span
-                      className={`rounded px-2 py-0.5 text-[10px] ${meta.bg} ${meta.text}`}
+                      className={`rounded px-2 py-0.5 text-3xs ${meta.bg} ${meta.text}`}
                     >
                       {meta.label}
                     </span>
-                    <span className="text-[11px] text-gray-500">
+                    <span className="text-2xs text-gray-500">
                       {item.period}
                     </span>
                   </div>

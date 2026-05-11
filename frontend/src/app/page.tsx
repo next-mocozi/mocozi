@@ -102,7 +102,7 @@ function HeroSection() {
 
         {/* 우측: 프로필 카드 스택 (md 이상에서만 노출) */}
         <div className="relative mx-auto hidden h-[460px] w-full max-w-md md:block">
-          <p className="absolute -top-2 right-0 text-[11px] font-medium uppercase tracking-wider text-gray-400">
+          <p className="absolute -top-2 right-0 text-2xs font-medium uppercase tracking-wider text-gray-400">
             미리보기 예시
           </p>
           {SAMPLE_PEERS.map((peer, idx) => {

@@ -1169,9 +1169,11 @@ export default function ProjectInterview() {
           it.id === projectId ? { ...it, draft: false } : it,
         );
         localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(nextList));
-        // 최종 저장 시점에만 백엔드 동기화 (auto-save 단계에선 호출 X)
+        // 최종 저장 시점에만 백엔드 동기화 (auto-save 단계에선 호출 X).
+        // 인터뷰 답변(draft) 도 같이 보내 타인 viewer 가 미리보기 풀세트로 볼 수 있게.
         const finalItem = nextList.find((it) => it.id === projectId);
-        if (finalItem) void syncItemToBackend(finalItem);
+        if (finalItem)
+          void syncItemToBackend(finalItem, { kind: 'interview', data: draft });
       } catch {
         // 무시
       }
@@ -1884,7 +1886,7 @@ function PeriodPicker({
 
   // CategorizedTagSelect 의 카테고리 헤더와 동일한 라벨 스타일
   const sectionLabel =
-    'text-[10px] font-semibold uppercase tracking-wider text-gray-400';
+    'text-3xs font-semibold uppercase tracking-wider text-gray-400';
 
   return (
     <div className="flex flex-col" style={{ rowGap: '1rem' }}>
@@ -1955,7 +1957,7 @@ function PeriodPicker({
         );
       })()}
 
-      <p className="text-[11px] leading-relaxed text-gray-400">
+      <p className="text-2xs leading-relaxed text-gray-400">
         * 년·월은 필수, 일은 선택입니다.
       </p>
     </div>
@@ -2047,7 +2049,7 @@ function TextExample({ text }: { text: string }) {
       style={{ marginBottom: '0.75rem' }}
       className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3"
     >
-      <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+      <div className="mb-1 text-3xs font-semibold uppercase tracking-wider text-gray-400">
         작성 예시
       </div>
       <p className="whitespace-pre-wrap text-xs leading-7 text-gray-400">
@@ -2062,7 +2064,7 @@ function ChoiceExample({ text }: { text: string }) {
   return (
     <p
       style={{ marginBottom: '0.75rem' }}
-      className="text-[11px] leading-relaxed text-gray-400"
+      className="text-2xs leading-relaxed text-gray-400"
     >
       <span className="mr-1 font-semibold text-gray-500">예시</span>
       {text}
@@ -2222,7 +2224,7 @@ function CategorizedTagSelect({
           <div key={cat}>
             <h3
               style={{ marginBottom: '0.5rem' }}
-              className="text-[10px] font-semibold uppercase tracking-wider text-gray-400"
+              className="text-3xs font-semibold uppercase tracking-wider text-gray-400"
             >
               {cat}
             </h3>
@@ -2252,7 +2254,7 @@ function CategorizedTagSelect({
         <div>
           <h3
             style={{ marginBottom: '0.5rem' }}
-            className="text-[10px] font-semibold uppercase tracking-wider text-gray-400"
+            className="text-3xs font-semibold uppercase tracking-wider text-gray-400"
           >
             직접 추가
           </h3>
@@ -2498,7 +2500,7 @@ function SimpleTextarea({
             return (
               <span
                 key={a.id}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] ${
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-2xs ${
                   used
                     ? 'border-blue-200 bg-blue-50 text-blue-700'
                     : 'border-gray-200 bg-gray-50 text-gray-600'
@@ -2745,7 +2747,7 @@ function BlockTypeMenu({
       }`}
     >
       <span>{label}</span>
-      {active && <span className="text-[10px]">✓</span>}
+      {active && <span className="text-3xs">✓</span>}
     </button>
   );
 
@@ -2767,7 +2769,7 @@ function BlockTypeMenu({
       </button>
       {open && (
         <div className="absolute left-0 top-full z-30 mt-1 min-w-[160px] overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-          <div className="px-3 pb-0.5 pt-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+          <div className="px-3 pb-0.5 pt-1 text-3xs font-semibold uppercase tracking-wider text-gray-400">
             형식
           </div>
           {item('제목', () => onSetType('h2'), cur === 'h2')}
@@ -2775,7 +2777,7 @@ function BlockTypeMenu({
           {item('본문', () => onSetType('p'), cur === 'p')}
           {item('목록', () => onSetType('li'), cur === 'li')}
           <div className="my-1 border-t border-gray-100" />
-          <div className="px-3 pb-0.5 pt-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+          <div className="px-3 pb-0.5 pt-1 text-3xs font-semibold uppercase tracking-wider text-gray-400">
             스타일
           </div>
           {item('B  굵게', () => onWrap('**'))}
@@ -3391,7 +3393,7 @@ function BlockEditor({
       ))}
 
       {/* 첨부 추가 — 글은 자유 입력, 이미지/파일만 버튼으로 추가 */}
-      <div className="mt-2 flex flex-wrap items-center gap-1.5 pl-1 text-[11px] text-gray-500">
+      <div className="mt-2 flex flex-wrap items-center gap-1.5 pl-1 text-2xs text-gray-500">
         <button
           type="button"
           onClick={() => imageInputRef.current?.click()}
@@ -3484,7 +3486,7 @@ function BodySection({
           ⋮⋮
         </div>
         <h4 className="text-sm font-bold text-gray-800">{title}</h4>
-        <span className="text-[11px] text-gray-400">드래그해서 순서 변경</span>
+        <span className="text-2xs text-gray-400">드래그해서 순서 변경</span>
       </div>
       {children ?? (
         <BlockEditor
@@ -3773,7 +3775,7 @@ function DomainSubsectionsList({
               <h4 className="text-sm font-bold text-gray-800">
                 {DOMAIN_SUB_LABEL[k]}
               </h4>
-              <span className="text-[11px] text-gray-400">
+              <span className="text-2xs text-gray-400">
                 드래그해서 순서 변경
               </span>
             </div>
@@ -3832,7 +3834,7 @@ function EditableMarkdownSection({
   };
 
   const toolBtnClass =
-    'rounded border border-gray-200 bg-white px-2 py-0.5 text-[11px] text-gray-600 hover:bg-gray-50';
+    'rounded border border-gray-200 bg-white px-2 py-0.5 text-2xs text-gray-600 hover:bg-gray-50';
 
   return (
     <section>
@@ -3899,7 +3901,7 @@ function EditableMarkdownSection({
           style={{ marginTop: '0.5rem' }}
           className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3"
         >
-          <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+          <div className="mb-1 text-3xs font-semibold uppercase tracking-wider text-gray-400">
             미리보기
           </div>
           <div className="text-sm leading-7 text-gray-700">
@@ -3940,13 +3942,13 @@ function InlineEditSection({
         style={{ marginBottom: '0.5rem' }}
         className="flex items-center justify-between gap-2"
       >
-        <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+        <span className="shrink-0 text-2xs font-semibold uppercase tracking-wider text-gray-400">
           {label}
         </span>
         <button
           type="button"
           onClick={() => setEditing((v) => !v)}
-          className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-all ${
+          className={`rounded-full px-2.5 py-0.5 text-2xs font-medium transition-all ${
             editing
               ? 'bg-blue-600 text-white shadow-sm hover:bg-blue-700'
               : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:text-blue-600'
@@ -4080,7 +4082,7 @@ function SummaryView({
         <div className="min-w-0 flex-1 space-y-3">
           {/* 제목 — 항상 인라인 편집 가능 */}
           <div>
-            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+            <label className="mb-1 block text-2xs font-semibold uppercase tracking-wider text-gray-400">
               제목
             </label>
             <input
@@ -4098,10 +4100,10 @@ function SummaryView({
               포커스/입력 시 자동 저장. 수정버튼 따로 없이 input 자체가 편집 가능. */}
           <div>
             <div className="mb-1 flex items-center justify-between">
-              <label className="block text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+              <label className="block text-2xs font-semibold uppercase tracking-wider text-gray-400">
                 한 줄 요약
               </label>
-              <span className="text-[11px] text-blue-600">
+              <span className="text-2xs text-blue-600">
                 ⓘ 작성한 내용이 피드에 올라갑니다.
               </span>
             </div>
@@ -4299,7 +4301,7 @@ function SummaryView({
             <button
               type="button"
               onClick={() => setDraft((d) => ({ ...d, thumbnail: '' }))}
-              className="mt-1.5 w-full rounded-full border border-gray-200 bg-white px-3 py-1 text-[11px] text-gray-500 hover:bg-gray-50"
+              className="mt-1.5 w-full rounded-full border border-gray-200 bg-white px-3 py-1 text-2xs text-gray-500 hover:bg-gray-50"
             >
               제거
             </button>

@@ -401,7 +401,7 @@ export default function ProfileEditPage() {
               if (filtered.length === 0) return null;
               return (
                 <div key={label}>
-                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400">{label}</p>
+                  <p className="mb-1.5 text-3xs font-semibold uppercase tracking-widest text-gray-400">{label}</p>
                   <div className="flex flex-wrap gap-1.5">
                     {filtered.map((s) => {
                       const active = skills.includes(s);

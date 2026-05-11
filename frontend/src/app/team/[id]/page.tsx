@@ -55,7 +55,7 @@ interface TeamDetail {
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-indigo-400">
+    <p className="mb-1.5 text-3xs font-semibold uppercase tracking-widest text-indigo-400">
       {children}
     </p>
   );
@@ -78,7 +78,7 @@ function VisibilityBadge({
     <button
       onClick={() => onToggle(field)}
       disabled={isLoading}
-      className={`-mt-0.5 rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors disabled:opacity-50 ${
+      className={`-mt-0.5 rounded-full border px-2 py-0.5 text-3xs font-medium transition-colors disabled:opacity-50 ${
         isPublic
           ? 'border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
           : 'border-stone-200 bg-stone-50 text-stone-400 hover:bg-stone-100'
@@ -274,7 +274,7 @@ export default function TeamDetailPage({
                 {team.proposal.expectedOutcome && (
                   <div className={team.proposal.detailedPlan ? 'border-b border-stone-50 pb-5' : ''}>
                     <div className="mb-1.5 flex items-center gap-2">
-                      <p className="text-[10px] font-semibold uppercase tracking-widest text-indigo-400">예상 결과물</p>
+                      <p className="text-3xs font-semibold uppercase tracking-widest text-indigo-400">예상 결과물</p>
                       {isLeader && (
                         <VisibilityBadge
                           field="expectedOutcome"
@@ -291,7 +291,7 @@ export default function TeamDetailPage({
                 {team.proposal.detailedPlan && (
                   <div>
                     <div className="mb-1.5 flex items-center gap-2">
-                      <p className="text-[10px] font-semibold uppercase tracking-widest text-indigo-400">상세 기획</p>
+                      <p className="text-3xs font-semibold uppercase tracking-widest text-indigo-400">상세 기획</p>
                       {isLeader && (
                         <VisibilityBadge
                           field="detailedPlan"

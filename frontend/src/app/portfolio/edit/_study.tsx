@@ -160,7 +160,8 @@ export default function StudyForm() {
     } catch {
       // 무시
     }
-    void syncItemToBackend(item);
+    // backend 에도 study 상세 같이 sync — 타인 viewer 가 미리보기 풀세트로 볼 수 있게.
+    void syncItemToBackend(item, { kind: 'study', data: d });
     router.push(getMyPortfolioPath());
   };
 
@@ -398,7 +399,7 @@ export default function StudyForm() {
             <label className={`${labelClass}`}>
               7. 한 줄 요약 <span className="text-red-500">*</span>
             </label>
-            <span className="text-[11px] text-blue-600">
+            <span className="text-2xs text-blue-600">
               ⓘ 작성한 내용이 피드에 올라갑니다.
             </span>
           </div>

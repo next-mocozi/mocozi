@@ -146,6 +146,41 @@ export function parseAttachmentMarker(content: string): ParsedMessage {
 }
 
 /**
+ * RoomList / ToastContainer 등 preview 표시용 — 마커를 사람용 요약으로 변환.
+ *
+ * 규칙:
+ *  - 인앱 link 마커 → label만 (예: "[[link:profile:abc|김철수의 프로필]]" → "김철수의 프로필")
+ *  - 텍스트 있으면 텍스트 우선 표시 (첨부 마커는 제거)
+ *  - 텍스트 없고 첨부만 있으면:
+ *      · 파일이 하나라도 있음 → "파일을 보냈습니다."  (file 우선 — 이미지+파일 혼합도 file 표시)
+ *      · 이미지만 있음        → "이미지를 보냈습니다."
+ *  - 빈 메시지 fallback → "메시지가 없습니다."
+ */
+export function summarizePreview(raw: string | null | undefined): string {
+  if (!raw) return '메시지가 없습니다.';
+
+  // 1. 인앱 link 마커 → label만
+  let s = raw.replace(/\[\[link:[^|\]]+\|([^\]]+)\]\]/g, '$1');
+
+  // 2. 첨부 마커 존재 여부 체크 (제거 전)
+  const hasFile = /\[\[file:[^|\]]+\|[^|\]]*\|\d+\|[^\]]+\]\]/.test(s);
+  const hasImage = /\[\[image:[^|\]]+\|[^|\]]*\|\d+\|[^\]]+\]\]/.test(s);
+
+  // 3. 첨부 마커 제거 + 공백 정리
+  s = s
+    .replace(/\[\[file:[^|\]]+\|[^|\]]*\|\d+\|[^\]]+\]\]/g, '')
+    .replace(/\[\[image:[^|\]]+\|[^|\]]*\|\d+\|[^\]]+\]\]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // 4. 우선순위: 텍스트 > 파일 > 이미지 > fallback
+  if (s) return s;
+  if (hasFile) return '파일을 보냈습니다.';
+  if (hasImage) return '이미지를 보냈습니다.';
+  return '메시지가 없습니다.';
+}
+
+/**
  * 사용자가 양식을 보낼 때 마지막에 붙일 attachment 마커 합성.
  * 양식 본문 자체에 이미 마커가 있으면 그것 사용, 없으면 자동 추가.
  */
