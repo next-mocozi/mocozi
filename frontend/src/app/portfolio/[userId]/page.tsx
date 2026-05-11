@@ -201,6 +201,21 @@ export default function PortfolioDetailPage({
   const [viewerStatus, setViewerStatus] = useState<
     'pending' | 'visible' | 'hidden' | 'notfound'
   >('pending');
+  // 타인 viewer 일 때 보여줄 사용자 정보 (이름·학교·학과·bio·skills·roles).
+  // 본인 페이지에서는 useAuth().user 를 그대로 쓰지만, 타인 페이지에서는
+  // backend GET /api/users/:id 결과를 여기에 저장해서 화면에 노출.
+  // (mock 시대엔 displayUser 가 feedUser ?? user 로 fallback 됐는데 mock 제거 후
+  // 항상 본인 user 로 fallback 되어, 다른 사람 페이지 가도 본인 정보가 뜨던
+  // 핵심 버그를 fix.)
+  const [viewerUser, setViewerUser] = useState<{
+    name: string;
+    university: string;
+    department: string;
+    grade: string | null;
+    bio: string | null;
+    skills: string[];
+    roles: string[];
+  } | null>(null);
 
   // owner 만 backend hydrate → localStorage 읽기 → state set. viewer 는 viewerInitial 유지.
   // hydrate 를 먼저 await 해서 backend 의 isPublic/firstPostAt 등이 localStorage 에
@@ -349,16 +364,36 @@ export default function PortfolioDetailPage({
         setVisibility(remote.isPublic ? 'public' : 'private');
 
         // 사용자 메타(이름·학교·자기소개·skills·직군)는 user 엔드포인트에서.
-        // 비공개 portfolio 라도 user 공개 정보는 보여줘도 OK.
         try {
           const userRes = await api.get(`/api/users/${paramUserId}`);
           if (cancelled) return;
           const u = (userRes.data?.data ?? userRes.data) as {
-            bio?: string;
-          };
-          if (u?.bio) {
-            setIntroSaved(u.bio);
-            setIntroDraft(u.bio);
+            name?: string;
+            university?: string;
+            department?: string;
+            grade?: string | null;
+            bio?: string | null;
+            skills?: string[];
+            roles?: string[];
+          } | null;
+          if (u) {
+            setViewerUser({
+              name: u.name ?? '',
+              university: u.university ?? '',
+              department: u.department ?? '',
+              grade: u.grade ?? null,
+              bio: u.bio ?? null,
+              skills: u.skills ?? [],
+              roles: u.roles ?? [],
+            });
+            if (u.bio) {
+              setIntroSaved(u.bio);
+              setIntroDraft(u.bio);
+            }
+            // 직군 (mainRole/subRoles) 도 그 사람 값으로 표시
+            const roles = u.roles ?? [];
+            setMainRole(roles[0] ?? '');
+            setSubRoles(roles.slice(1));
           }
         } catch {
           // user 메타 실패는 무시 — portfolio 본문만 보여줘도 충분.
@@ -702,24 +737,35 @@ export default function PortfolioDetailPage({
     persist(ITEMS_STORAGE_KEY, next);
   };
 
-  // 헤더에 표시할 사용자 정보 — owner 면 useAuth().user, viewer 면 feedUser
-  const displayUser = feedUser
+  // 헤더에 표시할 사용자 정보 — owner 면 useAuth().user, viewer 면 viewerUser.
+  // (mock 시대엔 viewer 일 때도 useAuth().user 로 fallback 했는데 그게 누구의
+  // 페이지든 본인 정보가 표시되는 버그였음. viewer 일 때는 viewer 정보만.)
+  const displayUser = isOwner
     ? {
-        name: feedUser.name,
-        university: feedUser.university,
-        department: feedUser.department,
-        grade: feedUser.grade,
-        bio: feedUser.bio,
-        skills: feedUser.skills,
-      }
-    : {
         name: user.name,
         university: user.university,
         department: user.department,
         grade: user.grade ?? '',
         bio: user.bio ?? '',
         skills: user.skills ?? [],
-      };
+      }
+    : viewerUser
+      ? {
+          name: viewerUser.name,
+          university: viewerUser.university,
+          department: viewerUser.department,
+          grade: viewerUser.grade ?? '',
+          bio: viewerUser.bio ?? '',
+          skills: viewerUser.skills,
+        }
+      : {
+          name: '',
+          university: '',
+          department: '',
+          grade: '',
+          bio: '',
+          skills: [],
+        };
 
   return (
     <div className="relative mx-auto w-full max-w-7xl px-4 py-8">
