@@ -112,6 +112,17 @@ const TYPE_FROM_BACKEND: Record<BackendPortfolioItemType, PortfolioItemType> = {
   ETC: 'etc',
 };
 
+// ──────── details 통합 payload ────────
+/** 카드 type 별 상세 데이터를 backend Json 컬럼 PortfolioItem.details 에 저장하는
+ *  통합 형식. interview = project 인터뷰 답변, research = 연구 상세, study = 스터디.
+ *  타인 viewer 가 작성 미리보기를 그대로 볼 수 있게 backend 에 저장한다.
+ *  (frontend 의 localStorage mock_portfolio_details / mock_research_details /
+ *  mock_study_details 와 동일한 데이터를 backend 로 동기화) */
+export type ItemDetailsPayload =
+  | { kind: 'interview'; data: unknown }
+  | { kind: 'research'; data: unknown }
+  | { kind: 'study'; data: unknown };
+
 // ──────── 매퍼 ────────
 /** description은 백엔드에서 NOT NULL. 빈 값일 경우 안전 fallback. */
 function ensureDescription(item: PortfolioItem): string {
@@ -178,13 +189,18 @@ export function fromBackendItem(b: BackendPortfolioItem): PortfolioItem {
  *  실패해도 throw하지 않음 — caller(handleSave 등)는 localStorage만 갱신해도 동작해야 함. */
 export async function syncItemToBackend(
   item: PortfolioItem,
+  details?: ItemDetailsPayload,
 ): Promise<BackendPortfolioItem | null> {
   try {
     const serverId = getServerId(item.id);
+    const basePayload = toCreatePayload(item);
+    const payload = details !== undefined
+      ? { ...basePayload, details }
+      : basePayload;
     if (serverId) {
-      return await apiUpdateItem(serverId, toUpdatePayload(item));
+      return await apiUpdateItem(serverId, payload);
     }
-    const created = await apiCreateItem(toCreatePayload(item));
+    const created = await apiCreateItem(payload);
     if (created?.id) setServerId(item.id, created.id);
     return created;
   } catch (err) {
@@ -280,6 +296,35 @@ export async function hydratePortfolioFromBackend(): Promise<void> {
   }
 }
 
+/** type 별 localStorage 의 상세 데이터를 ItemDetailsPayload 로 추출.
+ *  옛 카드를 backend 로 reconcile 할 때 사용자 작성 미리보기까지 같이 sync. */
+function readItemDetailsFromLocal(
+  itemId: number,
+  type: PortfolioItemType,
+): ItemDetailsPayload | undefined {
+  if (typeof window === 'undefined') return undefined;
+  const readMap = <T,>(key: string): Record<string, T> => {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? (JSON.parse(raw) as Record<string, T>) : {};
+    } catch {
+      return {};
+    }
+  };
+  const k = String(itemId);
+  if (type === 'project') {
+    const map = readMap<unknown>('mock_portfolio_details');
+    if (map[k]) return { kind: 'interview', data: map[k] };
+  } else if (type === 'research') {
+    const map = readMap<unknown>('mock_research_details');
+    if (map[k]) return { kind: 'research', data: map[k] };
+  } else if (type === 'study') {
+    const map = readMap<unknown>('mock_study_details');
+    if (map[k]) return { kind: 'study', data: map[k] };
+  }
+  return undefined;
+}
+
 /** localStorage 에만 있는 (= backend 매핑 없는) 항목들을 backend 로 sync.
  *  items / work / activity / link 4종 모두 처리. 실패해도 throw 안 함. */
 async function reconcileLocalToBackend(): Promise<void> {
@@ -294,11 +339,12 @@ async function reconcileLocalToBackend(): Promise<void> {
     }
   };
 
-  // PortfolioItem
+  // PortfolioItem (+ details 같이 보냄)
   const items = readArr<PortfolioItem>(ITEMS_STORAGE_KEY);
   for (const it of items) {
     if (!getServerId(it.id)) {
-      await syncItemToBackend(it);
+      const details = readItemDetailsFromLocal(it.id, it.type);
+      await syncItemToBackend(it, details);
     }
   }
 

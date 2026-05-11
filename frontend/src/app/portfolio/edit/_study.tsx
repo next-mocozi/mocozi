@@ -160,7 +160,8 @@ export default function StudyForm() {
     } catch {
       // 무시
     }
-    void syncItemToBackend(item);
+    // backend 에도 study 상세 같이 sync — 타인 viewer 가 미리보기 풀세트로 볼 수 있게.
+    void syncItemToBackend(item, { kind: 'study', data: d });
     router.push(getMyPortfolioPath());
   };
 

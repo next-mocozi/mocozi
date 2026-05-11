@@ -85,7 +85,7 @@ export function buildBackendFeedPosts(portfolios: FeedPortfolio[]): FeedPost[] {
     // (item/exp/career 는 거의 자체 createdAt 이 있어서 firstAt 은 가드용.)
     const fallbackAt = firstAt ?? 0;
 
-    // 1) PortfolioItem
+    // 1) PortfolioItem (+ backend details 첨부)
     for (const item of p.items ?? []) {
       const it = toPortfolioItem(item);
       posts.push({
@@ -94,6 +94,11 @@ export function buildBackendFeedPosts(portfolios: FeedPortfolio[]): FeedPost[] {
         author,
         createdAt: it.createdAt ?? fallbackAt,
         item: it,
+        // backend details(Json) — { kind, data } 통합 형식.
+        // 타인 viewer 의 PostDetail 패널이 작성자 미리보기 그대로 노출.
+        rawDetails:
+          (item.details as { kind?: string; data?: unknown } | undefined) ??
+          null,
       } satisfies FeedPostItem);
     }
 

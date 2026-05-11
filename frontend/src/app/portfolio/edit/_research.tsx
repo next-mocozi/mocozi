@@ -229,8 +229,8 @@ export default function ResearchForm() {
     } catch {
       // 무시
     }
-    // 백엔드 동기화 (fire-and-forget — 실패해도 localStorage 보존)
-    void syncItemToBackend(item);
+    // backend 에도 research 상세 같이 sync — 타인 viewer 가 미리보기 풀세트로 볼 수 있게.
+    void syncItemToBackend(item, { kind: 'research', data: d });
     router.push(getMyPortfolioPath());
   };
 

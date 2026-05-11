@@ -99,13 +99,43 @@ export default function PortfolioItemPage({
                 thumbnail: found.thumbnail ?? undefined,
                 createdAt: new Date(found.createdAt).getTime(),
               });
+              // backend details(Json) → 작성자 미리보기 풀세트 복원.
+              // 통합 형식 { kind: 'interview' | 'research' | 'study', data: ... } 로
+              // 저장돼있다. kind 에 따라 적절한 state 에 넣어 ItemFullView 가 동일하게 렌더.
+              const d = found.details as
+                | { kind?: string; data?: unknown }
+                | undefined
+                | null;
+              if (d && typeof d === 'object' && 'kind' in d) {
+                if (d.kind === 'interview') {
+                  setDetails(d.data as Draft);
+                  setResearch(null);
+                  setStudy(null);
+                } else if (d.kind === 'research') {
+                  setResearch(d.data as ResearchDetail);
+                  setDetails(null);
+                  setStudy(null);
+                } else if (d.kind === 'study') {
+                  setStudy(d.data as StudyDetail);
+                  setDetails(null);
+                  setResearch(null);
+                } else {
+                  setDetails(null);
+                  setResearch(null);
+                  setStudy(null);
+                }
+              } else {
+                setDetails(null);
+                setResearch(null);
+                setStudy(null);
+              }
             } else {
               setItem(null);
+              setDetails(null);
+              setResearch(null);
+              setStudy(null);
             }
           }
-          setDetails(null);
-          setResearch(null);
-          setStudy(null);
         } catch {
           if (!cancelled) setItem(null);
         } finally {

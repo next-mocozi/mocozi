@@ -1169,9 +1169,11 @@ export default function ProjectInterview() {
           it.id === projectId ? { ...it, draft: false } : it,
         );
         localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(nextList));
-        // 최종 저장 시점에만 백엔드 동기화 (auto-save 단계에선 호출 X)
+        // 최종 저장 시점에만 백엔드 동기화 (auto-save 단계에선 호출 X).
+        // 인터뷰 답변(draft) 도 같이 보내 타인 viewer 가 미리보기 풀세트로 볼 수 있게.
         const finalItem = nextList.find((it) => it.id === projectId);
-        if (finalItem) void syncItemToBackend(finalItem);
+        if (finalItem)
+          void syncItemToBackend(finalItem, { kind: 'interview', data: draft });
       } catch {
         // 무시
       }
