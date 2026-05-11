@@ -58,13 +58,14 @@ export default function MyFeedPage() {
   }, [user, loading]);
 
   // 본인 게시물 — 비공개 여부와 무관하게 표시.
+  // isPrivate 판단은 백엔드 응답(myPortfolio.isPublic)을 기준으로 한다.
   const posts: FeedPost[] = useMemo(() => {
     if (!user || !myPortfolio) return [];
-    const isPrivate = status !== 'public';
+    const isPrivate = !myPortfolio.isPublic;
     return buildOwnerFeedPostsFromApi(myPortfolio, user, { isPrivate }).sort(
       (a, b) => b.createdAt - a.createdAt,
     );
-  }, [user, status, myPortfolio]);
+  }, [user, myPortfolio]);
 
   if (loading || status === 'loading') {
     return (
@@ -82,7 +83,7 @@ export default function MyFeedPage() {
   return (
     <div className="relative mx-auto w-full max-w-7xl px-4 py-8">
       <div className="relative z-0">
-        <PortfolioSegmentedNav current="me" />
+        <PortfolioSegmentedNav current="me" isPublic={myPortfolio?.isPublic} />
       </div>
 
       {/* overflow-x-clip — 우측 패널이 닫힌 상태(translate-x-full)에서 viewport
@@ -101,8 +102,7 @@ export default function MyFeedPage() {
             <p className="mt-1 text-sm text-gray-500">
                내가 올린 모든 게시물(공개·비공개 모두)을 시간순으로 볼 수 있어요
               <br></br>
-              {status !== 'public' && (
-                
+              {myPortfolio !== null && !myPortfolio.isPublic && (
                 <span className="ml-1 text-amber-600">
                 현재 비공개 — 공개로 전환하면 메인 피드에도 노출됩니다.
                 </span>

@@ -4,10 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import {
-  useMyPortfolioStatus,
-  notifyPortfolioChanged,
-} from '@/hooks/useMyPortfolioStatus';
+import { useMyPortfolioStatus } from '@/hooks/useMyPortfolioStatus';
 import { buildOwnerFeedPostsFromApi } from '@/lib/feed/buildOwnerFeed';
 import { buildBackendFeedPosts } from '@/lib/feed/buildBackendFeed';
 import { getFeed, getMyPortfolio, type FeedPortfolio, type BackendPortfolio } from '@/lib/portfolio-api';
@@ -89,14 +86,16 @@ export default function PortfolioFeedPage() {
   }, [user, loading]);
 
   // 피드 데이터: 백엔드(타인 공개) + 본인(공개일 때).
+  // isPublic 판단은 localStorage(status)가 아닌 백엔드 응답(myPortfolio.isPublic)을 기준으로 한다.
+  // 새 기기/시크릿 창에서 localStorage가 비어있어도 백엔드 상태를 그대로 반영.
   const posts: FeedPost[] = useMemo(() => {
     const others = buildBackendFeedPosts(remotePortfolios ?? []);
-    if (user && myPortfolio && status === 'public') {
+    if (user && myPortfolio && myPortfolio.isPublic) {
       const mine = buildOwnerFeedPostsFromApi(myPortfolio, user, { isPrivate: false });
       return [...others, ...mine].sort((a, b) => b.createdAt - a.createdAt);
     }
     return [...others].sort((a, b) => b.createdAt - a.createdAt);
-  }, [user, status, remotePortfolios, myPortfolio]);
+  }, [user, remotePortfolios, myPortfolio]);
 
   // 아주 초기(auth/status 자체가 미정) 만 전체 화면 로딩. backend 메인 피드 fetch
   // 자체는 nav 까지 가리지 않고, 아래쪽 posts 영역에서만 로딩 표시.
@@ -117,7 +116,7 @@ export default function PortfolioFeedPage() {
     <div className="relative mx-auto w-full max-w-7xl px-4 py-8">
       {/* Segmented controls — 좌측 슬라이드된 피드가 z-index 로 덮어 가림 */}
       <div className="relative z-0">
-        <PortfolioSegmentedNav current="feed" />
+        <PortfolioSegmentedNav current="feed" isPublic={myPortfolio?.isPublic} />
       </div>
 
       {/* overflow-x-clip — 닫혀있을 때 우측 패널이 translate-x-full 로 viewport 바깥에
@@ -140,7 +139,7 @@ export default function PortfolioFeedPage() {
             </p>
           </header>
 
-          {status === 'private' && (
+          {myPortfolio !== null && !myPortfolio.isPublic && (
             <div className="mb-4 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
               <span className="mt-0.5 text-lg" aria-hidden>
                 🔒

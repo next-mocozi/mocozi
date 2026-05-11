@@ -12,13 +12,23 @@ export type PortfolioNavTab = 'feed' | 'mine' | 'me';
  *  - 미작성(unwritten) 사용자는 게이트에 의해 도달하지 않으므로 단순 fallback 라우팅. */
 export default function PortfolioSegmentedNav({
   current,
+  isPublic,
 }: {
   current: PortfolioNavTab;
+  /** 부모 페이지에서 백엔드 데이터로 직접 내려주는 공개 여부.
+   *  제공되면 localStorage 기반 status 대신 사용한다. */
+  isPublic?: boolean;
 }) {
   const { user } = useAuth();
   const { status } = useMyPortfolioStatus();
 
   const myHref = user ? `/portfolio/${user.id}` : '/portfolio';
+
+  // isPublic prop이 있으면 그걸 사용, 없으면 localStorage 기반 status fallback.
+  const showBadge = isPublic !== undefined
+    ? true
+    : status === 'public' || status === 'private';
+  const isPublicResolved = isPublic !== undefined ? isPublic : status === 'public';
 
   return (
     <div className="mb-6 flex items-center gap-3">
@@ -32,22 +42,22 @@ export default function PortfolioSegmentedNav({
         <TabLink href="/portfolio/me" active={current === 'me'} label="내 피드" />
       </div>
 
-      {/* 공개/비공개 뱃지 — '내 포트폴리오' 가 활성이거나 작성됨 상태일 때 노출 */}
-      {(status === 'public' || status === 'private') && (
+      {/* 공개/비공개 뱃지 */}
+      {showBadge && (
         <span
           className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${
-            status === 'public'
+            isPublicResolved
               ? 'bg-green-100 text-green-700'
               : 'bg-gray-100 text-gray-600'
           }`}
-          aria-label={status === 'public' ? '공개 상태' : '비공개 상태'}
+          aria-label={isPublicResolved ? '공개 상태' : '비공개 상태'}
         >
           <span
             className={`h-1.5 w-1.5 rounded-full ${
-              status === 'public' ? 'bg-green-500' : 'bg-gray-400'
+              isPublicResolved ? 'bg-green-500' : 'bg-gray-400'
             }`}
           />
-          {status === 'public' ? '공개' : '비공개'}
+          {isPublicResolved ? '공개' : '비공개'}
         </span>
       )}
     </div>

@@ -233,6 +233,7 @@ export default function PortfolioDetailPage({
       }
       if (cancelled) return;
       hydrateFromLocalStorage();
+      notifyPortfolioChanged();
     })();
     function hydrateFromLocalStorage() {
     const load = <T,>(key: string, fallback: T): T => {
@@ -776,7 +777,7 @@ export default function PortfolioDetailPage({
       {/* 본인 페이지일 때만 segmented nav — 피드/내 피드와 동일한 좌측 상단 위치 */}
       {isOwner && (
         <div className="relative z-0">
-          <PortfolioSegmentedNav current="mine" />
+          <PortfolioSegmentedNav current="mine" isPublic={visibility === 'public'} />
         </div>
       )}
       {/* 본문 카드들은 기존 폭(max-w-4xl) 유지해 가독성 보존 */}
