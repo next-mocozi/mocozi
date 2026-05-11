@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: 'Pretendard Variable';
+  font-weight: 45 920;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/PretendardVariable.woff2') format('woff2-variations');
+}
+
 /* KaTeX CSS는 컴포넌트 단에서 직접 import (frontend/src/components/chat/MessageMarkdown.tsx)
    — Tailwind v4의 PostCSS가 node_modules CSS @import resolve 못 함 */
 
@@ -185,7 +193,7 @@ button:disabled,
 
 body {
   @apply bg-slate-50 text-gray-900 antialiased;
-  font-family: var(--font-jakarta), var(--font-noto), 'Noto Sans KR', sans-serif;
+  font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
 }
 
 @layer components {
