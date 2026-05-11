@@ -239,6 +239,72 @@ async getUnreadCount(roomId: string, userId: string): Promise<number> {
 // Response 204
 ```
 
+### 1-X. 첨부 파일/이미지 (§16 첨부 정책)
+
+#### `POST /api/chat/rooms/:roomId/attachments/upload-url`
+
+업로드용 presigned PUT URL 발급 (10분 TTL). 채팅방 멤버만 가능.
+
+```typescript
+// Request
+{
+  files: Array<{
+    name: string;            // 원본 파일명 (UI 표시용, 검증 안 함)
+    size: number;            // bytes — backend가 한도(이미지 20MB / PDF 50MB /
+                             //   Office 30MB / zip 100MB) 검증
+    mime: string;            // 화이트리스트 검증:
+                             //   image/jpeg, image/png, image/webp, image/gif,
+                             //   application/pdf,
+                             //   application/vnd.openxmlformats-officedocument.wordprocessingml.document,
+                             //   application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,
+                             //   application/vnd.openxmlformats-officedocument.presentationml.presentation,
+                             //   application/zip
+  }>;
+}
+
+// Response 201
+{
+  uploads: Array<{
+    path: string;            // backend가 생성한 storage path
+                             //   (예: rooms/{roomId}/{uuid}.{ext})
+    uploadUrl: string;       // presigned PUT URL (10분 TTL)
+    expiresAt: string;       // ISO timestamp
+  }>;
+}
+
+// 403: 채팅방 멤버 아님
+// 400: size 한도 초과 / MIME 화이트리스트 위반
+```
+
+업로드 절차 (클라이언트):
+1. 위 endpoint로 메타 보내 path + uploadUrl 받음
+2. `fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': mime } })` 직접 PUT
+3. 성공 시 `[[file:path|name|size|mime]]` 또는 `[[image:path|name|size|mime]]` 마커를 메시지 본문에 삽입
+4. 일반 `message:send` socket 이벤트로 전송 — backend가 마커 다시 검증
+
+#### `POST /api/chat/attachments/sign-url`
+
+표시/다운로드용 signed URL 일괄 발급 (1시간 TTL). 채팅방 멤버 + 메시지 deletedAt 검증.
+
+```typescript
+// Request
+{
+  paths: string[];           // 메시지 마커에서 추출한 storage path 배치
+                             //   (예: ['rooms/abc/uuid1.png', 'rooms/abc/uuid2.pdf'])
+}
+
+// Response 200
+{
+  signed: Array<{
+    path: string;
+    url: string | null;      // null이면 access 불가 (메시지 삭제 / 비멤버 등)
+    expiresAt: string;       // ISO timestamp (1h 후)
+  }>;
+}
+```
+
+frontend는 응답을 `Map<path, {url, expiresAt}>` 캐시로 유지해 1h 내 재발급 회피. 만료 후 자동 재호출.
+
 ---
 
 ## 2. Socket 이벤트

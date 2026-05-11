@@ -14,7 +14,7 @@
 |---|---|---|---|
 | 🔐 인증/보안 (외부 의존성) | 2 | 외부 일정 | ⭐⭐⭐ 운영 배포 전 필수 |
 | 🚀 운영/배포 | 3 | 중 | ⭐⭐ Phase B 초기 |
-| 💬 DM 모듈 진화 | 6 | 중·대 | ⭐⭐ 기능 확장 시 |
+| 💬 DM 모듈 진화 | 7 | 중·대 | ⭐⭐ 기능 확장 시 |
 | 🎨 UX 개선 (작은 작업) | 4 | 작음 | ⭐ 시간 될 때 |
 | 🧪 품질/회귀 | 3 | 중 | ⭐ 안정화 시 |
 
@@ -134,6 +134,17 @@
 | **착수 시 작업** | 1) Backend NestJS Cron(`@nestjs/schedule`) 또는 Supabase Edge Function으로 N일(예: 30일) 이상 메시지 0개 방 hard delete, 2) cascade로 ChatRoomMember 같이 삭제, 3) 운영 통계 로깅 (삭제 row 수) |
 | **고려사항** | draft localStorage는 클라이언트에 있으니 backend가 모름. 30일+ 빈 방은 사용자도 의도 잃었을 가능성 높아 안전. 더 보수적이면 90일. |
 | **연관** | `docs/chat/01-decisions.md` §15 빈 방 자동 숨김 정책 (Phase A 시각 정리), B-DM-3 방 폭파 (다른 의도) |
+
+### B-DM-7. 첨부 파일 묶음 정리 — Storage Cron
+
+| 항목 | 내용 |
+|---|---|
+| **현재 상태** | Phase A 첨부 정책(`docs/chat/01-decisions.md` §16)에서 메시지 deletedAt이어도 storage 파일은 보존 (`hasAttachments` 메시지의 path는 marker에 그대로). sign endpoint가 deletedAt 검증으로 접근만 차단. → storage row 누적 |
+| **착수 트리거** | Supabase Storage 용량 한도 근접 / 청구액 ↑ |
+| **이유** | 메시지 삭제·방 삭제 후에도 storage 파일이 남으면 시간 누적으로 비용·관리 부담 ↑. 참조 메시지가 모두 deletedAt이거나 30일+ 묻혀있으면 사실상 죽은 파일 |
+| **착수 시 작업** | 1) NestJS Cron 또는 Supabase Edge Function으로 다음 조건 파일 hard delete: (a) 모든 참조 메시지가 deletedAt && 삭제 후 30일 경과, OR (b) 참조 메시지 자체가 없음(고아 — 업로드 완료 후 메시지 전송 실패 케이스), 2) backend `StorageService.deleteObject(path)` 일괄 호출, 3) 운영 통계 로깅 |
+| **고려사항** | 메시지 content에 path가 inline 마커로 있으므로 storage 파일과 메시지의 관계 추적은 별도 메타 테이블이 더 효율적일 수 있음. Phase B 착수 시 `Attachment` 모델 도입 검토 (messageId + storagePath + createdAt) — 그러면 cron 쿼리도 단순 |
+| **연관** | `docs/chat/01-decisions.md` §16 첨부 정책 (Phase A), B-DM-6 빈 방 정리 (유사 패턴) |
 
 ---
 

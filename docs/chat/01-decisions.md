@@ -367,7 +367,69 @@ if (message.deletedAt) {
 
 ---
 
-## 16. 결정 변경 이력
+## 16. 첨부 정책 (파일/이미지)
+
+채팅에 이미지/파일 전송 기능을 추가. 인앱 link 마커 시스템(`[[link:profile:id|label]]`)을 확장한 형태.
+
+### 마커 형식
+
+| Type | 마커 | 비고 |
+|---|---|---|
+| 파일 | `[[file:storagePath\|filename.pdf\|123456\|application/pdf]]` | path / 이름 / 크기(bytes) / mime |
+| 이미지 | `[[image:storagePath\|alt.jpg\|123456\|image/png]]` | inline preview 분기용 (file과 별도 type) |
+
+ChatMessage 모델 변경 없음 — 마커가 본문 content TEXT에 inline. parse는 frontend `parseMessage()`가 통합 처리.
+
+### 크기 한도 (초과 시 frontend가 차단)
+
+| 종류 | 한도 | 근거 |
+|---|---|---|
+| 이미지 (jpg/png/webp/gif) | **20MB** | 캡처·일반 사진 충분 |
+| PDF | **50MB** | 일반 자료·논문·스캔본 |
+| Office (.docx/.xlsx/.pptx) | **30MB** | 일반 문서 + 큰 PPT |
+| zip | **100MB** | 포트폴리오/소스 묶음. 그 이상은 cloud link로 |
+
+### 허용 MIME (화이트리스트)
+
+`image/jpeg`, `image/png`, `image/webp`, `image/gif`, `application/pdf`, `application/vnd.openxmlformats-officedocument.wordprocessingml.document` (.docx), `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` (.xlsx), `application/vnd.openxmlformats-officedocument.presentationml.presentation` (.pptx), `application/zip`.
+
+화이트리스트 외 MIME(예: `.exe`, `.sh`, `.html`)은 backend에서 reject. SVG는 inline script 위험으로 화이트리스트에서 제외.
+
+### Access 제어 — Signed URL with TTL
+
+- Storage 버킷 `chat-attachments`는 **private**. service role key 없이는 접근 불가
+- 업로드: backend `POST /api/chat/rooms/:roomId/attachments/upload-url` → presigned PUT URL 발급 (10분 TTL) → 클라이언트가 직접 Supabase에 PUT (backend 트래픽 0)
+- 저장: 메시지 마커에는 **URL이 아닌 storage path** (예: `rooms/{roomId}/{uuid}.png`)
+- 표시/다운로드: 메시지 렌더 시 frontend가 `POST /api/chat/attachments/sign-url` 호출(path 배치) → backend가 채팅방 멤버 검증 + message.deletedAt 검증 후 signed URL 발급(1h TTL)
+- frontend는 발급된 URL을 path별 캐시(`Map<path, {url, expiresAt}>`)로 1h 재사용. 만료 후 자동 재-sign
+
+### 삭제 / 보존 정책
+
+- 메시지 삭제(`deletedAt`) 시 storage 파일은 **보존**. sign endpoint가 메시지 deletedAt 검증으로 403 → 사실상 접근 차단
+- 30일 이상 묻힌 (참조 메시지 모두 deletedAt) 첨부 파일은 cron으로 정리. Phase B 항목 — `08-phase-b-policy.md` **B-DM-7** 참조
+
+### 다중 첨부 + 진입점
+
+- 한 메시지에 다중 파일 첨부 가능 (마커 여러 개를 본문에 줄바꿈으로 나열)
+- 진입점 모두 지원: 클립 버튼(`<input type="file" hidden multiple>`), 클립보드 paste(textarea `onPaste` → image item), drag-drop(입력 영역 `onDrop`)
+- 업로드 진행 중 메시지는 `__uploading: true` flag + per-file progress bar 노출. 모두 완료되어야 socket send 트리거
+
+### 구현 위치
+
+- backend: `chat/storage.service.ts`, `chat/storage.controller.ts`, `chat/chat.service.ts` 마커 검증
+- frontend: `lib/messageTemplate.ts` 마커 union 확장, `lib/chat/attachmentUpload.ts`, `lib/chat/signAttachmentUrls.ts`, `components/chat/AttachmentPicker.tsx`, `FileAttachmentCard.tsx`, `ImageAttachment.tsx`
+
+### Phase B 이연
+
+- Supabase image transformation (Pro plan) 도입 후 자동 thumbnail
+- 30일+ 묻힌 첨부 정리 cron (B-DM-7)
+- PDF in-app viewer
+- 모바일 카메라 직접 촬영 (`capture="environment"`)
+- virus scan / rate limiting
+
+---
+
+## 17. 결정 변경 이력
 
 | 날짜 | 결정 | 변경 사유 |
 |---|---|---|

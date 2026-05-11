@@ -56,6 +56,14 @@ export interface ChatMessage {
   id: string;
   roomId: string;
   senderId: string;
+  /**
+   * 메시지 본문. 첨부 마커도 inline:
+   *  - 인앱 link: [[link:profile|portfolio|team|external:target|label]]
+   *  - 파일:      [[file:storagePath|filename|sizeBytes|mime]]
+   *  - 이미지:    [[image:storagePath|alt|sizeBytes|mime]]
+   * 파싱은 frontend `lib/messageTemplate.ts`의 `ParsedAttachment` union으로.
+   * (Phase A 첨부 정책 — `docs/chat/01-decisions.md` §16)
+   */
   content: string;
   parentId: string | null;
   editedAt: Date | null;

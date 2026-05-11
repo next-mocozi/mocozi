@@ -98,7 +98,12 @@ model ChatMessage {
   id        String      @id @default(uuid())
   roomId    String
   senderId  String
-  content   String      @db.Text     // 무제한 길이 (코드 블록 등)
+  // content: 무제한 길이 (코드 블록 등). 첨부 마커도 본문에 inline.
+  //   - 인앱 link: [[link:profile|portfolio|team|external:target|label]]
+  //   - 파일:      [[file:storagePath|filename|size|mime]]   (§16, Phase A 첨부)
+  //   - 이미지:    [[image:storagePath|alt|size|mime]]
+  // 파싱·렌더링은 frontend `lib/messageTemplate.ts`가 담당. 모델 변경 없음.
+  content   String      @db.Text
 
   parentId  String?                  // 답글 (자기참조)
   editedAt  DateTime?                // null: 미수정. 값: "(편집됨)" 표시
