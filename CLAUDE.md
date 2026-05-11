@@ -253,7 +253,7 @@ mocozi/
 docker exec mocozi-temp-backend-1 sh -c "cd /app && pnpm exec prisma db push"
 docker compose restart backend
 ```
-> Railway(프로덕션)는 `backend/prisma/migrations/*.sql`을 Supabase SQL Editor에서 수동 실행
+> 프로덕션은 `backend/prisma/migrations/*.sql`을 Supabase SQL Editor에서 수동 실행
 
 ---
 
@@ -377,7 +377,6 @@ pnpm type-check       # tsc --noEmit
 - [ ] shared 타입을 frontend/backend 코드에서 실사용 (현재 정의만 있고 import 미사용)
 - [ ] 통합 테스트 / E2E 테스트
 - [ ] README의 팀원 정보 채우기
-- [x] CI/CD — Railway 연동 완료 (`develop` push 시 자동 배포)
 
 ---
 
