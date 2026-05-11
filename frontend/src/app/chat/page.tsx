@@ -57,7 +57,13 @@ function ChatListPageContent() {
           }
           const res = await api.post<{ data: ChatRoomWithMembers }>(
             '/api/chat/rooms',
-            { type: 'DIRECT', memberIds: [userId] },
+            {
+              type: 'DIRECT',
+              memberIds: [userId],
+              // §17 진입 컨텍스트 — RoomList 색 점 표시. find-or-create 시 기존 방 있으면
+              // 그 방의 첫 context 유지 (첫 진입점 원본 보존).
+              ...(context ? { context } : {}),
+            },
           );
           const room = res.data.data;
           const params = new URLSearchParams();
@@ -91,6 +97,8 @@ function ChatListPageContent() {
               ...(contact.type === 'GROUP' && contact.suggestedRoomName
                 ? { name: contact.suggestedRoomName }
                 : {}),
+              // §17 진입 컨텍스트 — 보통 RECRUIT_TEAM
+              ...(context ? { context } : {}),
             },
           );
           const room = roomRes.data.data;

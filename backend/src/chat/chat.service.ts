@@ -23,6 +23,8 @@ interface CreateRoomInput {
   name?: string;
   description?: string;
   memberIds: string[];
+  /** 진입 컨텍스트 — RoomList 색 점 표시용 (§17). */
+  context?: Prisma.ChatRoomCreateInput['context'];
 }
 
 /**
@@ -208,7 +210,7 @@ export class ChatService {
    * creator는 자동으로 멤버에 포함된다.
    */
   async createRoom(creatorId: string, input: CreateRoomInput) {
-    const { type, name, description, memberIds } = input;
+    const { type, name, description, memberIds, context } = input;
     const allMemberIds = Array.from(new Set([creatorId, ...memberIds]));
 
     if (type === 'DIRECT') {
@@ -242,6 +244,9 @@ export class ChatService {
         name: type === 'GROUP' ? name : null,
         description: description ?? null,
         creatorId,
+        // §17 진입 컨텍스트 — DIRECT find-or-create 시는 이미 위에서 return됐으므로
+        // 여기 도달하면 새 방이고, 첫 컨텍스트 값이 영구 저장됨.
+        context: context ?? null,
         members: {
           create: allMemberIds.map((userId) => ({ userId })),
         },

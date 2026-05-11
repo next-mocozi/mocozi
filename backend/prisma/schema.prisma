@@ -315,6 +315,10 @@ model ChatRoom {
   description   String?
   creatorId     String?
 
+  // 진입 컨텍스트 — 어떤 페이지/맥락에서 시작된 방인지 (RoomList 색 점 표시용).
+  // §17 정책: nullable (옛 방 호환), DIRECT find-or-create 시 첫 값 유지.
+  context       MessageContext?
+
   // 마지막 메시지 미리보기 (사이드바 표시용)
   lastMessage   String?
   lastMessageAt DateTime?     // 메시지 수신 시각 — updatedAt과 분리

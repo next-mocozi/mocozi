@@ -15,7 +15,7 @@ import api from '@/lib/api';
 import { summarizePreview } from '@/lib/messageTemplate';
 import { timeAgo } from '@/lib/utils';
 import { useChatNotifications, useChatSocket } from '@/providers/SocketProvider';
-import type { ChatRoomWithMembers, RoomsPageResponse } from '@/types/chat';
+import type { ChatRoomWithMembers, MessageContext, RoomsPageResponse } from '@/types/chat';
 
 /**
  * "+ 새 채팅" 버튼 노출 여부 — Phase A에서 hide.
@@ -242,6 +242,9 @@ export default function RoomList() {
    * - setLoading(true)로 명시 spinner: 빈 list가 "아직 채팅 내역이 없습니다"로 잘못 신호되는 것
    *   회피. fetch 완료(load의 finally)에서 자동 setLoading(false)
    */
+  /** §17 색 범례 popover 열림 상태 (헤더 ? 아이콘 클릭) */
+  const [legendOpen, setLegendOpen] = useState(false);
+
   const toggleHidden = useCallback((next: boolean) => {
     lastShowingHidden = next; // module-level과 동기화 — 다음 마운트가 이 모드로 시작
     // sessionStorage에도 영속 — hard reload 후에도 모드 유지 (탭 단위)
@@ -338,9 +341,58 @@ export default function RoomList() {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-stone-200 px-4 py-3">
-        <h2 className="text-base font-bold">
-          {showingHidden ? '숨긴 채팅' : '채팅'}
-        </h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-base font-bold">
+            {showingHidden ? '숨긴 채팅' : '채팅'}
+          </h2>
+          {/* §17 색 범례 popover — ? 아이콘 클릭 시 진입 컨텍스트 색 의미 표시 */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setLegendOpen((v) => !v);
+              }}
+              className="flex h-5 w-5 items-center justify-center rounded-full bg-stone-100 text-[10px] font-bold text-stone-500 hover:bg-stone-200 hover:text-stone-700"
+              aria-label="색 점 의미 보기"
+              aria-expanded={legendOpen}
+              title="색 점 의미"
+            >
+              ?
+            </button>
+            {legendOpen && (
+              <>
+                {/* 외부 클릭 닫기 */}
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setLegendOpen(false)}
+                />
+                <div
+                  className="absolute left-0 top-7 z-20 w-44 rounded-lg border border-stone-200 bg-white p-3 shadow-lg"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <p className="mb-2 text-[11px] font-semibold text-stone-700">
+                    진입 컨텍스트
+                  </p>
+                  <ul className="space-y-1.5 text-xs text-stone-600">
+                    <li className="flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 rounded-full bg-blue-500 ring-2 ring-white" />
+                      구인 (recruit)
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 rounded-full bg-amber-500 ring-2 ring-white" />
+                      팀 합류
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
+                      포트폴리오
+                    </li>
+                  </ul>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
         {SHOW_NEW_CHAT_BUTTON && !showingHidden && (
           <button
             type="button"
@@ -425,11 +477,21 @@ export default function RoomList() {
                   href={`/chat/${room.id}`}
                   className="flex min-w-0 flex-1 items-center gap-3 p-3 transition-colors"
                 >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
-                    {room.type === 'DIRECT' ? (
-                      <UserIcon className="h-5 w-5" />
-                    ) : (
-                      <UsersIcon className="h-5 w-5" />
+                  <div className="relative shrink-0">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
+                      {room.type === 'DIRECT' ? (
+                        <UserIcon className="h-5 w-5" />
+                      ) : (
+                        <UsersIcon className="h-5 w-5" />
+                      )}
+                    </div>
+                    {/* §17 진입 컨텍스트 색 점 — 아바타 좌상단 */}
+                    {room.context && (
+                      <span
+                        className={`absolute -left-0.5 -top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-white ${contextColor(room.context)}`}
+                        title={contextLabel(room.context)}
+                        aria-label={`진입: ${contextLabel(room.context)}`}
+                      />
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
@@ -645,4 +707,44 @@ function roomDisplayName(
     if (fallback) return fallback;
   }
   return '대화방';
+}
+
+/**
+ * §17 진입 컨텍스트 라벨 — `title` hover tooltip + 범례 popover에 사용.
+ * Phase A 진입점: RECRUIT_INDIVIDUAL / RECRUIT_TEAM.
+ * Phase B (포트폴리오 5종)는 enum 등록만 — 진입점 wired되면 자동 작동.
+ */
+function contextLabel(c: MessageContext): string {
+  switch (c) {
+    case 'RECRUIT_INDIVIDUAL':
+      return '구인';
+    case 'RECRUIT_TEAM':
+      return '팀';
+    case 'PORTFOLIO_COFFEE_CHAT':
+    case 'PORTFOLIO_FRIENDSHIP':
+    case 'PORTFOLIO_INQUIRY':
+    case 'PORTFOLIO_COLLAB':
+    case 'PORTFOLIO_PRAISE':
+      return '포트폴리오';
+    default:
+      return '대화';
+  }
+}
+
+/** §17 진입 컨텍스트 색 — Tailwind 표준 색 단일 매핑 */
+function contextColor(c: MessageContext): string {
+  switch (c) {
+    case 'RECRUIT_INDIVIDUAL':
+      return 'bg-blue-500';
+    case 'RECRUIT_TEAM':
+      return 'bg-amber-500';
+    case 'PORTFOLIO_COFFEE_CHAT':
+    case 'PORTFOLIO_FRIENDSHIP':
+    case 'PORTFOLIO_INQUIRY':
+    case 'PORTFOLIO_COLLAB':
+    case 'PORTFOLIO_PRAISE':
+      return 'bg-emerald-500';
+    default:
+      return 'bg-stone-400';
+  }
 }

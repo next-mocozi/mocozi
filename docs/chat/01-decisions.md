@@ -429,7 +429,48 @@ ChatMessage 모델 변경 없음 — 마커가 본문 content TEXT에 inline. pa
 
 ---
 
-## 17. 결정 변경 이력
+## 17. 채팅방 진입 컨텍스트 태그 (RoomList 색 점)
+
+채팅방이 어떤 페이지/맥락에서 시작됐는지 RoomList에서 시각적으로 즉시 인식할 수 있게
+아바타 좌상단에 작은 색 점 + hover tooltip + 헤더 (?) 색 범례.
+
+### 저장
+
+`ChatRoom.context MessageContext?` 필드 — nullable (옛 방 호환).
+DIRECT find-or-create 시 **첫 컨텍스트 값 유지** — 같은 두 명이 다른 페이지에서 다시 채팅
+시작해도 원본 컨텍스트 보존 ("이 방이 어떻게 시작됐는가" 원점 의미).
+
+### 색 매핑 (Phase A — RECRUIT 2종)
+
+| 컨텍스트 | enum | 색 | 라벨 |
+|---|---|---|---|
+| 구인 (개인) | `RECRUIT_INDIVIDUAL` | `bg-blue-500` 🔵 | 구인 |
+| 팀 합류 | `RECRUIT_TEAM` | `bg-amber-500` 🟡 | 팀 |
+| 포트폴리오 (5종) | `PORTFOLIO_*` | `bg-emerald-500` 🟢 | 포트폴리오 |
+| 옛 방 (context=null) | — | (점 없음) | — |
+
+Phase A에선 RECRUIT 2종만 실제 진입점 코드 wired. Phase B 진입(포트폴리오 페이지) 도입 시
+schema/backend는 enum 그대로 동작, frontend도 색·라벨 매핑 이미 등록돼 있어 자동 작동.
+
+### UI
+
+- 위치: 아바타 좌상단 (compact 모드 unread 우상단 점과 분리)
+- 크기: `h-2.5 w-2.5` (10px) + `ring-2 ring-white` (배경 분리)
+- 정보 노출:
+  - `title` HTML attribute hover (desktop 표준)
+  - 헤더 우측 (?) 아이콘 클릭 → popover 색 범례
+  - 모바일 long-press는 Phase B 후속
+
+### 구현 위치
+
+- backend: `chat/dto/create-room.dto.ts` (DTO), `chat/chat.service.ts` (createRoom),
+  `chat/chat.service.ts` (roomInclude / shapeRoom)
+- frontend: `types/chat.ts` (ChatRoom.context), `components/chat/RoomList.tsx` (점 + 범례),
+  `app/chat/page.tsx` (createRoom POST body에 context 전송)
+
+---
+
+## 18. 결정 변경 이력
 
 | 날짜 | 결정 | 변경 사유 |
 |---|---|---|

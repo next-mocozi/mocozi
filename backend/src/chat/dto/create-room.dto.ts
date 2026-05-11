@@ -1,7 +1,9 @@
+import { MessageContext } from '@prisma/client';
 import {
   ArrayMinSize,
   ArrayNotEmpty,
   IsArray,
+  IsEnum,
   IsIn,
   IsOptional,
   IsString,
@@ -39,4 +41,13 @@ export class CreateRoomDto {
   @ArrayMinSize(1)
   @IsString({ each: true })
   memberIds: string[];
+
+  /**
+   * 진입 컨텍스트 — 어떤 페이지/맥락에서 시작된 방인지 (§17 정책).
+   * RoomList에서 색 점 표시용. nullable — 옛 클라이언트 호환.
+   * DIRECT find-or-create 시 기존 방이 있으면 그 방의 context 유지 (첫 값 보존).
+   */
+  @IsOptional()
+  @IsEnum(MessageContext)
+  context?: MessageContext;
 }

@@ -23,6 +23,11 @@ export interface ChatRoom {
   name: string | null;
   description: string | null;
   creatorId: string | null;
+  /**
+   * 진입 컨텍스트 — 어떤 페이지/맥락에서 시작된 방인지 (§17, RoomList 색 점).
+   * 옛 방은 null. DIRECT find-or-create 시 첫 값 유지.
+   */
+  context: MessageContext | null;
   lastMessage: string | null;
   lastMessageAt: string | null; // JSON 직렬화 시 ISO string
   createdAt: string;
