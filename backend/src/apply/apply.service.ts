@@ -1,21 +1,10 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException, OnModuleInit } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ApplyDto } from './dto/apply.dto';
 
 @Injectable()
-export class ApplyService implements OnModuleInit {
+export class ApplyService {
   constructor(private prisma: PrismaService) {}
-
-  async onModuleInit() {
-    const accepted = await this.prisma.application.findMany({ where: { status: 'ACCEPTED' } });
-    for (const app of accepted) {
-      await this.prisma.teamMember.upsert({
-        where: { teamId_userId: { teamId: app.teamId, userId: app.userId } },
-        create: { teamId: app.teamId, userId: app.userId, role: 'MEMBER' },
-        update: {},
-      });
-    }
-  }
 
   async apply(teamId: string, userId: string, dto: ApplyDto) {
     const team = await this.prisma.team.findUnique({ where: { id: teamId } });
