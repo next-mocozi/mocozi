@@ -115,16 +115,24 @@ export default function ProfileEditPage() {
         return fallback;
       }
     };
-    const roles = loadJson<{ mainRole: string; subRoles: string[] } | null>(
-      ROLES_STORAGE_KEY,
-      null,
-    );
-    if (roles) {
-      setMainRole(roles.mainRole);
-      setSubRoles(roles.subRoles);
+    // 직군 — backend(user.roles[]) 우선, localStorage 는 캐시 fallback.
+    // backend 정책: roles[0] = mainRole, roles[1..] = subRoles.
+    const userRoles = user?.roles ?? [];
+    if (userRoles.length > 0) {
+      setMainRole(userRoles[0] ?? '');
+      setSubRoles(userRoles.slice(1));
+    } else {
+      const cached = loadJson<{ mainRole: string; subRoles: string[] } | null>(
+        ROLES_STORAGE_KEY,
+        null,
+      );
+      if (cached) {
+        setMainRole(cached.mainRole);
+        setSubRoles(cached.subRoles);
+      }
     }
     setLinks(loadJson(LINKS_STORAGE_KEY, [] as ProfileLink[]));
-  }, []);
+  }, [user]);
 
   const toggleSubRole = (role: string) => {
     if (role === mainRole) return;
@@ -198,7 +206,18 @@ export default function ProfileEditPage() {
     setSaving(true);
     setSaveError('');
     try {
-      await api.put('/api/users/me', { name, university, department, grade, bio, skills });
+      // 직군 — backend는 단일 배열로 저장: roles[0] = mainRole, roles[1..] = subRoles.
+      // mainRole 미설정이면 빈 배열로 보내 backend도 초기화.
+      const roles = mainRole ? [mainRole, ...subRoles] : [];
+      await api.put('/api/users/me', {
+        name,
+        university,
+        department,
+        grade,
+        bio,
+        skills,
+        roles,
+      });
       localStorage.setItem(LINKS_STORAGE_KEY, JSON.stringify(links));
       localStorage.setItem(ROLES_STORAGE_KEY, JSON.stringify({ mainRole, subRoles }));
       // 백엔드 링크 동기화 — 실패해도 localStorage 기준으로 동작 유지.

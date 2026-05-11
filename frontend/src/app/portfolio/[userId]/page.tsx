@@ -209,13 +209,21 @@ export default function PortfolioDetailPage({
     setItems(load(ITEMS_STORAGE_KEY, DEFAULT_ITEMS));
     setExperiences(load(EXPS_STORAGE_KEY, DEFAULT_EXPS));
     setCareers(load(CAREERS_STORAGE_KEY, DEFAULT_CAREERS));
-    const roles = load<{ mainRole: string; subRoles: string[] } | null>(
-      ROLES_STORAGE_KEY,
-      null,
-    );
-    if (roles) {
-      setMainRole(roles.mainRole);
-      setSubRoles(roles.subRoles);
+    // 직군 — backend(user.roles[]) 우선, localStorage 는 캐시 fallback.
+    // 다른 기기에서 변경한 직군이 즉시 반영되도록.
+    const userRoles = user?.roles ?? [];
+    if (userRoles.length > 0) {
+      setMainRole(userRoles[0] ?? '');
+      setSubRoles(userRoles.slice(1));
+    } else {
+      const cachedRoles = load<{ mainRole: string; subRoles: string[] } | null>(
+        ROLES_STORAGE_KEY,
+        null,
+      );
+      if (cachedRoles) {
+        setMainRole(cachedRoles.mainRole);
+        setSubRoles(cachedRoles.subRoles);
+      }
     }
     try {
       const i = localStorage.getItem(INTRO_STORAGE_KEY);
@@ -245,7 +253,9 @@ export default function PortfolioDetailPage({
     } catch {
       setVisibility('private');
     }
-  }, [isOwner]);
+    // user.bio / user.roles 가 늦게 도착(refreshUser 직후 등)하면 다시 머지하기 위해
+    // user 도 deps 에 포함.
+  }, [isOwner, user]);
 
   // 타인 프로필일 때 백엔드에서 직접 데이터 조회. mock 은 fallback 으로만 유지.
   // 백엔드 호출이 성공하면 viewerInitial(mock) 위에 실제 데이터를 덮어쓴다.
