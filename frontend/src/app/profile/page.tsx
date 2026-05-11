@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { hydratePortfolioFromBackend } from '@/lib/portfolio-mapper';
 import {
   PlatformIcon,
   PLATFORM_META,
@@ -10,10 +11,6 @@ import {
   getDisplayLabel,
   type ProfileLink,
 } from './_platforms';
-
-// TODO: 백엔드 연동 — `GET /api/users/me`, `GET /api/users/me/links`,
-//       `GET /api/portfolios/me` 로 교체 (CLAUDE.md §11). 현재는 mock —
-//       /portfolio 페이지가 저장한 localStorage 값을 그대로 읽어 표시한다.
 
 const LINKS_STORAGE_KEY = 'mock_profile_links';
 const INTRO_STORAGE_KEY = 'mock_portfolio_intro';
@@ -154,42 +151,51 @@ export default function MyProfilePage() {
   }, [selected, activeTab]);
 
   // localStorage 에서 모든 데이터 로드 (edit / portfolio 페이지가 저장한 값)
+  // 로그인 후 백엔드에서 최신 데이터를 hydrate 한 뒤 읽어야 새 기기에서도 포트폴리오가 보임
   useEffect(() => {
-    const loadJson = <T,>(key: string, fallback: T): T => {
+    if (loading || !user) return;
+
+    const run = async () => {
+      await hydratePortfolioFromBackend();
+
+      const loadJson = <T,>(key: string, fallback: T): T => {
+        try {
+          const raw = localStorage.getItem(key);
+          return raw ? (JSON.parse(raw) as T) : fallback;
+        } catch {
+          return fallback;
+        }
+      };
+      setLinks(loadJson(LINKS_STORAGE_KEY, [] as ProfileLink[]));
+      const roles = loadJson<{ mainRole: string; subRoles: string[] } | null>(
+        ROLES_STORAGE_KEY,
+        null,
+      );
+      if (roles) {
+        setMainRole(roles.mainRole);
+        setSubRoles(roles.subRoles);
+      }
+      setExperiences(loadJson(EXPS_STORAGE_KEY, [] as Experience[]));
+      setCareers(loadJson(CAREERS_STORAGE_KEY, [] as CareerItem[]));
+      setItems(loadJson(ITEMS_STORAGE_KEY, [] as PortfolioItem[]));
       try {
-        const raw = localStorage.getItem(key);
-        return raw ? (JSON.parse(raw) as T) : fallback;
+        const i = localStorage.getItem(INTRO_STORAGE_KEY);
+        if (i !== null) setIntro(i);
       } catch {
-        return fallback;
+        // 무시
+      }
+      const savedSections = loadJson<SectionKey[] | null>(
+        PROFILE_SECTIONS_KEY,
+        null,
+      );
+      if (savedSections) {
+        setSelected(savedSections);
+        setDraftSelected(savedSections);
       }
     };
-    setLinks(loadJson(LINKS_STORAGE_KEY, [] as ProfileLink[]));
-    const roles = loadJson<{ mainRole: string; subRoles: string[] } | null>(
-      ROLES_STORAGE_KEY,
-      null,
-    );
-    if (roles) {
-      setMainRole(roles.mainRole);
-      setSubRoles(roles.subRoles);
-    }
-    setExperiences(loadJson(EXPS_STORAGE_KEY, [] as Experience[]));
-    setCareers(loadJson(CAREERS_STORAGE_KEY, [] as CareerItem[]));
-    setItems(loadJson(ITEMS_STORAGE_KEY, [] as PortfolioItem[]));
-    try {
-      const i = localStorage.getItem(INTRO_STORAGE_KEY);
-      if (i !== null) setIntro(i);
-    } catch {
-      // 무시
-    }
-    const savedSections = loadJson<SectionKey[] | null>(
-      PROFILE_SECTIONS_KEY,
-      null,
-    );
-    if (savedSections) {
-      setSelected(savedSections);
-      setDraftSelected(savedSections);
-    }
-  }, []);
+
+    run();
+  }, [user, loading]);
 
   if (loading)
     return (
