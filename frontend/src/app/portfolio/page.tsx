@@ -8,7 +8,6 @@ import {
   useMyPortfolioStatus,
   notifyPortfolioChanged,
 } from '@/hooks/useMyPortfolioStatus';
-import { getMockFeedPosts } from '@/lib/mock/portfolioFeed';
 import { buildOwnerFeedPosts } from '@/lib/feed/buildOwnerFeed';
 import { buildBackendFeedPosts } from '@/lib/feed/buildBackendFeed';
 import { getFeed, type FeedPortfolio } from '@/lib/portfolio-api';
@@ -74,12 +73,10 @@ export default function PortfolioFeedPage() {
     });
   }, [user, loading]);
 
-  // 백엔드 메인 피드 (다른 사용자들의 공개 게시물).
-  // 실패하거나 비어있으면 mock 으로 fallback. dev/staging 등 백엔드에 데이터가 없는
-  // 환경에서 빈 피드로 보이지 않도록.
-  const [remotePortfolios, setRemotePortfolios] = useState<FeedPortfolio[] | null>(
-    null,
-  );
+  // 백엔드 메인 피드 — 실제 공개 사용자들의 게시물.
+  // 응답 실패/네트워크 오류 시 빈 배열로 두고 "아직 공개된 게시물이 없어요" 안내 표시.
+  // (이전엔 mock 8명으로 fallback 했지만, 진짜 운영에선 더미가 보이면 안 되므로 제거.)
+  const [remotePortfolios, setRemotePortfolios] = useState<FeedPortfolio[]>([]);
   useEffect(() => {
     if (!user || loading) return;
     let cancelled = false;
@@ -89,8 +86,7 @@ export default function PortfolioFeedPage() {
         if (cancelled) return;
         setRemotePortfolios(res.portfolios ?? []);
       } catch {
-        // 백엔드 미가동/네트워크 실패 → mock fallback (state 는 null 유지)
-        if (!cancelled) setRemotePortfolios(null);
+        if (!cancelled) setRemotePortfolios([]);
       }
     })();
     return () => {
@@ -99,12 +95,8 @@ export default function PortfolioFeedPage() {
   }, [user, loading]);
 
   // 피드 데이터: 백엔드(타인 공개) + 본인(공개일 때).
-  // 백엔드 응답이 비어있거나 실패하면 mock 으로 보충 — 신규 환경에서 빈 화면 방지.
   const posts: FeedPost[] = useMemo(() => {
-    const others: FeedPost[] =
-      remotePortfolios && remotePortfolios.length > 0
-        ? buildBackendFeedPosts(remotePortfolios)
-        : getMockFeedPosts();
+    const others = buildBackendFeedPosts(remotePortfolios);
     if (user && status === 'public') {
       const mine = buildOwnerFeedPosts(user, { isPrivate: false });
       return [...others, ...mine].sort((a, b) => b.createdAt - a.createdAt);
