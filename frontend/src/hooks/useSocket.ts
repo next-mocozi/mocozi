@@ -132,14 +132,16 @@ export function useSocket(options: UseSocketOptions = {}) {
       setIsConnected(false);
       const message = err?.message ?? '';
       if (message === 'Unauthorized' || message.toLowerCase().includes('unauthorized')) {
+        // 콜러가 명시적으로 처리할 때만 위임. 기본 동작에서는 토큰을 지우지 않는다.
+        // socket 핸드셰이크는 backend가 일시적으로 망가져 있거나(Unauthorized 응답
+        // 자체가 backend 버그일 수도 있고) JWT_SECRET 불일치/시간 동기화 문제 등에서도
+        // Unauthorized 가 떨어진다. HTTP 401(api.ts 인터셉터)이 진짜 인증 실패를
+        // 책임지므로, 여기서 광범위하게 로그아웃시키지 않는다.
         if (onAuthError) {
           onAuthError();
-        } else {
-          // 기본 동작 — 토큰 정리 후 로그인 페이지로
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('accessToken');
-            window.location.href = '/login';
-          }
+        } else if (process.env.NODE_ENV !== 'production') {
+          // eslint-disable-next-line no-console
+          console.warn('[ws] Unauthorized — 토큰 정리하지 않음 (HTTP 401만 신뢰)');
         }
       }
     });

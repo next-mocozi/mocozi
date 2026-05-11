@@ -90,10 +90,11 @@ api.interceptors.response.use(
         return api(original);
       } catch (refreshError) {
         flushQueue(null, refreshError);
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        window.dispatchEvent(new Event('mocozi:auth-changed'));
-        window.location.href = '/login';
+        // refresh token 자체가 거부된 경우(=401)는 위쪽 /auth/refresh 401 분기에서
+        // 이미 토큰 정리 + /login 리다이렉트가 일어남. 여기서 추가로 지우지 않는다.
+        // network/abort/timeout/5xx 등 transient 에러에서 토큰을 날리면, 페이지 새로고침
+        // 중 in-flight 요청 abort 나 일시적 backend 장애로 매번 로그아웃되는 문제 발생.
+        // 토큰을 유지하고 reject 만 → 다음 요청에서 자연 회복.
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
