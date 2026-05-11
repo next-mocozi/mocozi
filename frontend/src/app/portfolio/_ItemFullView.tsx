@@ -73,12 +73,11 @@ function renderBody(
     ? text.replace(/@\[([^\]]+)\]/g, (_, alias) => {
         const a = pool.find((x) => x.alias === alias);
         if (!a) return `@[${alias}]`;
-        // kind 가 명시되지 않은 레거시 자료는 파일명 확장자로 추정
-        const inferredImage =
-          a.kind === 'image' ||
-          (a.kind === undefined &&
-            /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(a.filename));
-        return inferredImage
+        // 파일명 확장자로만 결정 — kind 가 picker 별로 다르게 set 되어
+        // 같은 .png 가 어떤 단계에선 사진으로, 어떤 단계에선 파일로 표시되던
+        // 일관성 문제를 차단. 확장자가 이미지면 무조건 사진 미리보기.
+        const isImage = /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(a.filename);
+        return isImage
           ? `\n\n![${a.filename}](${a.dataUrl})\n\n`
           : `\n\n[📎 ${a.filename}](${a.dataUrl})\n\n`;
       })
