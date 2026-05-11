@@ -645,7 +645,7 @@ export default function RecruitListPage() {
                   <button
                     onClick={submitScout}
                     disabled={scoutModal.loading}
-                    className="w-full rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 py-3 text-sm font-semibold text-white shadow-md shadow-indigo-200 transition-all hover:shadow-lg disabled:opacity-60"
+                    className="w-full rounded-xl bg-gradient-to-r from-primary-600 to-primary-700 py-3 text-sm font-semibold text-white shadow-md shadow-primary-200 transition-all hover:shadow-lg disabled:opacity-60"
                   >
                     {scoutModal.loading ? '전송 중...' : '제안 보내기'}
                   </button>
