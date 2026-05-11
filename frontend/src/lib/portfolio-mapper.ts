@@ -47,6 +47,32 @@ import type {
 // ──────── id 매핑 테이블 (localStorage) ────────
 const ID_MAP_KEY = 'mock_portfolio_id_map'; // { [localId: number]: serverId: string }
 
+// details 동기화 완료 여부 추적 — 이미 backend ID가 있는 아이템의 details가
+// backend에 null인 채 남아있는 경우를 일회성으로 수정하기 위한 플래그.
+const DETAILS_SYNCED_IDS_KEY = 'mock_portfolio_details_synced_ids';
+
+function readDetailsSyncedSet(): Set<number> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = localStorage.getItem(DETAILS_SYNCED_IDS_KEY);
+    const arr: number[] = raw ? JSON.parse(raw) : [];
+    return new Set(arr);
+  } catch {
+    return new Set();
+  }
+}
+
+function markDetailsSynced(localId: number): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const synced = readDetailsSyncedSet();
+    synced.add(localId);
+    localStorage.setItem(DETAILS_SYNCED_IDS_KEY, JSON.stringify([...synced]));
+  } catch {
+    // 무시
+  }
+}
+
 type IdMap = Record<number, string>;
 
 function readIdMap(): IdMap {
@@ -340,11 +366,18 @@ async function reconcileLocalToBackend(): Promise<void> {
   };
 
   // PortfolioItem (+ details 같이 보냄)
+  const syncedIds = readDetailsSyncedSet();
   const items = readArr<PortfolioItem>(ITEMS_STORAGE_KEY);
   for (const it of items) {
+    const details = readItemDetailsFromLocal(it.id, it.type);
     if (!getServerId(it.id)) {
-      const details = readItemDetailsFromLocal(it.id, it.type);
-      await syncItemToBackend(it, details);
+      // backend에 없는 항목 → 신규 생성
+      const result = await syncItemToBackend(it, details);
+      if (result && details) markDetailsSynced(it.id);
+    } else if (details && !syncedIds.has(it.id)) {
+      // backend ID 있지만 details가 아직 sync 안 됨 → details만 재전송
+      const result = await syncItemToBackend(it, details);
+      if (result) markDetailsSynced(it.id);
     }
   }
 
