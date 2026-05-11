@@ -52,19 +52,13 @@ let cachedHiddenRooms: ChatRoomWithMembers[] | null = null;
  * 같은 탭 세션 내 "숨긴 채팅 보기" 모드 유지.
  *
  * - 페이지 라우팅(`/chat` ↔ `/chat/[roomId]`): module-level let으로 유지
- * - hard reload / 새 페이지 진입: sessionStorage로 복원 — 사용자가 새로고침해도 모드 유지
+ * - hard reload / 새 페이지 진입: sessionStorage에서 mount 후 복원 (hydration mismatch 회피
+ *   위해 useEffect에서 sync — SSR 시점엔 항상 false로 server/client 일치)
  * - 새 탭: sessionStorage 별개 → 활성으로 시작 (각 탭 독립 — localStorage 안 씀)
  * - "활성 채팅" 버튼: 명시적 복귀
  */
 const SHOWING_HIDDEN_KEY = 'mocozi:chat-showing-hidden';
-let lastShowingHidden = (() => {
-  if (typeof window === 'undefined') return false;
-  try {
-    return window.sessionStorage.getItem(SHOWING_HIDDEN_KEY) === '1';
-  } catch {
-    return false;
-  }
-})();
+let lastShowingHidden = false;
 
 export default function RoomList() {
   const router = useRouter();
@@ -147,6 +141,24 @@ export default function RoomList() {
     },
     [initFromRooms],
   );
+
+  // 마운트 후 sessionStorage에서 숨김 모드 복원 — SSR/hydration mismatch 회피 위해
+  // 초기 state는 false로 두고 effect에서 sync. 페이지 라우팅 후 remount는 module-level
+  // lastShowingHidden로 즉시 복원되므로 storage read는 fallback (모듈 새로 로드된 경우).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const stored = window.sessionStorage.getItem(SHOWING_HIDDEN_KEY) === '1';
+      if (stored && !showingHidden) {
+        lastShowingHidden = true;
+        setShowingHidden(true);
+      }
+    } catch {
+      // private mode 등 storage 접근 실패 — fallback으로 false 유지
+    }
+    // 마운트 시점 1회만 — toggleHidden은 별도로 storage write
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     void load({ onlyHidden: showingHidden });
