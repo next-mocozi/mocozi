@@ -13,6 +13,7 @@ import {
   deleteWorkExperienceFromBackend,
   syncActivityToBackend,
   deleteActivityFromBackend,
+  deleteItemFromBackend,
   hydratePortfolioFromBackend,
 } from '@/lib/portfolio-mapper';
 import PortfolioSegmentedNav from '@/components/portfolio/PortfolioSegmentedNav';
@@ -670,6 +671,8 @@ export default function PortfolioDetailPage({
     const next = items.filter((it) => it.id !== id);
     setItems(next);
     persist(ITEMS_STORAGE_KEY, next);
+    // 백엔드에서도 삭제 — 안 하면 hydrate 가 backend 에서 다시 가져와 부활.
+    void deleteItemFromBackend(id);
   };
 
   // 연/월 내림차순 정렬 (최신이 위). month 없는 레거시 항목은 0 으로 취급.
