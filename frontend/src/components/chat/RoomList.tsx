@@ -51,14 +51,20 @@ let cachedHiddenRooms: ChatRoomWithMembers[] | null = null;
 /**
  * 같은 탭 세션 내 "숨긴 채팅 보기" 모드 유지.
  *
- * showingHidden을 useState만 쓰면 `/chat` ↔ `/chat/[roomId]` 라우팅 시 RoomList가
- * unmount/remount되면서 false로 리셋 → 숨김 모드에서 방 클릭 시 라우팅 후 활성 모드로 바뀜
- * (사용자 의도와 다름). module-level 변수로 페이지 라우팅에 살아남게 함.
- *
- * "활성 채팅" 버튼 클릭(toggleHidden(false))으로만 명시적 복귀. hard reload / 새 탭 시는
- * 초기값(false)으로 자연 리셋.
+ * - 페이지 라우팅(`/chat` ↔ `/chat/[roomId]`): module-level let으로 유지
+ * - hard reload / 새 페이지 진입: sessionStorage로 복원 — 사용자가 새로고침해도 모드 유지
+ * - 새 탭: sessionStorage 별개 → 활성으로 시작 (각 탭 독립 — localStorage 안 씀)
+ * - "활성 채팅" 버튼: 명시적 복귀
  */
-let lastShowingHidden = false;
+const SHOWING_HIDDEN_KEY = 'mocozi:chat-showing-hidden';
+let lastShowingHidden = (() => {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.sessionStorage.getItem(SHOWING_HIDDEN_KEY) === '1';
+  } catch {
+    return false;
+  }
+})();
 
 export default function RoomList() {
   const router = useRouter();
@@ -150,23 +156,24 @@ export default function RoomList() {
     const onConnect = () => void load({ onlyHidden: showingHidden });
     socket.on('connect', onConnect);
 
-    // 새 메시지 도착 — 활성 목록일 때만 lastMessage 갱신
+    // 새 메시지 도착 — 현재 보고 있는 모드(활성/숨김)의 rooms에 해당 방이 있으면 lastMessage 갱신.
+    // 활성 모드면 hide 안 한 방들만 rooms에 있고, 숨김 모드면 hide한 방들만. 각각 자기 모드 방의
+    // 새 메시지는 실시간 반영.
     const onNewMessage = (n: {
       roomId: string;
       preview: string;
       createdAt?: string;
     }) => {
-      if (showingHidden) return; // hidden 화면에선 새 메시지가 와도 그대로 hidden
       const ts = n.createdAt ?? new Date().toISOString();
       setRooms((prev) => {
         const idx = prev.findIndex((r) => r.id === n.roomId);
         if (idx === -1) {
-          // 활성 목록에 없는 방의 알림 — 다음 셋 중 하나:
-          //  (a) 사용자가 hide한 방 (가장 흔함). 의도적으로 가린 것이므로 갱신 X
-          //  (b) 다른 사람이 사용자를 새 방에 초대했음 (Phase B 시나리오, Phase A에서는 거의 없음)
+          // 현재 모드 목록에 없는 방의 알림 — 다음 중 하나:
+          //  (a) 다른 모드(숨김↔활성)의 방. 갱신 X — 그 모드 진입 시 fetch로 자연 동기화
+          //  (b) 다른 사람이 사용자를 새 방에 초대 (Phase B 시나리오)
           //  (c) 사용자가 막 만든 방 — NewChatModal.onCreated에서 이미 setRooms로 처리됨
-          // → 매번 GET /rooms로 reload하면 hide 방 알림이 올 때마다 "불러오는 중..." 깜빡임 발생.
-          //   socket 재연결(onConnect) 또는 페이지 이동 시 자연스럽게 load되므로 여기선 무시.
+          // → 매번 GET /rooms로 reload하면 깜빡임 발생. socket 재연결(onConnect) 또는 페이지
+          //   이동 시 자연스럽게 load되므로 여기선 무시.
           return prev;
         }
         const updated = {
@@ -225,6 +232,15 @@ export default function RoomList() {
    */
   const toggleHidden = useCallback((next: boolean) => {
     lastShowingHidden = next; // module-level과 동기화 — 다음 마운트가 이 모드로 시작
+    // sessionStorage에도 영속 — hard reload 후에도 모드 유지 (탭 단위)
+    if (typeof window !== 'undefined') {
+      try {
+        if (next) window.sessionStorage.setItem(SHOWING_HIDDEN_KEY, '1');
+        else window.sessionStorage.removeItem(SHOWING_HIDDEN_KEY);
+      } catch {
+        // private mode 등 storage 접근 실패 — 무시 (module-level만으로 fallback)
+      }
+    }
     setRooms([]);
     setLoading(true);
     setShowingHidden(next);
