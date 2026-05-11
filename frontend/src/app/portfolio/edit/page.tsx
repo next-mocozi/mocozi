@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import {
   getMyPortfolioPath,
@@ -36,7 +36,7 @@ const DEFAULT_ITEMS: PortfolioItem[] = [];
  *  - 신규 프로젝트(type=project) 추가 시: 대화형 인터뷰 UI (_interview.tsx)
  *  - 그 외(스터디 등) 또는 기존 항목 편집: 아래 단순 폼
  */
-export default function PortfolioEditPage() {
+function PortfolioEditPageContent() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -398,5 +398,13 @@ function SimpleForm() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function PortfolioEditPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center" />}>
+      <PortfolioEditPageContent />
+    </Suspense>
   );
 }

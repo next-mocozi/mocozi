@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { use, useCallback, useEffect, useMemo, useRef, useState, Suspense } from 'react';
 import { AttachmentButton } from '@/components/chat/AttachmentButton';
 import { MessageMarkdown } from '@/components/chat/MessageMarkdown';
 import RoomList from '@/components/chat/RoomList';
@@ -103,7 +103,7 @@ const SCROLL_TO_BOTTOM_THRESHOLD = 200;
  *  - 10-4 답글/반응 UI
  *  - 10-5 무한 스크롤 + 자동 스크롤 가드
  */
-export default function ChatRoomPage({ params }: PageProps) {
+function ChatRoomPageContent({ params }: PageProps) {
   const { roomId } = use(params);
   const { user } = useAuth();
   const {
@@ -1457,6 +1457,14 @@ function ReactionPicker({ onPick }: { onPick: (emoji: string) => void }) {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ChatRoomPage({ params }: PageProps) {
+  return (
+    <Suspense fallback={<div className="flex h-[calc(100vh-11rem)] items-center justify-center" />}>
+      <ChatRoomPageContent params={params} />
+    </Suspense>
   );
 }
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, Suspense } from 'react';
 import { NewChatModal } from '@/components/chat/NewChatModal';
 import RoomList from '@/components/chat/RoomList';
 import { MessageSquareIcon } from '@/components/icons/ChatIcons';
@@ -26,7 +26,7 @@ import type {
  *
  * 데이터 fetch / unread 동기화는 RoomList 컴포넌트가 자체 처리.
  */
-export default function ChatListPage() {
+function ChatListPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
@@ -152,5 +152,13 @@ export default function ChatListPage() {
         onCreated={(room) => router.push(`/chat/${room.id}`)}
       />
     </div>
+  );
+}
+
+export default function ChatListPage() {
+  return (
+    <Suspense fallback={<div className="flex h-[calc(100vh-11rem)] items-center justify-center" />}>
+      <ChatListPageContent />
+    </Suspense>
   );
 }
