@@ -2,35 +2,24 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import {
   getMyPortfolioPath,
-  OWNER_STORAGE_KEY,
   TYPE_META,
-  type PortfolioItem,
   type PortfolioItemType,
 } from '../_lib';
 import {
-  syncItemToBackend,
-  deleteItemFromBackend,
-} from '@/lib/portfolio-mapper';
+  getMyPortfolio,
+  createItem as apiCreateItem,
+  updateItem as apiUpdateItem,
+  deleteItem as apiDeleteItem,
+} from '@/lib/portfolio-api';
+import { toCreatePayload, fromBackendItem } from '@/lib/portfolio-mapper';
 import ProjectInterview from './_interview';
 import ResearchForm from './_research';
 import StudyForm from './_study';
 
-// TODO: 백엔드 연동
-//   - GET    /api/portfolios/:id   로 초기값 로드 (편집 모드)
-//   - POST   /api/portfolios       로 신규 생성
-//   - PUT    /api/portfolios/:id   로 수정 저장
-//   - DELETE /api/portfolios/:id   로 삭제
-// (CLAUDE.md §11 TODO)
-
-const ITEMS_STORAGE_KEY = 'mock_portfolio_items';
-
-// 더미 fallback 제거 — 신규 사용자가 클릭 시 존재하지 않는 항목으로 라우팅되어
-// 404 가 발생하던 문제 방지. localStorage 비어있으면 빈 배열로 시작.
-const DEFAULT_ITEMS: PortfolioItem[] = [];
 
 /** 포트폴리오 항목 작성/수정 페이지
  *  - 신규 프로젝트(type=project) 추가 시: 대화형 인터뷰 UI (_interview.tsx)
@@ -48,9 +37,8 @@ function PortfolioEditPageContent() {
       ? (initialTypeParam as PortfolioItemType)
       : 'project';
 
-  // 권한 체크 — 로그인 + (편집 모드면) 소유자 일치
+  // 권한 체크 — 로그인만 확인 (백엔드가 item 소유권을 검증)
   const [accessChecked, setAccessChecked] = useState(false);
-  const [denied, setDenied] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -58,20 +46,8 @@ function PortfolioEditPageContent() {
       router.replace('/login');
       return;
     }
-    if (isEdit) {
-      try {
-        const ownerId = localStorage.getItem(OWNER_STORAGE_KEY);
-        if (ownerId && ownerId !== user.id) {
-          setDenied(true);
-          setAccessChecked(true);
-          return;
-        }
-      } catch {
-        // 읽기 실패 시 통과 (mock 한정)
-      }
-    }
     setAccessChecked(true);
-  }, [authLoading, user, isEdit, router]);
+  }, [authLoading, user, router]);
 
   if (authLoading || !accessChecked) {
     return (
@@ -81,25 +57,6 @@ function PortfolioEditPageContent() {
     );
   }
   if (!user) return null;
-  if (denied) {
-    return (
-      <div className="mx-auto max-w-2xl px-6 py-8">
-        <Link
-          href="/portfolio"
-          className="mb-4 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
-        >
-          ← 포트폴리오로
-        </Link>
-        <div className="card text-center">
-          <div className="mb-2 text-4xl">🚫</div>
-          <p className="font-semibold text-gray-700">수정 권한이 없습니다.</p>
-          <p className="mt-1 text-sm text-gray-500">
-            이 항목은 다른 사용자의 포트폴리오에 속해 있어요.
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   // 프로젝트는 신규/수정 모두 대화형 인터뷰 UI 사용
   // (수정 시 _interview.tsx 가 mock_portfolio_details 에서 답변을 불러와 미리보기로 표시)
@@ -123,6 +80,7 @@ function SimpleForm() {
       ? (initialTypeParam as PortfolioItemType)
       : 'project';
 
+  const serverIdRef = useRef<string | null>(null);
   const [type, setType] = useState<PortfolioItemType>(initialType);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -133,25 +91,33 @@ function SimpleForm() {
   const [tagInput, setTagInput] = useState('');
   const [titleError, setTitleError] = useState('');
 
-  // 편집 모드: 기존 항목 로드
+  // 편집 모드: 백엔드에서 기존 항목 로드
   useEffect(() => {
-    if (!isEdit) return;
-    try {
-      const raw = localStorage.getItem(ITEMS_STORAGE_KEY);
-      const list: PortfolioItem[] = raw ? JSON.parse(raw) : DEFAULT_ITEMS;
-      const found = list.find((it) => it.id === editId);
-      if (found) {
-        setType(found.type);
-        setTitle(found.title);
-        setDescription(found.description);
-        setPeriod(found.period);
-        setCurrent(found.current);
-        setDomain(found.domain ?? '');
-        setTags(found.tags);
+    if (!isEdit || editId === null) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const remote = await getMyPortfolio();
+        if (cancelled) return;
+        const found = (remote.items ?? []).find(
+          (b) => new Date(b.createdAt).getTime() === editId,
+        );
+        if (found) {
+          serverIdRef.current = found.id;
+          const item = fromBackendItem(found);
+          setType(item.type);
+          setTitle(item.title);
+          setDescription(item.description ?? '');
+          setPeriod(item.period ?? '');
+          setCurrent(item.current ?? false);
+          setDomain(item.domain ?? '');
+          setTags(item.tags ?? []);
+        }
+      } catch {
+        // 로드 실패 시 기본 빈 폼 유지
       }
-    } catch {
-      // 로드 실패 시 기본 빈 폼 유지
-    }
+    })();
+    return () => { cancelled = true; };
   }, [isEdit, editId]);
 
   const addTag = () => {
@@ -169,13 +135,15 @@ function SimpleForm() {
     setTags((prev) => prev.filter((x) => x !== t));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!title.trim()) {
       setTitleError('제목을 입력해주세요.');
       return;
     }
-    const payload: PortfolioItem = {
-      id: isEdit && editId !== null ? editId : Date.now(),
+    const localId = isEdit && editId !== null ? editId : Date.now();
+    const payload = toCreatePayload({
+      id: localId,
+      serverId: serverIdRef.current ?? undefined,
       type,
       title: title.trim(),
       description: description.trim(),
@@ -183,34 +151,29 @@ function SimpleForm() {
       current,
       domain: domain.trim() || undefined,
       tags,
-    };
+    });
     try {
-      const raw = localStorage.getItem(ITEMS_STORAGE_KEY);
-      const list: PortfolioItem[] = raw ? JSON.parse(raw) : DEFAULT_ITEMS;
-      const next = isEdit
-        ? list.map((it) => (it.id === editId ? payload : it))
-        : [...list, payload];
-      localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(next));
+      if (serverIdRef.current) {
+        await apiUpdateItem(serverIdRef.current, payload);
+      } else {
+        await apiCreateItem(payload);
+      }
     } catch {
       // 저장 실패해도 이동은 진행
     }
-    void syncItemToBackend(payload);
     router.push(getMyPortfolioPath());
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!isEdit || editId === null) return;
     if (!confirm('이 포트폴리오 항목을 삭제하시겠어요?')) return;
-    const deletedId = editId;
-    try {
-      const raw = localStorage.getItem(ITEMS_STORAGE_KEY);
-      const list: PortfolioItem[] = raw ? JSON.parse(raw) : DEFAULT_ITEMS;
-      const next = list.filter((it) => it.id !== editId);
-      localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(next));
-    } catch {
-      // 삭제 실패해도 이동은 진행
+    if (serverIdRef.current) {
+      try {
+        await apiDeleteItem(serverIdRef.current);
+      } catch {
+        // 삭제 실패해도 이동은 진행
+      }
     }
-    void deleteItemFromBackend(deletedId);
     router.push(getMyPortfolioPath());
   };
 

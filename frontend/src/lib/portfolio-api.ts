@@ -92,6 +92,7 @@ export type CreateItemPayload = {
   period?: string;
   current?: boolean;
   details?: unknown;
+  clientCreatedAt?: string;
 };
 
 export type UpdateItemPayload = Partial<CreateItemPayload>;

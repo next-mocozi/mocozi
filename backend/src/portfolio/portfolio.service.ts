@@ -158,11 +158,12 @@ export class PortfolioService {
       });
     }
 
-    const { details, ...rest } = dto;
+    const { details, clientCreatedAt, ...rest } = dto;
     return this.prisma.portfolioItem.create({
       data: {
         portfolioId: portfolio.id,
         ...rest,
+        ...(clientCreatedAt ? { createdAt: new Date(clientCreatedAt) } : {}),
         ...(details !== undefined
           ? { details: details as Prisma.InputJsonValue }
           : {}),

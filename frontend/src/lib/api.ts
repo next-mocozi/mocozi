@@ -85,6 +85,8 @@ api.interceptors.response.use(
         const { accessToken } = res.data.data;
         localStorage.setItem('accessToken', accessToken);
         api.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
+        // 새 토큰으로 WebSocket도 재연결하도록 SocketProvider에 알림
+        window.dispatchEvent(new Event('mocozi:auth-changed'));
         flushQueue(accessToken);
         original.headers.Authorization = `Bearer ${accessToken}`;
         return api(original);

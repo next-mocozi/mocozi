@@ -4,14 +4,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { use, useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { getPortfolioByUserId } from '@/lib/portfolio-api';
+import { getPortfolioByUserId, getMyPortfolio, updateItem as apiUpdateItem } from '@/lib/portfolio-api';
 import {
-  DEFAULT_ITEMS,
   FeaturedStar,
-  MAX_FEATURED,
-  MAX_FEATURED_RESEARCH,
-  MAX_FEATURED_STUDY,
-  ITEMS_STORAGE_KEY,
   type PortfolioItem,
   type PortfolioItemType,
 } from '../../../_lib';
@@ -59,18 +54,47 @@ export default function PortfolioItemPage({
     }
     let cancelled = false;
     if (isOwner) {
-      try {
-        const raw = localStorage.getItem(ITEMS_STORAGE_KEY);
-        const list: PortfolioItem[] = raw ? JSON.parse(raw) : DEFAULT_ITEMS;
-        setItem(list.find((it) => it.id === itemId) ?? null);
-      } catch {
-        setItem(DEFAULT_ITEMS.find((it) => it.id === itemId) ?? null);
-      }
-      const d = loadItemDetails(itemId);
-      setDetails(d.details);
-      setResearch(d.research);
-      setStudy(d.study);
-      setLoaded(true);
+      (async () => {
+        try {
+          const remote = await getMyPortfolio();
+          if (cancelled) return;
+          const found = (remote?.items ?? []).find(
+            (b) => new Date(b.createdAt).getTime() === itemId,
+          );
+          if (found) {
+            setItem({
+              id: new Date(found.createdAt).getTime(),
+              serverId: found.id,
+              type: TYPE_FROM_BACKEND[found.type] ?? 'project',
+              title: found.title,
+              description: found.description,
+              summary: found.summary ?? undefined,
+              period: found.period ?? found.duration ?? '',
+              current: found.current ?? false,
+              domain: found.domain || undefined,
+              tags: found.tags ?? [],
+              featured: found.featured ?? false,
+              thumbnail: found.thumbnail ?? undefined,
+              createdAt: new Date(found.createdAt).getTime(),
+            });
+            const det = found.details as { kind?: string; data?: unknown } | null;
+            if (det?.kind === 'interview') setDetails(det.data as Draft);
+            else if (det?.kind === 'research') setResearch(det.data as ResearchDetail);
+            else if (det?.kind === 'study') setStudy(det.data as StudyDetail);
+          } else {
+            setItem(null);
+            // 백엔드에 없으면 localStorage details 캐시 시도 (mid-edit draft)
+            const d = loadItemDetails(itemId);
+            setDetails(d.details);
+            setResearch(d.research);
+            setStudy(d.study);
+          }
+        } catch {
+          setItem(null);
+        } finally {
+          if (!cancelled) setLoaded(true);
+        }
+      })();
     } else {
       // 타인: backend 에서 그 사람 portfolio 호출 → itemId(= createdAt 기반 epoch ms)
       // 와 일치하는 item 찾기. 비공개 portfolio 면 items 빈 배열로 응답되어 null.
@@ -162,42 +186,17 @@ export default function PortfolioItemPage({
   // backend GET /portfolios/users/:id 호출로 대체 예정. 그 전엔 item === null
   // 이면 아래의 "존재하지 않는 항목" 안내가 자연스럽게 표시됨.
 
-  /** 별 토글 — items 전체를 다시 저장 (단일 항목 페이지여도 전체 상태 일관성 유지) */
-  const toggleFeatured = () => {
-    if (!item) return;
+  /** 별 토글 — 낙관적 업데이트 후 백엔드 동기화 */
+  const toggleFeatured = async () => {
+    if (!item || !item.serverId) return;
+    const willBeFeatured = !item.featured;
+    // 대표 개수 제한은 백엔드가 강제함
+    const prev = item;
+    setItem({ ...item, featured: willBeFeatured });
     try {
-      const raw = localStorage.getItem(ITEMS_STORAGE_KEY);
-      const list: PortfolioItem[] = raw ? JSON.parse(raw) : [];
-      const willBeFeatured = !item.featured;
-      if (willBeFeatured) {
-        // 항목 종류별 대표 개수 제한 (project=4 / research=2 / study=2)
-        const limit =
-          item.type === 'research'
-            ? MAX_FEATURED_RESEARCH
-            : item.type === 'study'
-              ? MAX_FEATURED_STUDY
-              : MAX_FEATURED;
-        const sameTypeFeatured = list.filter(
-          (it) => it.featured && it.type === item.type,
-        ).length;
-        const label =
-          item.type === 'research'
-            ? '대표 연구'
-            : item.type === 'study'
-              ? '대표 스터디'
-              : '대표 프로젝트';
-        if (sameTypeFeatured >= limit) {
-          alert(`${label}는 최대 ${limit}개까지만 지정할 수 있어요.`);
-          return;
-        }
-      }
-      const next = list.map((it) =>
-        it.id === itemId ? { ...it, featured: willBeFeatured } : it,
-      );
-      localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(next));
-      setItem({ ...item, featured: willBeFeatured });
+      await apiUpdateItem(item.serverId, { featured: willBeFeatured });
     } catch {
-      // 저장 실패 무시
+      setItem(prev);
     }
   };
 

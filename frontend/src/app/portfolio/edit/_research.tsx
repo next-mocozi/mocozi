@@ -8,9 +8,9 @@ import {
   syncItemToBackend,
   deleteItemFromBackend,
 } from '@/lib/portfolio-mapper';
+import { getMyPortfolio as apiGetMyPortfolio } from '@/lib/portfolio-api';
 
 // ─────── Storage keys ───────
-const ITEMS_STORAGE_KEY = 'mock_portfolio_items';
 const RESEARCH_DETAILS_STORAGE_KEY = 'mock_research_details';
 
 // ─────── Domain options ───────
@@ -100,6 +100,7 @@ export default function ResearchForm() {
   const editId = editIdParam ? Number(editIdParam) : null;
   const isEdit = editId !== null && Number.isFinite(editId);
 
+  const serverIdRef = useRef<string | null>(null);
   const [d, setD] = useState<ResearchDetail>(EMPTY_DETAIL);
   const [topicError, setTopicError] = useState('');
   const [periodError, setPeriodError] = useState('');
@@ -115,32 +116,35 @@ export default function ResearchForm() {
     return e < s;
   })();
 
-  // 편집 모드: 저장된 답변 로드
+  // 편집 모드: 백엔드에서 답변 로드
   useEffect(() => {
     if (!isEdit || editId === null) return;
-    try {
-      const raw = localStorage.getItem(RESEARCH_DETAILS_STORAGE_KEY);
-      const map: Record<string, ResearchDetail> = raw ? JSON.parse(raw) : {};
-      const saved = map[String(editId)];
-      if (saved) {
-        setD({ ...EMPTY_DETAIL, ...saved });
-        return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const remote = await apiGetMyPortfolio();
+        if (cancelled) return;
+        const backendItem = (remote?.items ?? []).find(
+          (b) => new Date(b.createdAt).getTime() === editId,
+        );
+        if (backendItem) {
+          serverIdRef.current = backendItem.id;
+          const det = backendItem.details as { kind?: string; data?: unknown } | null;
+          if (det?.kind === 'research' && det.data) {
+            setD({ ...EMPTY_DETAIL, ...(det.data as ResearchDetail) });
+            return;
+          }
+          setD({
+            ...EMPTY_DETAIL,
+            topic: backendItem.title ?? '',
+            domainTags: backendItem.domain ? [backendItem.domain] : [],
+          });
+        }
+      } catch {
+        // 로드 실패 시 기본 빈 폼 유지
       }
-      // details 없는 기존 항목 → 제목/기간 등 기본값 복원
-      const itemsRaw = localStorage.getItem(ITEMS_STORAGE_KEY);
-      const items: PortfolioItem[] = itemsRaw ? JSON.parse(itemsRaw) : [];
-      const found = items.find((it) => it.id === editId);
-      if (found) {
-        setD({
-          ...EMPTY_DETAIL,
-          topic: found.title,
-          paperUrl: found.paperUrl ?? '',
-          domainTags: found.domain ? [found.domain] : [],
-        });
-      }
-    } catch {
-      // 무시
-    }
+    })();
+    return () => { cancelled = true; };
   }, [isEdit, editId]);
 
   const update = <K extends keyof ResearchDetail>(
@@ -184,7 +188,7 @@ export default function ResearchForm() {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!d.topic.trim()) {
       setTopicError('연구 주제를 입력해주세요.');
       return;
@@ -201,6 +205,7 @@ export default function ResearchForm() {
     const period = formatPeriod(d);
     const item: PortfolioItem = {
       id: targetId,
+      serverId: serverIdRef.current ?? undefined,
       type: 'research',
       title: d.topic.trim(),
       description: d.background.trim() || d.process.trim() || '',
@@ -211,52 +216,32 @@ export default function ResearchForm() {
       tags: d.hasDomain ? Array.from(new Set(d.domainTags)).filter(Boolean) : [],
       paperUrl: d.paperUrl.trim() || undefined,
     };
+    // details 캐시 — 오프라인/새로고침 대비 draft 보존
     try {
-      const itemsRaw = localStorage.getItem(ITEMS_STORAGE_KEY);
-      const list: PortfolioItem[] = itemsRaw ? JSON.parse(itemsRaw) : [];
-      const exists = list.some((it) => it.id === targetId);
-      const next = exists
-        ? list.map((it) => (it.id === targetId ? { ...it, ...item } : it))
-        : [...list, item];
-      localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(next));
-
       const detailsRaw = localStorage.getItem(RESEARCH_DETAILS_STORAGE_KEY);
-      const map: Record<string, ResearchDetail> = detailsRaw
-        ? JSON.parse(detailsRaw)
-        : {};
+      const map: Record<string, ResearchDetail> = detailsRaw ? JSON.parse(detailsRaw) : {};
       map[String(targetId)] = d;
       localStorage.setItem(RESEARCH_DETAILS_STORAGE_KEY, JSON.stringify(map));
-    } catch {
-      // 무시
-    }
-    // backend 에도 research 상세 같이 sync — 타인 viewer 가 미리보기 풀세트로 볼 수 있게.
-    void syncItemToBackend(item, { kind: 'research', data: d });
+    } catch {}
+    await syncItemToBackend(item, { kind: 'research', data: d });
     router.push(getMyPortfolioPath());
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!isEdit || editId === null) return;
     if (!confirm('이 연구 항목을 삭제하시겠어요?')) return;
-    const deletedId = editId;
+    // details 캐시 정리
     try {
-      const itemsRaw = localStorage.getItem(ITEMS_STORAGE_KEY);
-      const list: PortfolioItem[] = itemsRaw ? JSON.parse(itemsRaw) : [];
-      const next = list.filter((it) => it.id !== editId);
-      localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(next));
       const detailsRaw = localStorage.getItem(RESEARCH_DETAILS_STORAGE_KEY);
       if (detailsRaw) {
         const map: Record<string, ResearchDetail> = JSON.parse(detailsRaw);
         delete map[String(editId)];
-        localStorage.setItem(
-          RESEARCH_DETAILS_STORAGE_KEY,
-          JSON.stringify(map),
-        );
+        localStorage.setItem(RESEARCH_DETAILS_STORAGE_KEY, JSON.stringify(map));
       }
-    } catch {
-      // 무시
+    } catch {}
+    if (serverIdRef.current) {
+      await deleteItemFromBackend(serverIdRef.current);
     }
-    // 백엔드 삭제 동기화
-    void deleteItemFromBackend(deletedId);
     router.push(getMyPortfolioPath());
   };
 

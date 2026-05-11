@@ -195,6 +195,8 @@ export function buildOwnerFeedPostsFromApi(
       createdAt: item.createdAt ?? item.id,
       item,
       isOwnerPrivate: options.isPrivate,
+      rawDetails:
+        (b.details as { kind?: string; data?: unknown } | undefined) ?? null,
     } satisfies FeedPostItem);
   }
 

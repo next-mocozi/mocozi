@@ -7,14 +7,24 @@ import { useAuth } from '@/hooks/useAuth';
 import { findMockFeedUser, type FeedUser } from '@/lib/mock/portfolioFeed';
 import { notifyPortfolioChanged } from '@/hooks/useMyPortfolioStatus';
 import api from '@/lib/api';
-import { updateMyMeta, getPortfolioByUserId } from '@/lib/portfolio-api';
 import {
-  syncWorkExperienceToBackend,
-  deleteWorkExperienceFromBackend,
-  syncActivityToBackend,
-  deleteActivityFromBackend,
-  deleteItemFromBackend,
-  hydratePortfolioFromBackend,
+  updateMyMeta,
+  getPortfolioByUserId,
+  getMyPortfolio,
+  createWorkExperience as apiCreateWork,
+  updateWorkExperience as apiUpdateWork,
+  deleteWorkExperience as apiDeleteWork,
+  createExternalActivity as apiCreateActivity,
+  updateExternalActivity as apiUpdateActivity,
+  deleteExternalActivity as apiDeleteActivity,
+  deleteItem as apiDeleteItem,
+  updateItem as apiUpdateItem,
+} from '@/lib/portfolio-api';
+import {
+  fromBackendItem,
+  fromBackendWorkExperience,
+  fromBackendActivity,
+  fromBackendLink,
 } from '@/lib/portfolio-mapper';
 import PortfolioSegmentedNav from '@/components/portfolio/PortfolioSegmentedNav';
 import {
@@ -25,29 +35,19 @@ import {
   type ProfileLink,
 } from '../_platforms';
 import {
-  CAREERS_STORAGE_KEY,
   CAREER_CONTENT_MAX,
-  DEFAULT_CAREERS,
-  DEFAULT_EXPS,
   DEFAULT_INTRO,
-  DEFAULT_ITEMS,
-  DEFAULT_LINKS,
   DownSelect,
   EMPTY_CAREER_FORM,
   EMPTY_EXP_FORM,
-  EXPS_STORAGE_KEY,
   FeaturedStar,
   INTRO_MAX,
   INTRO_STORAGE_KEY,
-  ITEMS_STORAGE_KEY,
   ItemMgrModal,
-  LINKS_STORAGE_KEY,
   MAX_FEATURED,
   MAX_FEATURED_RESEARCH,
   MAX_FEATURED_STUDY,
   MONTH_OPTIONS,
-  OWNER_STORAGE_KEY,
-  ROLES_STORAGE_KEY,
   TYPE_META,
   VISIBILITY_STORAGE_KEY,
   YEAR_OPTIONS,
@@ -116,7 +116,7 @@ export default function PortfolioDetailPage({
   }, [feedUser]);
 
   const [links, setLinks] = useState<ProfileLink[]>(
-    viewerInitial?.links ?? DEFAULT_LINKS,
+    viewerInitial?.links ?? [],
   );
 
   // 인증 + 본인 onboarding 게이트
@@ -139,22 +139,22 @@ export default function PortfolioDetailPage({
     }
   }, [loading, user, router, isOwner]);
   const [items, setItems] = useState<PortfolioItem[]>(
-    viewerInitial?.items ?? DEFAULT_ITEMS,
+    viewerInitial?.items ?? [],
   );
   const [experiences, setExperiences] = useState<Experience[]>(
-    viewerInitial?.experiences ?? DEFAULT_EXPS,
+    viewerInitial?.experiences ?? [],
   );
   const [careers, setCareers] = useState<CareerItem[]>(
-    viewerInitial?.careers ?? DEFAULT_CAREERS,
+    viewerInitial?.careers ?? [],
   );
 
-  // 직군 (owner 는 profile/edit 의 localStorage 에서, viewer 는 feedUser 에서)
+  // 직군 (owner 는 backend user.roles, viewer 는 viewerUser 에서)
   const [mainRole, setMainRole] = useState(viewerInitial?.mainRole ?? '');
   const [subRoles, setSubRoles] = useState<string[]>(
     viewerInitial?.subRoles ?? [],
   );
 
-  // 자기소개 — owner 만 draft 편집. viewer 는 feedUser 의 introduction 을 그대로 표시.
+  // 자기소개 — owner 만 draft 편집. viewer 는 viewerUser 의 bio 를 그대로 표시.
   const [introSaved, setIntroSaved] = useState(
     viewerInitial?.intro ?? DEFAULT_INTRO,
   );
@@ -218,86 +218,38 @@ export default function PortfolioDetailPage({
     roles: string[];
   } | null>(null);
 
-  // owner 만 backend hydrate → localStorage 읽기 → state set. viewer 는 viewerInitial 유지.
-  // hydrate 를 먼저 await 해서 backend 의 isPublic/firstPostAt 등이 localStorage 에
-  // 머지된 뒤 읽도록 한다. (이전엔 localStorage 만 읽어서 새 환경/시크릿 창에서
-  // visibility 가 'private' 으로 잘못 보이는 문제 발생.)
+  // owner: 백엔드에서 직접 포트폴리오 로드. localStorage 에 의존하지 않음.
   useEffect(() => {
     if (!isOwner) return;
     let cancelled = false;
     (async () => {
       try {
-        await hydratePortfolioFromBackend();
+        const remote = await getMyPortfolio();
+        if (cancelled) return;
+        setItems((remote.items ?? []).map(fromBackendItem));
+        setExperiences((remote.workExperiences ?? []).map(fromBackendWorkExperience));
+        setCareers((remote.activities ?? []).map(fromBackendActivity));
+        setLinks((remote.links ?? []).map(fromBackendLink));
+        const vis: PortfolioVisibility = remote.isPublic ? 'public' : 'private';
+        setVisibility(vis);
+        const introVal = remote.intro ?? user?.bio ?? '';
+        setIntroSaved(introVal);
+        setIntroDraft(introVal);
+        // 직군 — backend user 에서
+        const userRoles = user?.roles ?? [];
+        setMainRole(userRoles[0] ?? '');
+        setSubRoles(userRoles.slice(1));
+        // useMyPortfolioStatus 훅(nav 상태)을 위해 두 값만 localStorage 에 기록
+        try {
+          localStorage.setItem(INTRO_STORAGE_KEY, introVal);
+          localStorage.setItem(VISIBILITY_STORAGE_KEY, vis);
+        } catch { /* 무시 */ }
+        notifyPortfolioChanged();
       } catch {
-        // 무시 — localStorage 만으로도 동작 유지
+        // 백엔드 호출 실패 시 빈 화면 — localStorage fallback 없음
       }
-      if (cancelled) return;
-      hydrateFromLocalStorage();
-      notifyPortfolioChanged();
     })();
-    function hydrateFromLocalStorage() {
-    const load = <T,>(key: string, fallback: T): T => {
-      try {
-        const raw = localStorage.getItem(key);
-        return raw ? (JSON.parse(raw) as T) : fallback;
-      } catch {
-        return fallback;
-      }
-    };
-    setLinks(load(LINKS_STORAGE_KEY, DEFAULT_LINKS));
-    setItems(load(ITEMS_STORAGE_KEY, DEFAULT_ITEMS));
-    setExperiences(load(EXPS_STORAGE_KEY, DEFAULT_EXPS));
-    setCareers(load(CAREERS_STORAGE_KEY, DEFAULT_CAREERS));
-    // 직군 — backend(user.roles[]) 우선, localStorage 는 캐시 fallback.
-    // 다른 기기에서 변경한 직군이 즉시 반영되도록.
-    const userRoles = user?.roles ?? [];
-    if (userRoles.length > 0) {
-      setMainRole(userRoles[0] ?? '');
-      setSubRoles(userRoles.slice(1));
-    } else {
-      const cachedRoles = load<{ mainRole: string; subRoles: string[] } | null>(
-        ROLES_STORAGE_KEY,
-        null,
-      );
-      if (cachedRoles) {
-        setMainRole(cachedRoles.mainRole);
-        setSubRoles(cachedRoles.subRoles);
-      }
-    }
-    try {
-      const i = localStorage.getItem(INTRO_STORAGE_KEY);
-      // localStorage 가 reconcileMockOwner 등으로 정리됐을 때를 대비해 user.bio 폴백.
-      // (다른 계정으로 로그인했다 돌아오면 mock_* 가 정리되어 자기소개가 비어보이는 문제 방지)
-      const fallback = user?.bio ?? '';
-      const value = i && i.trim().length > 0 ? i : fallback;
-      if (value) {
-        setIntroSaved(value);
-        setIntroDraft(value);
-        // localStorage 가 비어있고 backend bio가 있으면 채워두기 (다음 진입 시 hot path)
-        if ((i === null || i.trim().length === 0) && fallback) {
-          localStorage.setItem(INTRO_STORAGE_KEY, fallback);
-        }
-      }
-    } catch {
-      // 기본값 유지
-    }
-    // VISIBILITY_STORAGE_KEY 는 raw string ('public' | 'private') 으로 저장됨.
-    // load() 헬퍼는 JSON.parse 를 사용하므로 raw 문자열에 대해 throw → 항상 fallback.
-    // 이로 인해 실제 'public' 인 사용자도 설정 다이얼로그/배지에서는 '비공개' 로
-    // 보이고, 한편 useMyPortfolioStatus 는 raw 로 직접 읽어 'public' 으로 인식,
-    // 피드에 본인 카드가 노출되는 불일치가 발생했었다.
-    try {
-      const rawV = localStorage.getItem(VISIBILITY_STORAGE_KEY);
-      setVisibility(rawV === 'public' ? 'public' : 'private');
-    } catch {
-      setVisibility('private');
-    }
-    }
-    return () => {
-      cancelled = true;
-    };
-    // user.bio / user.roles 가 늦게 도착(refreshUser 직후 등)하면 다시 머지하기 위해
-    // user 도 deps 에 포함.
+    return () => { cancelled = true; };
   }, [isOwner, user]);
 
   // 타인 프로필일 때 백엔드에서 직접 데이터 조회. mock 은 fallback 으로만 유지.
@@ -410,19 +362,6 @@ export default function PortfolioDetailPage({
     };
   }, [isOwner, user, loading, paramUserId]);
 
-  // 본인일 때 OWNER_STORAGE_KEY 를 현재 user.id 로 항상 동기화.
-  // (이전에는 빈 값일 때만 기록했지만, 다른 계정으로 재로그인 시 stale 한 ID 가
-  //  남아 edit 페이지 권한 거절·getMyPortfolioPath() 가 잘못된 사용자로 라우팅되는
-  //  문제가 있었음 — 항상 덮어써서 일관성 유지.)
-  useEffect(() => {
-    if (!user || !isOwner) return;
-    try {
-      const existing = localStorage.getItem(OWNER_STORAGE_KEY);
-      if (existing !== user.id) localStorage.setItem(OWNER_STORAGE_KEY, user.id);
-    } catch {
-      // 저장 실패 무시
-    }
-  }, [user, isOwner]);
 
   // 로그인 가드 — 모든 훅 호출 이후에 위치
   if (loading)
@@ -471,35 +410,26 @@ export default function PortfolioDetailPage({
     }
   }
 
-  const persist = (key: string, value: unknown) => {
-    try {
-      localStorage.setItem(
-        key,
-        typeof value === 'string' ? value : JSON.stringify(value),
-      );
-    } catch {
-      // 저장 실패 시 무시
-    }
+  // localStorage 에 nav 상태 두 값만 업데이트하는 헬퍼
+  const persistNavState = (key: string, value: string) => {
+    try { localStorage.setItem(key, value); } catch { /* 무시 */ }
   };
 
   // ───────── 공개/비공개 설정 (owner 전용) ─────────
-  const updateVisibility = (v: PortfolioVisibility) => {
+  const updateVisibility = async (v: PortfolioVisibility) => {
+    const prev = visibility;
     setVisibility(v);
-    persist(VISIBILITY_STORAGE_KEY, v);
+    persistNavState(VISIBILITY_STORAGE_KEY, v);
     notifyPortfolioChanged();
     setSettingsOpen(false);
-    // 백엔드 동기화. 실패해도 localStorage 는 갱신했으므로 화면 동작은 유지되지만,
-    // 다른 기기/세션에선 반영 안 됨 → 사용자에게 알림.
-    void updateMyMeta({ isPublic: v === 'public' }).catch((err) => {
-      if (process.env.NODE_ENV !== 'production') {
-        // eslint-disable-next-line no-console
-        console.warn('[portfolio] visibility 백엔드 동기화 실패:', err);
-      }
-      alert(
-        '공개 설정이 서버에 저장되지 못했어요. 잠시 후 다시 시도해주세요.\n' +
-          '(이 기기 화면에는 즉시 반영됩니다)',
-      );
-    });
+    try {
+      await updateMyMeta({ isPublic: v === 'public' });
+    } catch {
+      setVisibility(prev);
+      persistNavState(VISIBILITY_STORAGE_KEY, prev);
+      notifyPortfolioChanged();
+      alert('공개 설정이 서버에 저장되지 못했어요. 잠시 후 다시 시도해주세요.');
+    }
   };
 
   // ───────── 자기소개 ─────────
@@ -513,9 +443,10 @@ export default function PortfolioDetailPage({
 
   const saveIntro = () => {
     if (!introDirty) return;
-    setIntroSaved(introDraft);
-    persist(INTRO_STORAGE_KEY, introDraft);
-    void updateMyMeta({ intro: introDraft }).catch(() => {});
+    const val = introDraft;
+    setIntroSaved(val);
+    persistNavState(INTRO_STORAGE_KEY, val);
+    void updateMyMeta({ intro: val }).catch(() => {});
     notifyPortfolioChanged();
     setIntroJustSaved(true);
     setTimeout(() => setIntroJustSaved(false), 2000);
@@ -551,59 +482,48 @@ export default function PortfolioDetailPage({
     setExpError('');
   };
 
-  const saveExp = () => {
-    if (!expForm.company.trim()) {
-      setExpError('회사명을 입력해주세요.');
-      return;
-    }
-    if (!expForm.startDate) {
-      setExpError('시작 월을 선택해주세요.');
-      return;
-    }
+  const saveExp = async () => {
+    if (!expForm.company.trim()) { setExpError('회사명을 입력해주세요.'); return; }
+    if (!expForm.startDate) { setExpError('시작 월을 선택해주세요.'); return; }
     if (!expForm.current && !expForm.endDate) {
-      setExpError('종료 월을 선택하거나 "재직중"을 체크해주세요.');
+      setExpError('종료 월을 선택하거나 "재직중"을 체크해주세요.'); return;
+    }
+    if (!expForm.current && expForm.endDate && expForm.endDate < expForm.startDate) {
+      setExpError('종료 월은 시작 월 이후여야 합니다.'); return;
+    }
+    const period = formatPeriod(expForm.startDate, expForm.endDate, expForm.current);
+    const payload = { company: expForm.company, team: expForm.team, role: expForm.role, period, current: expForm.current };
+    try {
+      if (expEditId !== null) {
+        const target = experiences.find((e) => e.id === expEditId);
+        if (target?.serverId) {
+          const updated = await apiUpdateWork(target.serverId, payload);
+          setExperiences((prev) => prev.map((e) => e.id === expEditId ? fromBackendWorkExperience(updated) : e));
+        }
+      } else {
+        const created = await apiCreateWork(payload);
+        setExperiences((prev) => [...prev, fromBackendWorkExperience(created)]);
+      }
+    } catch {
+      setExpError('저장 중 오류가 발생했어요. 다시 시도해주세요.');
       return;
     }
-    if (
-      !expForm.current &&
-      expForm.endDate &&
-      expForm.endDate < expForm.startDate
-    ) {
-      setExpError('종료 월은 시작 월 이후여야 합니다.');
-      return;
-    }
-    const period = formatPeriod(
-      expForm.startDate,
-      expForm.endDate,
-      expForm.current,
-    );
-    const payload: Omit<Experience, 'id'> = {
-      company: expForm.company,
-      team: expForm.team,
-      role: expForm.role,
-      period,
-      current: expForm.current,
-    };
-    const newId = expEditId ?? Date.now();
-    const saved: Experience = { id: newId, ...payload };
-    const next: Experience[] =
-      expEditId === null
-        ? [...experiences, saved]
-        : experiences.map((e) => (e.id === expEditId ? saved : e));
-    setExperiences(next);
-    persist(EXPS_STORAGE_KEY, next);
-    // 백엔드 동기화 — 실패해도 localStorage 기반 동작 유지
-    void syncWorkExperienceToBackend(saved);
-    resetExpForm(); // 모달은 열린 상태 유지 → 리스트에서 결과 확인
+    resetExpForm();
   };
 
-  const deleteExp = (id: number) => {
+  const deleteExp = async (id: number) => {
     if (!confirm('이 항목을 삭제하시겠어요?')) return;
-    const next = experiences.filter((e) => e.id !== id);
-    setExperiences(next);
-    persist(EXPS_STORAGE_KEY, next);
-    void deleteWorkExperienceFromBackend(id);
+    const target = experiences.find((e) => e.id === id);
+    setExperiences((prev) => prev.filter((e) => e.id !== id));
     if (expEditId === id) resetExpForm();
+    if (target?.serverId) {
+      try {
+        await apiDeleteWork(target.serverId);
+      } catch {
+        setExperiences((prev) => [...prev, target]);
+        alert('삭제 중 오류가 발생했어요.');
+      }
+    }
   };
 
   // ───────── 경력 ─────────
@@ -626,55 +546,61 @@ export default function PortfolioDetailPage({
     setCareerError('');
   };
 
-  const saveCareer = () => {
+  const saveCareer = async () => {
     const year = careerForm.year.trim();
     const month = (careerForm.month ?? '').trim();
     const content = careerForm.content.trim();
-    if (!year) {
-      setCareerError('연도를 선택해주세요.');
+    if (!year) { setCareerError('연도를 선택해주세요.'); return; }
+    if (!/^\d{4}$/.test(year)) { setCareerError('연도는 4자리 숫자여야 합니다. (예: 2024)'); return; }
+    if (!month) { setCareerError('월을 선택해주세요.'); return; }
+    if (!content) { setCareerError('내용을 입력해주세요.'); return; }
+    const payload = { year, month, content };
+    try {
+      if (careerEditId !== null) {
+        const target = careers.find((c) => c.id === careerEditId);
+        if (target?.serverId) {
+          const updated = await apiUpdateActivity(target.serverId, payload);
+          setCareers((prev) => prev.map((c) => c.id === careerEditId ? fromBackendActivity(updated) : c));
+        }
+      } else {
+        const created = await apiCreateActivity(payload);
+        setCareers((prev) => [...prev, fromBackendActivity(created)]);
+      }
+    } catch {
+      setCareerError('저장 중 오류가 발생했어요. 다시 시도해주세요.');
       return;
     }
-    if (!/^\d{4}$/.test(year)) {
-      setCareerError('연도는 4자리 숫자여야 합니다. (예: 2024)');
-      return;
-    }
-    if (!month) {
-      setCareerError('월을 선택해주세요.');
-      return;
-    }
-    if (!content) {
-      setCareerError('내용을 입력해주세요.');
-      return;
-    }
-    const newId = careerEditId ?? Date.now();
-    const saved: CareerItem = { id: newId, year, month, content };
-    const next: CareerItem[] =
-      careerEditId === null
-        ? [...careers, saved]
-        : careers.map((c) => (c.id === careerEditId ? saved : c));
-    setCareers(next);
-    persist(CAREERS_STORAGE_KEY, next);
-    void syncActivityToBackend(saved);
     resetCareerForm();
   };
 
-  const deleteCareer = (id: number) => {
+  const deleteCareer = async (id: number) => {
     if (!confirm('이 항목을 삭제하시겠어요?')) return;
-    const next = careers.filter((c) => c.id !== id);
-    setCareers(next);
-    persist(CAREERS_STORAGE_KEY, next);
-    void deleteActivityFromBackend(id);
+    const target = careers.find((c) => c.id === id);
+    setCareers((prev) => prev.filter((c) => c.id !== id));
     if (careerEditId === id) resetCareerForm();
+    if (target?.serverId) {
+      try {
+        await apiDeleteActivity(target.serverId);
+      } catch {
+        setCareers((prev) => [...prev, target]);
+        alert('삭제 중 오류가 발생했어요.');
+      }
+    }
   };
 
   // ───────── 포트폴리오/스터디 항목 (편집은 /portfolio/edit 페이지) ─────────
-  const deleteItem = (id: number) => {
+  const deleteItem = async (id: number) => {
     if (!confirm('이 항목을 삭제하시겠어요?')) return;
-    const next = items.filter((it) => it.id !== id);
-    setItems(next);
-    persist(ITEMS_STORAGE_KEY, next);
-    // 백엔드에서도 삭제 — 안 하면 hydrate 가 backend 에서 다시 가져와 부활.
-    void deleteItemFromBackend(id);
+    const target = items.find((it) => it.id === id);
+    setItems((prev) => prev.filter((it) => it.id !== id));
+    if (target?.serverId) {
+      try {
+        await apiDeleteItem(target.serverId);
+      } catch {
+        setItems((prev) => [...prev, target]);
+        alert('삭제 중 오류가 발생했어요.');
+      }
+    }
   };
 
   // 연/월 내림차순 정렬 (최신이 위). month 없는 레거시 항목은 0 으로 취급.
@@ -705,8 +631,8 @@ export default function PortfolioDetailPage({
   const featuredResearchCount = researchItems.filter((it) => it.featured).length;
   const featuredStudyCount = studyItems.filter((it) => it.featured).length;
 
-  /** 대표 토글 — 항목 종류별 최대 개수 제한.
-   *  project=4 / research=2 / study=2. 다른 type 은 토글 자체를 호출하지 않는다. */
+  /** 대표 토글 — 항목 종류별 최대 개수 제한 + 백엔드 저장.
+   *  project=4 / research=2 / study=2. */
   const toggleFeatured = (id: number) => {
     const target = items.find((it) => it.id === id);
     if (!target) return;
@@ -735,11 +661,15 @@ export default function PortfolioDetailPage({
         return;
       }
     }
-    const next = items.map((it) =>
-      it.id === id ? { ...it, featured: willBeFeatured } : it,
-    );
-    setItems(next);
-    persist(ITEMS_STORAGE_KEY, next);
+    // 낙관적 업데이트 + 백엔드 저장
+    setItems((prev) => prev.map((it) => it.id === id ? { ...it, featured: willBeFeatured } : it));
+    if (target.serverId) {
+      void apiUpdateItem(target.serverId, { featured: willBeFeatured }).catch(() => {
+        // 실패 시 롤백
+        setItems((prev) => prev.map((it) => it.id === id ? { ...it, featured: !willBeFeatured } : it));
+        alert('저장 중 오류가 발생했어요.');
+      });
+    }
   };
 
   // 헤더에 표시할 사용자 정보 — owner 면 useAuth().user, viewer 면 viewerUser.

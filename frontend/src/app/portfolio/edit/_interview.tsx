@@ -4,10 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, Dispatch, ReactNode, SetStateAction } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { DownSelect, getMyPortfolioPath, type PortfolioItem } from '../_lib';
-import {
-  syncItemToBackend,
-  deleteItemFromBackend,
-} from '@/lib/portfolio-mapper';
+import { syncItemToBackend } from '@/lib/portfolio-mapper';
+import { getMyPortfolio as apiGetMyPortfolio } from '@/lib/portfolio-api';
 
 // ─────── Storage keys ───────
 const ITEMS_STORAGE_KEY = 'mock_portfolio_items';
@@ -826,6 +824,8 @@ export default function ProjectInterview() {
   /** 진입 시점의 초기 스냅샷 — "저장하지 않고 나가기" 시 복원에 사용.
    *  편집 모드: 저장된 detail; 신규 모드: null (해당 ID 데이터 자체를 제거). */
   const initialDetailRef = useRef<Draft | null>(null);
+  /** 백엔드 serverId — 편집 모드에서 초기 로드 시 설정 */
+  const serverIdRef = useRef<string | null>(null);
   /** 자동 저장 차단 플래그 — discard 진행 중에는 저장 effect 가 다시 덮어쓰지 못하게. */
   const discardingRef = useRef(false);
   /** 임시저장 목록 팝업 */
@@ -863,70 +863,89 @@ export default function ProjectInterview() {
     thumbnail: d.thumbnail || undefined,
   });
 
-  // 초기 로드 — 수정 모드면 저장된 답변 로드, 신규면 새 ID 발급
-  // (projectId 가 이미 발급된 뒤 effect 가 재실행되어 새 ID 가 또 발급되면,
-  //  같은 입력으로 localStorage 에 draft 가 중복 생성되어 이후 항목 상세에서
-  //  잘못된 id 를 찾는 원인이 될 수 있어 발급 후 재실행을 방지한다.)
+  // 초기 로드 — 수정 모드면 백엔드에서 답변 로드, 신규면 새 ID 발급
+  // (projectId 가 이미 발급된 뒤 effect 가 재실행되면 중복 발급을 방지한다.)
   useEffect(() => {
     if (projectId !== null) return;
     if (isEdit && editId !== null) {
-      // 프로젝트가 아닌 항목(연구·스터디 등)이 잘못 라우팅된 경우 해당 폼으로 즉시 이동.
-      // 그렇지 않으면 아래 자동저장이 type 을 'project' 로 덮어쓰게 됨.
-      try {
-        const itemsRaw = localStorage.getItem(ITEMS_STORAGE_KEY);
-        const items: PortfolioItem[] = itemsRaw ? JSON.parse(itemsRaw) : [];
-        const existing = items.find((it) => it.id === editId);
-        if (existing && existing.type !== 'project') {
-          router.replace(
-            `/portfolio/edit?id=${editId}&type=${existing.type}`,
-          );
-          return;
-        }
-      } catch {
-        // 무시 — 정상 흐름 진행
-      }
       setProjectId(editId);
-      try {
-        const detailsRaw = localStorage.getItem(DETAILS_STORAGE_KEY);
-        const map: Record<string, Draft> = detailsRaw
-          ? JSON.parse(detailsRaw)
-          : {};
-        const saved = map[String(editId)];
-        if (saved) {
-          // 원본 스냅샷 보관 — "저장하지 않고 나가기" 시 복원
-          initialDetailRef.current = JSON.parse(JSON.stringify(saved)) as Draft;
-          const stepsForSaved = buildSteps(saved.hasDomain);
+      let cancelled = false;
+      void (async () => {
+        try {
+          const remote = await apiGetMyPortfolio();
+          if (cancelled) return;
+          const backendItem = (remote?.items ?? []).find(
+            (b) => new Date(b.createdAt).getTime() === editId,
+          );
+          if (backendItem) {
+            // project 가 아닌 타입이면 해당 폼으로 이동
+            if (backendItem.type !== 'PROJECT') {
+              router.replace(
+                `/portfolio/edit?id=${editId}&type=${backendItem.type.toLowerCase()}`,
+              );
+              return;
+            }
+            serverIdRef.current = backendItem.id;
+          }
+          // localStorage draft 우선 (mid-edit 상태 보존)
+          const detailsRaw = localStorage.getItem(DETAILS_STORAGE_KEY);
+          const map: Record<string, Draft> = detailsRaw ? JSON.parse(detailsRaw) : {};
+          const saved = map[String(editId)];
+          if (saved) {
+            initialDetailRef.current = JSON.parse(JSON.stringify(saved)) as Draft;
+            const stepsForSaved = buildSteps(saved.hasDomain);
+            setDraft({
+              ...EMPTY_DRAFT,
+              ...saved,
+              period: { ...EMPTY_PERIOD, ...(saved.period ?? {}) },
+              assets: (saved.assets ?? []).map((a) => ({
+                ...a,
+                stepKey: a.stepKey ?? 'architecture',
+              })),
+              stepIdx: stepsForSaved.length - 1,
+            });
+            setPhase('form');
+            return;
+          }
+          // localStorage 없음 → 백엔드 details 사용
+          if (backendItem?.details) {
+            const det = backendItem.details as { kind?: string; data?: unknown } | null;
+            if (det?.kind === 'interview' && det.data) {
+              const fromBe = det.data as Draft;
+              initialDetailRef.current = JSON.parse(JSON.stringify(fromBe));
+              try {
+                map[String(editId)] = fromBe;
+                localStorage.setItem(DETAILS_STORAGE_KEY, JSON.stringify(map));
+              } catch {}
+              const stepsForBe = buildSteps(fromBe.hasDomain);
+              setDraft({
+                ...EMPTY_DRAFT,
+                ...fromBe,
+                period: { ...EMPTY_PERIOD, ...(fromBe.period ?? {}) },
+                assets: (fromBe.assets ?? []).map((a) => ({
+                  ...a,
+                  stepKey: a.stepKey ?? 'architecture',
+                })),
+                stepIdx: stepsForBe.length - 1,
+              });
+              setPhase('form');
+              return;
+            }
+          }
+          // 백엔드에도 없음 — 기본 필드로 폼 초기화
           setDraft({
             ...EMPTY_DRAFT,
-            ...saved,
-            period: { ...EMPTY_PERIOD, ...(saved.period ?? {}) },
-            assets: (saved.assets ?? []).map((a) => ({
-              ...a,
-              stepKey: a.stepKey ?? 'architecture',
-            })),
-            stepIdx: stepsForSaved.length - 1,
+            name: backendItem?.title ?? '',
+            thumbnail: backendItem?.thumbnail ?? '',
           });
           setPhase('form');
-          return;
+        } catch {
+          setPhase('form');
         }
-        // details 없는 기존 항목 → 제목만 복원
-        const itemsRaw = localStorage.getItem(ITEMS_STORAGE_KEY);
-        const items: PortfolioItem[] = itemsRaw ? JSON.parse(itemsRaw) : [];
-        const found = items.find((it) => it.id === editId);
-        if (found) {
-          setDraft({
-            ...EMPTY_DRAFT,
-            name: found.title,
-            thumbnail: found.thumbnail ?? '',
-          });
-        }
-      } catch {
-        // 무시
-      }
-      setPhase('form');
-      return;
+      })();
+      return () => { cancelled = true; };
     }
-    // 신규: 진입 시 1회 새 ID 발급 (위 early-return 가드로 재발급 방지)
+    // 신규: 진입 시 1회 새 ID 발급
     setProjectId(Date.now());
     setPhase('form');
   }, [isEdit, editId, router, projectId]);
@@ -1074,8 +1093,6 @@ export default function ProjectInterview() {
         localStorage.setItem(DETAILS_STORAGE_KEY, JSON.stringify(map));
       }
       setDraftsList((prev) => prev.filter((it) => it.id !== id));
-      // 매핑 정리 + 혹시 백엔드에 올라간 경우 삭제 (없으면 no-op)
-      void deleteItemFromBackend(id);
     } catch {
       // 무시
     }
@@ -1173,7 +1190,10 @@ export default function ProjectInterview() {
         // 인터뷰 답변(draft) 도 같이 보내 타인 viewer 가 미리보기 풀세트로 볼 수 있게.
         const finalItem = nextList.find((it) => it.id === projectId);
         if (finalItem)
-          void syncItemToBackend(finalItem, { kind: 'interview', data: draft });
+          void syncItemToBackend(
+            { ...finalItem, serverId: serverIdRef.current ?? undefined },
+            { kind: 'interview', data: draft },
+          );
       } catch {
         // 무시
       }

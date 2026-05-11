@@ -84,4 +84,11 @@ export class CreatePortfolioDto {
   /** type별 상세 데이터 (인터뷰 답변, 에셋 등) — 자유 형식 JSON */
   @IsOptional()
   details?: unknown;
+
+  /** 클라이언트 원본 생성 시각 (ISO string).
+   *  reconcileLocalToBackend 등 나중 sync 시 실제 작성 시점을 보존하기 위해 사용.
+   *  제공 시 DB default(now()) 대신 이 값을 createdAt으로 설정. */
+  @IsOptional()
+  @IsString()
+  clientCreatedAt?: string;
 }

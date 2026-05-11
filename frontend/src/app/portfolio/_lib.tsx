@@ -39,6 +39,8 @@ export type PortfolioItemType =
 
 export type PortfolioItem = {
   id: number;
+  /** 백엔드 UUID. 백엔드에서 로드된 항목에만 존재. */
+  serverId?: string;
   type: PortfolioItemType;
   title: string;
   description: string;
@@ -59,6 +61,8 @@ export type PortfolioItem = {
 
 export type Experience = {
   id: number;
+  /** 백엔드 UUID. */
+  serverId?: string;
   company: string;
   team: string;
   role: string;
@@ -68,6 +72,8 @@ export type Experience = {
 
 export type CareerItem = {
   id: number;
+  /** 백엔드 UUID. */
+  serverId?: string;
   year: string;
   /** 1~12 zero-padded 문자열. 신규 항목은 항상 채우지만 기존 데이터 호환을 위해 optional. */
   month?: string;

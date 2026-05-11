@@ -2,15 +2,15 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DownSelect, getMyPortfolioPath, type PortfolioItem } from '../_lib';
 import {
   syncItemToBackend,
   deleteItemFromBackend,
 } from '@/lib/portfolio-mapper';
+import { getMyPortfolio as apiGetMyPortfolio } from '@/lib/portfolio-api';
 
 // ─────── Storage keys ───────
-const ITEMS_STORAGE_KEY = 'mock_portfolio_items';
 const STUDY_DETAILS_STORAGE_KEY = 'mock_study_details';
 
 // ─────── Year/Month options ───────
@@ -72,6 +72,7 @@ export default function StudyForm() {
   const editId = editIdParam ? Number(editIdParam) : null;
   const isEdit = editId !== null && Number.isFinite(editId);
 
+  const serverIdRef = useRef<string | null>(null);
   const [d, setD] = useState<StudyDetail>(EMPTY_DETAIL);
   const [topicError, setTopicError] = useState('');
   const [periodError, setPeriodError] = useState('');
@@ -86,30 +87,31 @@ export default function StudyForm() {
     return e < s;
   })();
 
-  // 편집 모드: 저장된 답변 로드
+  // 편집 모드: 백엔드에서 답변 로드
   useEffect(() => {
     if (!isEdit || editId === null) return;
-    try {
-      const raw = localStorage.getItem(STUDY_DETAILS_STORAGE_KEY);
-      const map: Record<string, StudyDetail> = raw ? JSON.parse(raw) : {};
-      const saved = map[String(editId)];
-      if (saved) {
-        setD({ ...EMPTY_DETAIL, ...saved });
-        return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const remote = await apiGetMyPortfolio();
+        if (cancelled) return;
+        const backendItem = (remote?.items ?? []).find(
+          (b) => new Date(b.createdAt).getTime() === editId,
+        );
+        if (backendItem) {
+          serverIdRef.current = backendItem.id;
+          const det = backendItem.details as { kind?: string; data?: unknown } | null;
+          if (det?.kind === 'study' && det.data) {
+            setD({ ...EMPTY_DETAIL, ...(det.data as StudyDetail) });
+            return;
+          }
+          setD({ ...EMPTY_DETAIL, topic: backendItem.title ?? '' });
+        }
+      } catch {
+        // 로드 실패 시 기본 빈 폼 유지
       }
-      // details 없는 기존 항목 → 제목 기본 복원
-      const itemsRaw = localStorage.getItem(ITEMS_STORAGE_KEY);
-      const items: PortfolioItem[] = itemsRaw ? JSON.parse(itemsRaw) : [];
-      const found = items.find((it) => it.id === editId);
-      if (found) {
-        setD({
-          ...EMPTY_DETAIL,
-          topic: found.title,
-        });
-      }
-    } catch {
-      // 무시
-    }
+    })();
+    return () => { cancelled = true; };
   }, [isEdit, editId]);
 
   const update = <K extends keyof StudyDetail>(
@@ -117,7 +119,7 @@ export default function StudyForm() {
     value: StudyDetail[K],
   ) => setD((prev) => ({ ...prev, [key]: value }));
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!d.topic.trim()) {
       setTopicError('스터디 주제를 입력해주세요.');
       return;
@@ -134,6 +136,7 @@ export default function StudyForm() {
     const period = formatPeriod(d);
     const item: PortfolioItem = {
       id: targetId,
+      serverId: serverIdRef.current ?? undefined,
       type: 'study',
       title: d.topic.trim(),
       description: d.motivation.trim() || d.process.trim() || '',
@@ -142,48 +145,32 @@ export default function StudyForm() {
       current: d.current,
       tags: [],
     };
+    // details 캐시 — 오프라인/새로고침 대비 draft 보존
     try {
-      const itemsRaw = localStorage.getItem(ITEMS_STORAGE_KEY);
-      const list: PortfolioItem[] = itemsRaw ? JSON.parse(itemsRaw) : [];
-      const exists = list.some((it) => it.id === targetId);
-      const next = exists
-        ? list.map((it) => (it.id === targetId ? { ...it, ...item } : it))
-        : [...list, item];
-      localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(next));
-
       const detailsRaw = localStorage.getItem(STUDY_DETAILS_STORAGE_KEY);
-      const map: Record<string, StudyDetail> = detailsRaw
-        ? JSON.parse(detailsRaw)
-        : {};
+      const map: Record<string, StudyDetail> = detailsRaw ? JSON.parse(detailsRaw) : {};
       map[String(targetId)] = d;
       localStorage.setItem(STUDY_DETAILS_STORAGE_KEY, JSON.stringify(map));
-    } catch {
-      // 무시
-    }
-    // backend 에도 study 상세 같이 sync — 타인 viewer 가 미리보기 풀세트로 볼 수 있게.
-    void syncItemToBackend(item, { kind: 'study', data: d });
+    } catch {}
+    await syncItemToBackend(item, { kind: 'study', data: d });
     router.push(getMyPortfolioPath());
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!isEdit || editId === null) return;
     if (!confirm('이 스터디 항목을 삭제하시겠어요?')) return;
-    const deletedId = editId;
+    // details 캐시 정리
     try {
-      const itemsRaw = localStorage.getItem(ITEMS_STORAGE_KEY);
-      const list: PortfolioItem[] = itemsRaw ? JSON.parse(itemsRaw) : [];
-      const next = list.filter((it) => it.id !== editId);
-      localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(next));
       const detailsRaw = localStorage.getItem(STUDY_DETAILS_STORAGE_KEY);
       if (detailsRaw) {
         const map: Record<string, StudyDetail> = JSON.parse(detailsRaw);
         delete map[String(editId)];
         localStorage.setItem(STUDY_DETAILS_STORAGE_KEY, JSON.stringify(map));
       }
-    } catch {
-      // 무시
+    } catch {}
+    if (serverIdRef.current) {
+      await deleteItemFromBackend(serverIdRef.current);
     }
-    void deleteItemFromBackend(deletedId);
     router.push(getMyPortfolioPath());
   };
 
