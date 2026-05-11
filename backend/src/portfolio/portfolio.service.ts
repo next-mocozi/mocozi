@@ -122,9 +122,19 @@ export class PortfolioService {
     });
   }
 
-  /** 포트폴리오 아이템 추가 */
+  /** 포트폴리오 아이템 추가.
+   *  firstPostAt 이 미설정 상태에서 첫 항목이 들어오면 그 시점을 firstPostAt 으로
+   *  자동 기록한다. (onboarding 모달을 거치지 않고 바로 항목을 추가한 사용자도
+   *  메인 피드 ProfilePost 시점이 "방금 전" 으로 영원히 떠버리는 문제 방지.) */
   async createItem(userId: string, dto: CreatePortfolioDto) {
     const portfolio = await this.getMyPortfolio(userId);
+
+    if (!portfolio.firstPostAt) {
+      await this.prisma.portfolio.update({
+        where: { id: portfolio.id },
+        data: { firstPostAt: new Date() },
+      });
+    }
 
     const { details, ...rest } = dto;
     return this.prisma.portfolioItem.create({
@@ -193,9 +203,16 @@ export class PortfolioService {
   // Phase 3 — 부속 메타 CRUD (실무경험 / 대외활동 / 외부 링크)
   // =====================================================
 
-  /** 본인 portfolio.id 보장 + 권한 체크 공통 헬퍼 */
+  /** 본인 portfolio.id 보장 + firstPostAt 자동 설정 (createItem 과 동일 정책).
+   *  부속 메타(work/activity/link) 첫 작성 시점에도 firstPostAt 이 채워지도록. */
   private async ensureOwnedPortfolioId(userId: string): Promise<string> {
     const portfolio = await this.getMyPortfolio(userId);
+    if (!portfolio.firstPostAt) {
+      await this.prisma.portfolio.update({
+        where: { id: portfolio.id },
+        data: { firstPostAt: new Date() },
+      });
+    }
     return portfolio.id;
   }
 

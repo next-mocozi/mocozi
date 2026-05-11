@@ -56,9 +56,26 @@ export function buildBackendFeedPosts(portfolios: FeedPortfolio[]): FeedPost[] {
   const posts: FeedPost[] = [];
   for (const p of portfolios) {
     const author = makeAuthor(p);
-    const firstAt = p.firstPostAt
-      ? new Date(p.firstPostAt).getTime()
-      : new Date(p.items[0]?.createdAt ?? Date.now()).getTime();
+    // ProfilePost 시점 결정 우선순위:
+    //  1. portfolio.firstPostAt (onboarding 시 명시 설정)
+    //  2. 가장 오래된 portfolio item 의 createdAt (firstPostAt 미설정 사용자 대응)
+    //  3. 둘 다 없으면 null — 아래에서 ProfilePost 자체를 skip
+    // (이전엔 fallback 이 Date.now() 라 모든 ProfilePost 가 "방금 전" 으로 표시됨)
+    let firstAt: number | null = null;
+    if (p.firstPostAt) {
+      const ts = new Date(p.firstPostAt).getTime();
+      if (!Number.isNaN(ts)) firstAt = ts;
+    }
+    if (firstAt === null && p.items.length > 0) {
+      const itemTimes = p.items
+        .map((i) => new Date(i.createdAt).getTime())
+        .filter((n) => !Number.isNaN(n));
+      if (itemTimes.length > 0) firstAt = Math.min(...itemTimes);
+    }
+
+    // 각 게시물 자체 createdAt 우선, 없을 땐 firstAt fallback. 둘 다 없으면 0.
+    // (item/exp/career 는 거의 자체 createdAt 이 있어서 firstAt 은 가드용.)
+    const fallbackAt = firstAt ?? 0;
 
     // 1) PortfolioItem
     for (const item of p.items ?? []) {
@@ -67,7 +84,7 @@ export function buildBackendFeedPosts(portfolios: FeedPortfolio[]): FeedPost[] {
         kind: 'item',
         postId: `${p.user.id}-item-${item.id}`,
         author,
-        createdAt: it.createdAt ?? firstAt,
+        createdAt: it.createdAt ?? fallbackAt,
         item: it,
       } satisfies FeedPostItem);
     }
@@ -78,7 +95,7 @@ export function buildBackendFeedPosts(portfolios: FeedPortfolio[]): FeedPost[] {
         kind: 'experience',
         postId: `${p.user.id}-exp-${w.id}`,
         author,
-        createdAt: new Date(w.createdAt).getTime() || firstAt,
+        createdAt: new Date(w.createdAt).getTime() || fallbackAt,
         exp: {
           id: new Date(w.createdAt).getTime(),
           company: w.company,
@@ -96,7 +113,7 @@ export function buildBackendFeedPosts(portfolios: FeedPortfolio[]): FeedPost[] {
         kind: 'career',
         postId: `${p.user.id}-career-${c.id}`,
         author,
-        createdAt: new Date(c.createdAt).getTime() || firstAt,
+        createdAt: new Date(c.createdAt).getTime() || fallbackAt,
         career: {
           id: new Date(c.createdAt).getTime(),
           year: c.year,
@@ -106,10 +123,12 @@ export function buildBackendFeedPosts(portfolios: FeedPortfolio[]): FeedPost[] {
       } satisfies FeedPostCareer);
     });
 
-    // 4) ProfilePost — bio + skills 가 모두 있으면 firstAt 으로 노출
+    // 4) ProfilePost — bio + skills 둘 다 있고 firstAt 도 결정됐을 때만 노출.
+    // firstAt 이 null (firstPostAt 미설정 + items 도 0개) 인 사용자는
+    // ProfilePost 자체를 만들지 않는다. "방금 전" 으로 표시되는 혼란 방지.
     const intro = (p.user.bio ?? '').trim();
     const skills = p.user.skills ?? [];
-    if (intro && skills.length > 0) {
+    if (intro && skills.length > 0 && firstAt !== null) {
       posts.push({
         kind: 'profile',
         postId: `${p.user.id}-profile`,

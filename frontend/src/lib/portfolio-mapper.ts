@@ -255,13 +255,13 @@ export async function hydratePortfolioFromBackend(): Promise<void> {
     if (remote.firstPostAt) {
       const ts = new Date(remote.firstPostAt).getTime();
       if (!Number.isNaN(ts)) {
-        // 로컬에 값이 있으면 backend 값으로 덮어쓰지 않는다.
-        // 다른 기기에서 처음 진입한 경우(local 미설정)에만 backend 값을 채운다.
-        // backend 의 옛 firstPostAt 이 사용자가 방금 설정한 값을 갈아치우는 걸 방지.
-        const localRaw = localStorage.getItem(FIRST_POST_STORAGE_KEY);
-        if (!localRaw) {
-          localStorage.setItem(FIRST_POST_STORAGE_KEY, String(ts));
-        }
+        // firstPostAt 은 backend 가 진실의 원천. onboarding 시 한 번 정해지고
+        // 이후 바뀌지 않는 값이라, local 이 fallback Date.now() 로 채워졌어도
+        // backend 값으로 정정해야 한다. (visibility 처럼 사용자가 자주 토글하는
+        // 값이 아니므로 무조건 덮어쓰는 게 안전.)
+        // 이 정책 덕에 새 기기/시크릿 창에서 첫 진입 시 한 순간 "방금 전" 이
+        // 보였다가, hydrate 직후 진짜 onboarding 시점으로 정정된다.
+        localStorage.setItem(FIRST_POST_STORAGE_KEY, String(ts));
       }
     }
 

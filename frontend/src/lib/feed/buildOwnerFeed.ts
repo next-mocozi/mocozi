@@ -130,19 +130,13 @@ export function buildOwnerFeedPosts(
     if (stored) {
       createdAt = stored;
     } else {
-      // FIRST_POST_STORAGE_KEY 미설정 — 오늘로 처리.
-      // (이전 fallback 은 "다른 게시물보다 1일 이전" 또는 "1년 전" 이었지만,
-      //  근거 없는 과거 시점이 사용자에게 "왜 1년 전?" 으로 보이는 혼란만 만들었다.
-      //  정보가 없으면 가장 자연스러운 default 인 "지금" 으로 처리.)
+      // FIRST_POST_STORAGE_KEY 미설정 — 표시는 "지금" 으로 처리하되 저장은 안 한다.
+      // (예전엔 즉시 저장했지만, hydratePortfolioFromBackend 가 backend 의 진짜
+      //  firstPostAt 으로 채울 기회를 막아버려서 — local 가 fallback 값으로
+      //  채워지면 backend 의 실제 onboarding 시점이 영구히 묻혔다. 새 기기/시크릿
+      //  창 진입 시 첫 게시물이 "몇 시간 전" → "방금 전" 으로 갈아치워지는 현상.)
+      // 저장 안 하면 hydrate 가 와서 backend 값으로 채움 → 다음 렌더에서 정정.
       createdAt = Date.now();
-      // 다음 진입에서 안정적으로 같은 시점이 보이도록 즉시 저장.
-      try {
-        if (typeof window !== 'undefined') {
-          localStorage.setItem(FIRST_POST_STORAGE_KEY, String(createdAt));
-        }
-      } catch {
-        // 저장 실패해도 표시는 정상 — 다음 새로고침에서 또 Date.now() 로 fallback.
-      }
     }
     posts.push({
       kind: 'profile',
