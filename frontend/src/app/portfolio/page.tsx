@@ -5,9 +5,10 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useMyPortfolioStatus } from '@/hooks/useMyPortfolioStatus';
+import { useMyPortfolio } from '@/hooks/useMyPortfolio';
+import { useFeed } from '@/hooks/useFeed';
 import { buildOwnerFeedPostsFromApi } from '@/lib/feed/buildOwnerFeed';
 import { buildBackendFeedPosts } from '@/lib/feed/buildBackendFeed';
-import { getFeed, getMyPortfolio, type FeedPortfolio, type BackendPortfolio } from '@/lib/portfolio-api';
 import type { FeedPost } from '@/lib/feed/types';
 import PortfolioSegmentedNav from '@/components/portfolio/PortfolioSegmentedNav';
 import FeedPostCard from '@/components/portfolio/FeedPostCard';
@@ -25,6 +26,8 @@ export default function PortfolioFeedPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
   const { status } = useMyPortfolioStatus();
+  const { portfolio: myPortfolio } = useMyPortfolio();
+  const { portfolios: remotePortfolios } = useFeed();
   const [target, setTarget] = useState<FeedDetailTarget | null>(null);
   // 슬라이드 인/아웃 애니메이션을 위해 target 이 사라져도 잠시 유지한다.
   const [renderedTarget, setRenderedTarget] = useState<FeedDetailTarget | null>(null);
@@ -50,44 +53,8 @@ export default function PortfolioFeedPage() {
     }
   }, [loading, status, user, router]);
 
-  const [myPortfolio, setMyPortfolio] = useState<BackendPortfolio | null>(null);
-
-  // 내 포트폴리오를 API에서 직접 로드
-  useEffect(() => {
-    if (!user || loading) return;
-    getMyPortfolio()
-      .then(setMyPortfolio)
-      .catch(() => setMyPortfolio(null));
-  }, [user, loading]);
-
-  // 백엔드 메인 피드 — 실제 공개 사용자들의 게시물.
-  // null = 아직 fetch 안 됨 (로딩 중 표시), [] = fetch 완료 + 결과 없음.
-  // (이전엔 본인 피드가 먼저 깜빡 보였다가 backend 응답 도착 후 남의 피드가
-  //  쭈르륵 추가되는 어색함이 있었음. null 동안엔 로딩 화면을 보여주고 fetch
-  //  완료 후 한 번에 렌더.)
-  const [remotePortfolios, setRemotePortfolios] = useState<
-    FeedPortfolio[] | null
-  >(null);
-  useEffect(() => {
-    if (!user || loading) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await getFeed();
-        if (cancelled) return;
-        setRemotePortfolios(res.portfolios ?? []);
-      } catch {
-        if (!cancelled) setRemotePortfolios([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [user, loading]);
-
   // 피드 데이터: 백엔드(타인 공개) + 본인(공개일 때).
-  // isPublic 판단은 localStorage(status)가 아닌 백엔드 응답(myPortfolio.isPublic)을 기준으로 한다.
-  // 새 기기/시크릿 창에서 localStorage가 비어있어도 백엔드 상태를 그대로 반영.
+  // isPublic 판단은 백엔드 응답(myPortfolio.isPublic)을 기준으로 한다.
   const posts: FeedPost[] = useMemo(() => {
     const others = buildBackendFeedPosts(remotePortfolios ?? []);
     if (user && myPortfolio && myPortfolio.isPublic) {

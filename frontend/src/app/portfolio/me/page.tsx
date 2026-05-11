@@ -4,11 +4,9 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
-import {
-  useMyPortfolioStatus,
-} from '@/hooks/useMyPortfolioStatus';
+import { useMyPortfolioStatus } from '@/hooks/useMyPortfolioStatus';
+import { useMyPortfolio } from '@/hooks/useMyPortfolio';
 import { buildOwnerFeedPostsFromApi } from '@/lib/feed/buildOwnerFeed';
-import { getMyPortfolio, type BackendPortfolio } from '@/lib/portfolio-api';
 import type { FeedPost } from '@/lib/feed/types';
 import PortfolioSegmentedNav from '@/components/portfolio/PortfolioSegmentedNav';
 import FeedPostCard from '@/components/portfolio/FeedPostCard';
@@ -22,6 +20,7 @@ export default function MyFeedPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
   const { status } = useMyPortfolioStatus();
+  const { portfolio: myPortfolio } = useMyPortfolio();
   const [target, setTarget] = useState<FeedDetailTarget | null>(null);
   // 슬라이드 인/아웃 애니메이션을 위해 target 이 사라져도 잠시 유지한다.
   const [renderedTarget, setRenderedTarget] = useState<FeedDetailTarget | null>(null);
@@ -46,16 +45,6 @@ export default function MyFeedPage() {
       router.replace('/portfolio/onboarding');
     }
   }, [loading, status, user, router]);
-
-  const [myPortfolio, setMyPortfolio] = useState<BackendPortfolio | null>(null);
-
-  // 백엔드 API에서 내 포트폴리오 직접 로드
-  useEffect(() => {
-    if (!user || loading) return;
-    getMyPortfolio()
-      .then(setMyPortfolio)
-      .catch(() => setMyPortfolio(null));
-  }, [user, loading]);
 
   // 본인 게시물 — 비공개 여부와 무관하게 표시.
   // isPrivate 판단은 백엔드 응답(myPortfolio.isPublic)을 기준으로 한다.

@@ -31,7 +31,19 @@ export function useMyPortfolioStatus(): {
   const [snapshot, setSnapshot] = useState<{
     introFilled: boolean;
     visibility: PortfolioVisibility;
-  } | null>(null);
+  } | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const intro = localStorage.getItem(INTRO_STORAGE_KEY) ?? '';
+      const v = localStorage.getItem(VISIBILITY_STORAGE_KEY);
+      return {
+        introFilled: intro.trim().length > 0,
+        visibility: v === 'public' ? 'public' : 'private',
+      };
+    } catch {
+      return null;
+    }
+  });
 
   const refresh = () => setTick((t) => t + 1);
 

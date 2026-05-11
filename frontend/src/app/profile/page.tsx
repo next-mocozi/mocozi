@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { getMyPortfolio } from '@/lib/portfolio-api';
+import { useMyPortfolio } from '@/hooks/useMyPortfolio';
 import {
   PlatformIcon,
   PLATFORM_META,
@@ -113,6 +113,7 @@ const SECTION_META: Record<SectionKey, { label: string; hint: string }> = {
 /** 내 프로필 페이지 (보기 전용 — 수정은 /profile/edit, /portfolio) */
 export default function MyProfilePage() {
   const { user, loading } = useAuth();
+  const { portfolio } = useMyPortfolio();
   const [links, setLinks] = useState<ProfileLink[]>(DEFAULT_LINKS);
 
   // 직군 (edit 페이지에서 localStorage에 저장)
@@ -143,80 +144,71 @@ export default function MyProfilePage() {
     }
   }, [selected, activeTab]);
 
-  // 백엔드 API에서 포트폴리오 데이터 직접 로드
+  // SWR 캐시에서 포트폴리오 데이터 반영 (캐시 히트 시 즉시 실행)
   useEffect(() => {
-    if (loading || !user) return;
+    if (!portfolio) return;
 
-    const run = async () => {
-      try {
-        const portfolio = await getMyPortfolio();
+    setIntro(portfolio.intro ?? '');
+    setExperiences(
+      (portfolio.workExperiences ?? []).map((b) => ({
+        id: new Date(b.createdAt).getTime(),
+        company: b.company,
+        team: b.team ?? '',
+        role: b.role,
+        period: b.period,
+        current: b.current,
+      })),
+    );
+    setCareers(
+      (portfolio.activities ?? []).map((b) => ({
+        id: new Date(b.createdAt).getTime(),
+        year: b.year,
+        month: b.month ?? undefined,
+        content: b.content,
+      })),
+    );
+    setItems(
+      (portfolio.items ?? []).map((b) => ({
+        id: new Date(b.createdAt).getTime(),
+        type: (
+          { PROJECT: 'project', RESEARCH: 'research', STUDY: 'study', ACTIVITY: 'activity', ETC: 'etc' } as Record<string, PortfolioItemType>
+        )[b.type] ?? 'etc',
+        title: b.title,
+        description: b.description,
+        period: b.period ?? b.duration ?? '',
+        current: b.current ?? false,
+        domain: b.domain || undefined,
+        tags: b.tags ?? [],
+        thumbnail: b.thumbnail ?? undefined,
+      })),
+    );
+    setLinks(
+      (portfolio.links ?? []).map((b) => ({
+        id: new Date(b.createdAt).getTime(),
+        url: b.url,
+        label: b.label ?? undefined,
+      })),
+    );
+  }, [portfolio]);
 
-        setIntro(portfolio.intro ?? '');
-        setExperiences(
-          (portfolio.workExperiences ?? []).map((b) => ({
-            id: new Date(b.createdAt).getTime(),
-            company: b.company,
-            team: b.team ?? '',
-            role: b.role,
-            period: b.period,
-            current: b.current,
-          })),
-        );
-        setCareers(
-          (portfolio.activities ?? []).map((b) => ({
-            id: new Date(b.createdAt).getTime(),
-            year: b.year,
-            month: b.month ?? undefined,
-            content: b.content,
-          })),
-        );
-        setItems(
-          (portfolio.items ?? []).map((b) => ({
-              id: new Date(b.createdAt).getTime(),
-              type: (
-                { PROJECT: 'project', RESEARCH: 'research', STUDY: 'study', ACTIVITY: 'activity', ETC: 'etc' } as Record<string, PortfolioItemType>
-              )[b.type] ?? 'etc',
-              title: b.title,
-              description: b.description,
-              period: b.period ?? b.duration ?? '',
-              current: b.current ?? false,
-              domain: b.domain || undefined,
-              tags: b.tags ?? [],
-              thumbnail: b.thumbnail ?? undefined,
-            })),
-        );
-        setLinks(
-          (portfolio.links ?? []).map((b) => ({
-            id: new Date(b.createdAt).getTime(),
-            url: b.url,
-            label: b.label ?? undefined,
-          })),
-        );
-      } catch {
-        // API 실패 시 빈 상태 유지
+  // 직군·섹션 선택은 user/localStorage에서
+  useEffect(() => {
+    if (!user) return;
+    if (user.roles && user.roles.length > 0) {
+      setMainRole(user.roles[0]);
+      setSubRoles(user.roles.slice(1));
+    }
+    try {
+      const raw = localStorage.getItem(PROFILE_SECTIONS_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw) as SectionKey[];
+        setSelected(saved);
+        setDraftSelected(saved);
       }
-
-      // 직군은 user.roles 에서 직접
-      if (user.roles && user.roles.length > 0) {
-        setMainRole(user.roles[0]);
-        setSubRoles(user.roles.slice(1));
-      }
-
-      // 프로필 표시 섹션 선택은 UI 설정이라 localStorage 유지
-      try {
-        const raw = localStorage.getItem(PROFILE_SECTIONS_KEY);
-        if (raw) {
-          const saved = JSON.parse(raw) as SectionKey[];
-          setSelected(saved);
-          setDraftSelected(saved);
-        }
-      } catch {
-        // 무시
-      }
-    };
-
-    run();
-  }, [user, loading]);
+    } catch {
+      // 무시
+    }
+  }, [user]);
 
   if (loading)
     return (
