@@ -48,7 +48,7 @@
 |------|------|
 | 프레임워크 | NestJS 11 |
 | ORM | Prisma 6.16+ |
-| DB | PostgreSQL 17 |
+| DB | **Supabase** (PostgreSQL 17 managed) — 로컬 `db` 컨테이너는 docker-compose healthcheck 용도로만 존재 |
 | 인증 | @nestjs/jwt + passport-jwt |
 | 비밀번호 | bcrypt 6 |
 | 실시간 | @nestjs/websockets + socket.io 4.8 |
@@ -135,7 +135,7 @@ mocozi/
     ├── .npmrc                             # node-linker=hoisted (Docker 호환)
     ├── tsconfig.json / nest-cli.json / eslint.config.mjs
     ├── .env.example
-    ├── Dockerfile.dev                     # 시작 시 prisma db push 자동
+    ├── Dockerfile.dev                     # 개발용 (prisma generate + nest watch)
     ├── prisma/
     │   └── schema.prisma                  # 전체 DB 스키마
     └── src/
@@ -166,6 +166,8 @@ mocozi/
         │   └── dto/send-message.dto.ts
         ├── search/                        # 통합 검색
         │   └── search.{module,controller,service}.ts
+        ├── template/                      # 채팅 메시지 양식 CRUD
+        │   └── template.{module,controller,service}.ts
         └── common/                        # 전역 적용
             ├── filters/http-exception.filter.ts
             ├── interceptors/transform.interceptor.ts
@@ -241,11 +243,17 @@ mocozi/
 | `TeamProposal` | 기획서 (필수/선택 공개 정보 분리 저장) |
 | `RecruitPost` / `Application` | 구인 게시글 + 지원 (중복 지원 방지 unique index) |
 | `Portfolio` / `PortfolioItem` | 포트폴리오 + 카드 (type enum: PROJECT/RESEARCH/ACTIVITY/ETC) |
-| `ChatRoom` / `ChatRoomUser` / `ChatMessage` | 다대다 채팅방 + 메시지 |
+| `ChatRoom` / `ChatRoomMember` / `ChatMessage` | 다대다 채팅방 + 멤버십 + 메시지 |
+| `MessageReaction` | 메시지 이모지 반응 |
+| `UserMessageTemplate` | 컨텍스트별 채팅 첫 메시지 양식 |
 
-스키마 변경 후:
-- **Docker 모드**: `docker compose restart backend` (시작 시 `prisma db push` 자동)
-- **호스트 모드**: `cd backend && pnpm prisma db push`
+스키마 변경 후 (`prisma db push`는 **자동 실행되지 않음** — Supabase pooler 연결 한도 초과 방지):
+```bash
+# 컨테이너 안에서 수동 실행
+docker exec mocozi-temp-backend-1 sh -c "cd /app && pnpm exec prisma db push"
+docker compose restart backend
+```
+> Railway(프로덕션)는 `backend/prisma/migrations/*.sql`을 Supabase SQL Editor에서 수동 실행
 
 ---
 
@@ -260,7 +268,8 @@ cp backend/.env.example backend/.env
 
 | 변수 | 용도 | 기본값 |
 |------|------|--------|
-| `DATABASE_URL` | PostgreSQL 접속 URL | docker 환경: `db:5432` / 호스트: `localhost:5432` |
+| `DATABASE_URL` | Supabase 커넥션 풀러 URL (transaction mode, 포트 6543 + `pgbouncer=true`) | — |
+| `DIRECT_URL` | Supabase session mode URL (포트 5432, `prisma db push` / migrate 용) | — |
 | `JWT_SECRET` | JWT 서명 시크릿 | 운영 시 반드시 강한 값으로 |
 | `SMTP_*` | 메일 발송 (인증) | 추후 실제 값으로 |
 | `FRONTEND_URL` | CORS 허용 도메인 | `http://localhost:3000` |
@@ -294,7 +303,7 @@ docker compose restart backend   # 스키마 변경 후 backend만 재시작
 |-----|--------|
 | http://localhost:3000 | Frontend |
 | http://localhost:8080/api | Backend API |
-| localhost:5432 | PostgreSQL (`mocozi` / `mocozi_db`) |
+| localhost:5432 | 로컬 PostgreSQL 컨테이너 (healthcheck 용 — 실제 데이터는 Supabase) |
 
 ### 7.2 호스트 직접 모드 (선택, 빠른 핫리로드)
 
@@ -364,12 +373,11 @@ pnpm type-check       # tsc --noEmit
 
 ## 11. 향후 작업 / TODO
 
-- [ ] CI/CD (GitHub Actions) — 락 파일 셋업 마무리 후 재추가 예정
 - [ ] SMTP 메일 발송 실제 연동 (현재는 인증 토큰 발급까지만)
-- [ ] 프론트엔드 페이지의 실제 데이터 연동 (현재 플레이스홀더)
 - [ ] shared 타입을 frontend/backend 코드에서 실사용 (현재 정의만 있고 import 미사용)
 - [ ] 통합 테스트 / E2E 테스트
 - [ ] README의 팀원 정보 채우기
+- [x] CI/CD — Railway 연동 완료 (`develop` push 시 자동 배포)
 
 ---
 
@@ -381,6 +389,6 @@ pnpm type-check       # tsc --noEmit
 | `port is already allocated` | 3000/8080 포트 점유 프로세스 종료 |
 | `nvm use` 안 됨 (Windows) | 관리자 권한 PowerShell, 또는 Node 24.15.0 직접 설치 |
 | 코드 수정 반영 안 됨 | `docker compose restart <service>` |
-| Prisma 스키마 변경 미반영 | `docker compose restart backend` (db push 자동 실행) |
+| Prisma 스키마 변경 미반영 | `docker exec mocozi-temp-backend-1 sh -c "cd /app && pnpm exec prisma db push"` 후 `docker compose restart backend` |
 | 처음부터 깨끗하게 | `docker compose down -v && docker compose up --build` ⚠️ DB 데이터 삭제 |
 | `bcrypt` 호스트 설치 실패 (Windows) | Visual Studio Build Tools + Python 설치 또는 Docker 모드 사용 |
