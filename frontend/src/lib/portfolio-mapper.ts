@@ -188,9 +188,9 @@ export async function syncItemToBackend(
     if (created?.id) setServerId(item.id, created.id);
     return created;
   } catch (err) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn('[portfolio-sync] sync failed (localStorage 유지):', err);
-    }
+    // production 에서도 항상 출력 — sync silent fail 로 카드가 backend 에 안
+    // 가 있는 채 영원히 남던 문제를 빠르게 진단하기 위함.
+    console.error('[portfolio-sync] sync failed (localStorage 유지):', err);
     return null;
   }
 }
@@ -276,9 +276,7 @@ export async function hydratePortfolioFromBackend(): Promise<void> {
     // 페이지 진입만 하면 backend 가 채워진다. 멱등 — 매핑 있는 건 skip.
     await reconcileLocalToBackend();
   } catch (err) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn('[portfolio-sync] hydrate failed (localStorage 유지):', err);
-    }
+    console.error('[portfolio-sync] hydrate failed (localStorage 유지):', err);
   }
 }
 
@@ -449,9 +447,7 @@ export async function deleteItemFromBackend(localId: number): Promise<void> {
   try {
     await apiDeleteItem(serverId);
   } catch (err) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn('[portfolio-sync] delete failed:', err);
-    }
+    console.error('[portfolio-sync] delete failed:', err)
   } finally {
     removeServerId(localId);
   }
@@ -538,9 +534,7 @@ export async function syncWorkExperienceToBackend(
     if (created?.id) setMappedServerId(WORK_ID_MAP_KEY, exp.id, created.id);
     return created;
   } catch (err) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn('[portfolio-sync] work sync failed:', err);
-    }
+    console.error('[portfolio-sync] work sync failed:', err)
     return null;
   }
 }
@@ -553,9 +547,7 @@ export async function deleteWorkExperienceFromBackend(
   try {
     await apiDeleteWork(serverId);
   } catch (err) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn('[portfolio-sync] work delete failed:', err);
-    }
+    console.error('[portfolio-sync] work delete failed:', err)
   } finally {
     removeMappedServerId(WORK_ID_MAP_KEY, localId);
   }
@@ -579,9 +571,7 @@ export async function syncActivityToBackend(
     if (created?.id) setMappedServerId(ACTIVITY_ID_MAP_KEY, c.id, created.id);
     return created;
   } catch (err) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn('[portfolio-sync] activity sync failed:', err);
-    }
+    console.error('[portfolio-sync] activity sync failed:', err)
     return null;
   }
 }
@@ -594,9 +584,7 @@ export async function deleteActivityFromBackend(
   try {
     await apiDeleteActivity(serverId);
   } catch (err) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn('[portfolio-sync] activity delete failed:', err);
-    }
+    console.error('[portfolio-sync] activity delete failed:', err)
   } finally {
     removeMappedServerId(ACTIVITY_ID_MAP_KEY, localId);
   }
@@ -616,9 +604,7 @@ export async function syncLinkToBackend(
     if (created?.id) setMappedServerId(LINK_ID_MAP_KEY, link.id, created.id);
     return created;
   } catch (err) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn('[portfolio-sync] link sync failed:', err);
-    }
+    console.error('[portfolio-sync] link sync failed:', err)
     return null;
   }
 }
@@ -629,9 +615,7 @@ export async function deleteLinkFromBackend(localId: number): Promise<void> {
   try {
     await apiDeleteLink(serverId);
   } catch (err) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn('[portfolio-sync] link delete failed:', err);
-    }
+    console.error('[portfolio-sync] link delete failed:', err)
   } finally {
     removeMappedServerId(LINK_ID_MAP_KEY, localId);
   }
@@ -660,8 +644,6 @@ export async function syncLinksAllToBackend(
       await syncLinkToBackend(link);
     }
   } catch (err) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn('[portfolio-sync] links bulk sync failed:', err);
-    }
+    console.error('[portfolio-sync] links bulk sync failed:', err)
   }
 }
