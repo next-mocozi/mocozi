@@ -980,8 +980,20 @@ export class ChatService {
    * 사이드바용 메시지 미리보기 — 길면 잘라서 저장.
    */
   private preview(content: string, max = 100) {
-    const trimmed = content.trim();
-    return trimmed.length > max ? `${trimmed.slice(0, max)}…` : trimmed;
+    // 마커는 절대 raw로 잘리면 안 됨 — 100자 슬라이스 전에 사람용 문구로 치환.
+    // (잘린 마커가 frontend regex와 안 매치되면 raw `[[file:rooms/...` 같은 게 그대로 노출됨)
+    let s = content
+      .replace(/\[\[link:[^|\]]+\|([^\]]+)\]\]/g, '$1')
+      .replace(/\[\[file:[^|\]]+\|[^|\]]*\|\d+\|[^\]]+\]\]/g, '')
+      .replace(/\[\[image:[^|\]]+\|[^|\]]*\|\d+\|[^\]]+\]\]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    // 텍스트가 비고 첨부만 있던 경우 — file 우선 (이미지+파일 혼합도 file 표시)
+    if (!s) {
+      if (/\[\[file:/.test(content)) s = '파일을 보냈습니다.';
+      else if (/\[\[image:/.test(content)) s = '이미지를 보냈습니다.';
+    }
+    return s.length > max ? `${s.slice(0, max)}…` : s;
   }
 
   /**
