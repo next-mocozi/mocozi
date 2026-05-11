@@ -229,7 +229,7 @@ export default function PeerDirectory() {
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {p.roles[0] && (
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-medium text-stone-700">
                       <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" aria-hidden="true" />
                       {p.roles[0]}
                     </span>
@@ -237,7 +237,7 @@ export default function PeerDirectory() {
                   {p.roles.slice(1).map((r) => (
                     <span
                       key={r}
-                      className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-500"
+                      className="rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs text-stone-500"
                     >
                       {r}
                     </span>
@@ -273,7 +273,7 @@ export default function PeerDirectory() {
           </div>
         )}
 
-        <div className="mt-10 flex flex-col items-center justify-between gap-4 rounded-2xl border border-gray-100 bg-slate-50 px-6 py-5 md:flex-row">
+        <div className="mt-10 flex flex-col items-center justify-between gap-4 rounded-2xl border border-gray-100 bg-stone-50 px-6 py-5 md:flex-row">
           <p className="text-sm text-gray-600">
             <span className="font-semibold text-gray-900">전체 1,247명</span>의
             IT 대학생이 모코지에 있어요

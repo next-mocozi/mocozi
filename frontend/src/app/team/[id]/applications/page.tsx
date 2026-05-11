@@ -95,7 +95,7 @@ export default function ApplicationsPage({
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
       <Link
         href={`/team/${id}`}
-        className="mb-6 inline-flex items-center gap-1.5 text-sm text-slate-400 transition-colors hover:text-slate-700"
+        className="mb-6 inline-flex items-center gap-1.5 text-sm text-stone-400 transition-colors hover:text-stone-700"
       >
         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -104,23 +104,23 @@ export default function ApplicationsPage({
       </Link>
 
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl md:text-4xl">지원자 목록</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl md:text-4xl">지원자 목록</h1>
         <span className="rounded-full bg-indigo-50 px-3 py-1 text-sm font-medium text-indigo-600">
           대기 {pending.length}명
         </span>
       </div>
 
       {applications.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border-slate-100 bg-white py-16 text-center shadow-sm">
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-stone-100 bg-white py-16 text-center shadow-sm">
           <p className="text-3xl">📭</p>
-          <p className="font-semibold text-slate-700">아직 지원자가 없습니다</p>
-          <p className="text-sm text-slate-400">지원자가 생기면 여기에 표시됩니다.</p>
+          <p className="font-semibold text-stone-700">아직 지원자가 없습니다</p>
+          <p className="text-sm text-stone-400">지원자가 생기면 여기에 표시됩니다.</p>
         </div>
       ) : (
         <div className="space-y-6">
           {pending.length > 0 && (
             <div className="space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">검토 대기</p>
+              <p className="text-xs font-semibold uppercase tracking-widest text-stone-400">검토 대기</p>
               {pending.map((app) => (
                 <ApplicationCard
                   key={app.id}
@@ -134,7 +134,7 @@ export default function ApplicationsPage({
           )}
           {processed.length > 0 && (
             <div className="space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">처리 완료</p>
+              <p className="text-xs font-semibold uppercase tracking-widest text-stone-400">처리 완료</p>
               {processed.map((app) => (
                 <ApplicationCard
                   key={app.id}
@@ -166,15 +166,15 @@ function ApplicationCard({
   const isProcessing = processingId === app.id;
 
   return (
-    <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+    <div className="rounded-2xl border border-stone-100 bg-white p-5 shadow-sm">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-indigo-50 text-sm font-semibold text-indigo-600">
             {app.user.name[0]}
           </div>
           <div>
-            <p className="font-semibold text-slate-800">{app.user.name}</p>
-            <p className="text-xs text-slate-400">{app.user.university} · {app.user.department}</p>
+            <p className="font-semibold text-stone-800">{app.user.name}</p>
+            <p className="text-xs text-stone-400">{app.user.university} · {app.user.department}</p>
           </div>
         </div>
         <span className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${STATUS_CLASS[app.status]}`}>
@@ -185,19 +185,19 @@ function ApplicationCard({
       {app.user.skills.length > 0 && (
         <div className="mb-3 flex flex-wrap gap-1">
           {app.user.skills.slice(0, 5).map((skill) => (
-            <span key={skill} className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+            <span key={skill} className="rounded bg-stone-100 px-2 py-0.5 text-xs text-stone-500">
               {skill}
             </span>
           ))}
           {app.user.skills.length > 5 && (
-            <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-400">
+            <span className="rounded bg-stone-100 px-2 py-0.5 text-xs text-stone-400">
               +{app.user.skills.length - 5}
             </span>
           )}
         </div>
       )}
 
-      <p className="mb-4 rounded-xl bg-slate-50 px-4 py-3 text-sm leading-relaxed text-slate-600">
+      <p className="mb-4 rounded-xl bg-stone-50 px-4 py-3 text-sm leading-relaxed text-stone-600">
         {app.message}
       </p>
 
@@ -206,7 +206,7 @@ function ApplicationCard({
           <button
             onClick={onReject}
             disabled={isProcessing}
-            className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-50 disabled:opacity-50"
+            className="flex-1 rounded-xl border border-stone-200 py-2.5 text-sm font-medium text-stone-500 transition-colors hover:bg-stone-50 disabled:opacity-50"
           >
             거절
           </button>

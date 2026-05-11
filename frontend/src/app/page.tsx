@@ -104,7 +104,7 @@ export default function HomePage() {
                   </div>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-1.5">
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-medium text-stone-700">
                     <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" aria-hidden="true" />
                     {peer.role}
                   </span>

@@ -116,7 +116,7 @@
 }
 /* 취소선 — 흰 글자와 톤 다르되 "약화된 텍스트" 느낌 유지하려고 light slate */
 .bg-primary-600 .markdown-content del {
-  color: rgb(203 213 225); /* slate-300 */
+  color: rgb(203 213 225); /* stone-300 */
 }
 /* 인용 — 흰 글자보다 살짝 sky 톤 + 좌측 border 강조 */
 .bg-primary-600 .markdown-content blockquote {
@@ -202,7 +202,7 @@ button:disabled,
 }
 
 body {
-  @apply bg-slate-50 text-gray-900 antialiased;
+  @apply bg-stone-50 text-gray-900 antialiased;
   font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
 }
 

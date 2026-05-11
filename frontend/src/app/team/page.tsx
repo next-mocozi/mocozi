@@ -179,9 +179,9 @@ export default function TeamListPage() {
   const filterControls = (
     <>
       {/* 검색 */}
-      <p className="mb-2 text-sm font-semibold text-slate-700">검색</p>
-      <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 transition-all focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100">
-        <svg className="h-4 w-4 flex-shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <p className="mb-2 text-sm font-semibold text-stone-700">검색</p>
+      <div className="flex items-center gap-2 rounded-xl border border-stone-200 bg-white px-3 py-2 transition-all focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100">
+        <svg className="h-4 w-4 flex-shrink-0 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
         <input
@@ -190,13 +190,13 @@ export default function TeamListPage() {
           onChange={(e) => setKeyword(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') applySearch(); }}
           placeholder="팀 이름, 소개, 팀장"
-          className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-slate-400"
+          className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-stone-400"
         />
         {keyword && (
           <button
             type="button"
             onClick={() => { setKeyword(''); setAppliedKeyword(''); }}
-            className="text-slate-300 hover:text-slate-500"
+            className="text-stone-300 hover:text-stone-500"
             aria-label="검색어 지우기"
           >
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -214,12 +214,12 @@ export default function TeamListPage() {
       </button>
 
       {/* 모집 상태 */}
-      <p className="mb-2 mt-5 text-sm font-semibold text-slate-700">모집 상태</p>
-      <div className="inline-flex w-full rounded-xl border border-slate-200 bg-slate-50 p-1">
+      <p className="mb-2 mt-5 text-sm font-semibold text-stone-700">모집 상태</p>
+      <div className="inline-flex w-full rounded-xl border border-stone-200 bg-stone-50 p-1">
         <button
           onClick={() => setRecruitingFilter(true)}
           className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-all ${
-            recruitingFilter ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            recruitingFilter ? 'bg-white text-indigo-600 shadow-sm' : 'text-stone-500 hover:text-stone-700'
           }`}
         >
           모집 중
@@ -227,7 +227,7 @@ export default function TeamListPage() {
         <button
           onClick={() => setRecruitingFilter(false)}
           className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-all ${
-            !recruitingFilter ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            !recruitingFilter ? 'bg-white text-indigo-600 shadow-sm' : 'text-stone-500 hover:text-stone-700'
           }`}
         >
           모집 완료
@@ -235,14 +235,14 @@ export default function TeamListPage() {
       </div>
 
       {/* 팀 형태 */}
-      <p className="mb-2 mt-5 text-sm font-semibold text-slate-700">팀 형태</p>
-      <div className="flex flex-wrap gap-1.5 rounded-xl border border-slate-100 bg-slate-50/50 p-2.5">
+      <p className="mb-2 mt-5 text-sm font-semibold text-stone-700">팀 형태</p>
+      <div className="flex flex-wrap gap-1.5 rounded-xl border border-stone-100 bg-stone-50/50 p-2.5">
         <button
           onClick={() => setTypeFilter(null)}
           className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-all ${
             typeFilter === null
               ? 'border-indigo-600 bg-indigo-600 text-white'
-              : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
+              : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-100'
           }`}
         >
           전체
@@ -254,7 +254,7 @@ export default function TeamListPage() {
             className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-all ${
               typeFilter === t
                 ? 'border-indigo-600 bg-indigo-600 text-white'
-                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
+                : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-100'
             }`}
           >
             {TEAM_TYPE_EMOJI[t]} {TEAM_TYPE_LABEL[t]}
@@ -263,8 +263,8 @@ export default function TeamListPage() {
       </div>
 
       {/* 모집 직군 */}
-      <p className="mb-2 mt-5 text-sm font-semibold text-slate-700">모집 직군</p>
-      <div className="flex flex-wrap gap-1.5 rounded-xl border border-slate-100 bg-slate-50/50 p-2.5">
+      <p className="mb-2 mt-5 text-sm font-semibold text-stone-700">모집 직군</p>
+      <div className="flex flex-wrap gap-1.5 rounded-xl border border-stone-100 bg-stone-50/50 p-2.5">
         {ROLE_OPTIONS.map((role) => (
           <button
             key={role}
@@ -281,21 +281,21 @@ export default function TeamListPage() {
       </div>
 
       {/* 기술 스택 */}
-      <p className="mb-2 mt-5 text-sm font-semibold text-slate-700">기술 스택</p>
+      <p className="mb-2 mt-5 text-sm font-semibold text-stone-700">기술 스택</p>
       <input
         type="text"
         value={skillSearch}
         onChange={(e) => setSkillSearch(e.target.value)}
         placeholder="스킬 검색..."
-        className="mb-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm transition-all placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+        className="mb-2 w-full rounded-xl border border-stone-200 bg-white px-3 py-1.5 text-sm transition-all placeholder:text-stone-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
       />
-      <div className="flex max-h-72 flex-col gap-3 overflow-y-auto rounded-xl border border-slate-100 p-2.5">
+      <div className="flex max-h-72 flex-col gap-3 overflow-y-auto rounded-xl border border-stone-100 p-2.5">
         {SKILL_GROUPS.map(({ label, skills }) => {
           const filtered = skills.filter((s) => s.toLowerCase().includes(skillSearch.toLowerCase()));
           if (filtered.length === 0) return null;
           return (
             <div key={label}>
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-400">{label}</p>
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-stone-400">{label}</p>
               <div className="flex flex-wrap gap-1">
                 {filtered.map((skill) => (
                   <button
@@ -303,8 +303,8 @@ export default function TeamListPage() {
                     onClick={() => toggleItem(skill, appliedSkills, setAppliedSkills)}
                     className={`rounded-full border px-2.5 py-1 text-xs transition-all ${
                       appliedSkills.includes(skill)
-                        ? 'border-slate-700 bg-slate-700 text-white'
-                        : 'border-slate-200 text-slate-600 hover:bg-slate-100'
+                        ? 'border-stone-700 bg-stone-700 text-white'
+                        : 'border-stone-200 text-stone-600 hover:bg-stone-100'
                     }`}
                   >
                     {skill}
@@ -323,8 +323,8 @@ export default function TeamListPage() {
       {/* 상단 헤더 */}
       <div className="mb-6 flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl md:text-4xl">팀 목록</h1>
-          <p className="mt-0.5 text-sm text-slate-400">함께할 팀을 찾아보세요</p>
+          <h1 className="text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl md:text-4xl">팀 목록</h1>
+          <p className="mt-0.5 text-sm text-stone-400">함께할 팀을 찾아보세요</p>
         </div>
         <Link
           href="/team/create"
@@ -341,12 +341,12 @@ export default function TeamListPage() {
       <div className="lg:flex lg:gap-6">
         {/* 좌 사이드바 — lg 이상에서만 인라인 노출 (모바일은 바텀시트로) */}
         <aside className="hidden w-[280px] flex-shrink-0 lg:block">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
             {filterControls}
             {hasActiveFilters && (
               <button
                 onClick={clearAll}
-                className="mt-4 w-full rounded-lg border border-slate-200 bg-white py-1.5 text-xs font-medium text-slate-500 transition-all hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+                className="mt-4 w-full rounded-lg border border-stone-200 bg-white py-1.5 text-xs font-medium text-stone-500 transition-all hover:border-stone-300 hover:bg-stone-50 hover:text-stone-700"
               >
                 전체 초기화
               </button>
@@ -358,13 +358,13 @@ export default function TeamListPage() {
         <main className="min-w-0 flex-1">
           {/* 결과 수 + 활성 필터 */}
           <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
-            <span className="text-slate-500">
+            <span className="text-stone-500">
               {recruitingFilter ? '모집 중' : '모집 완료'} 팀{' '}
               <span className="font-semibold text-indigo-600">{filteredTeams.length}</span>개
             </span>
             {hasActiveFilters && (
               <>
-                <span className="text-slate-300">·</span>
+                <span className="text-stone-300">·</span>
                 {/* 모바일: 카운트 + 탭 시 바텀시트 */}
                 <button
                   type="button"
@@ -379,10 +379,10 @@ export default function TeamListPage() {
                 {/* lg+: 개별 칩 (즉시 제거 가능) */}
                 <div className="hidden flex-wrap items-center gap-2 lg:flex">
                   {appliedKeyword && (
-                    <span className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">
-                      <span className="text-xs text-slate-400">키워드</span>
+                    <span className="flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1 text-stone-600">
+                      <span className="text-xs text-stone-400">키워드</span>
                       {appliedKeyword}
-                      <button onClick={() => { setAppliedKeyword(''); setKeyword(''); }} className="text-slate-300 hover:text-slate-600" aria-label="키워드 제거">
+                      <button onClick={() => { setAppliedKeyword(''); setKeyword(''); }} className="text-stone-300 hover:text-stone-600" aria-label="키워드 제거">
                         <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
@@ -410,9 +410,9 @@ export default function TeamListPage() {
                     </span>
                   ))}
                   {appliedSkills.map((skill) => (
-                    <span key={skill} className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600">
+                    <span key={skill} className="flex items-center gap-1.5 rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-stone-600">
                       {skill}
-                      <button onClick={() => setAppliedSkills(appliedSkills.filter((s) => s !== skill))} className="text-slate-300 hover:text-slate-600" aria-label={`${skill} 필터 제거`}>
+                      <button onClick={() => setAppliedSkills(appliedSkills.filter((s) => s !== skill))} className="text-stone-300 hover:text-stone-600" aria-label={`${skill} 필터 제거`}>
                         <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
@@ -429,18 +429,18 @@ export default function TeamListPage() {
             <div className="flex h-[420px] items-center justify-center">
               <div className="flex flex-col items-center gap-3">
                 <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
-                <p className="text-sm text-slate-400">불러오는 중...</p>
+                <p className="text-sm text-stone-400">불러오는 중...</p>
               </div>
             </div>
           ) : filteredTeams.length === 0 ? (
             <div className="card flex h-[320px] flex-col items-center justify-center gap-3 text-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-2xl">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-stone-100 text-2xl">
                 🔍
               </div>
-              <p className="text-base font-semibold text-slate-700">
+              <p className="text-base font-semibold text-stone-700">
                 {teams.length === 0 ? '아직 등록된 팀이 없습니다' : '검색 결과가 없습니다'}
               </p>
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-stone-400">
                 {teams.length === 0
                   ? '첫 번째 팀을 만들어보세요!'
                   : '키워드나 필터를 변경해 보세요.'}
@@ -458,7 +458,7 @@ export default function TeamListPage() {
                   <div
                     className={`relative overflow-hidden px-5 py-7 ${
                       !team.isRecruiting
-                        ? 'bg-gradient-to-br from-slate-500 via-slate-600 to-slate-700'
+                        ? 'bg-gradient-to-br from-stone-500 via-stone-600 to-stone-700'
                         : 'bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-700'
                     }`}
                   >
@@ -471,7 +471,7 @@ export default function TeamListPage() {
                           {TEAM_TYPE_EMOJI[team.teamType]} {TEAM_TYPE_LABEL[team.teamType]}
                         </span>
                         {!team.isRecruiting && (
-                          <span className="rounded-full border border-slate-400/30 bg-slate-400/20 px-2.5 py-0.5 text-xs text-slate-200">
+                          <span className="rounded-full border border-stone-400/30 bg-stone-400/20 px-2.5 py-0.5 text-xs text-stone-200">
                             모집완료
                           </span>
                         )}
@@ -482,18 +482,18 @@ export default function TeamListPage() {
 
                   {/* 카드 바디 */}
                   <div className="flex flex-1 flex-col px-5 pb-5 pt-4">
-                    <p className="mb-4 line-clamp-2 text-sm leading-relaxed text-slate-500">
+                    <p className="mb-4 line-clamp-2 text-sm leading-relaxed text-stone-500">
                       {intro(team) || '소개가 없습니다.'}
                     </p>
 
                     <div className="mb-4 space-y-1.5">
                       <div className="flex items-center gap-2 text-sm">
-                        <span className="w-10 text-xs text-slate-400">팀장</span>
-                        <span className="font-medium text-slate-700">{team.leader.name}</span>
+                        <span className="w-10 text-xs text-stone-400">팀장</span>
+                        <span className="font-medium text-stone-700">{team.leader.name}</span>
                       </div>
                       <div className="flex items-center gap-2 text-sm">
-                        <span className="w-10 text-xs text-slate-400">인원</span>
-                        <span className="font-medium text-slate-700">
+                        <span className="w-10 text-xs text-stone-400">인원</span>
+                        <span className="font-medium text-stone-700">
                           {team._count.members}
                           {team.maxMembers ? `/${team.maxMembers}명` : '명'}
                         </span>
@@ -515,7 +515,7 @@ export default function TeamListPage() {
                             </span>
                           ))}
                           {team.proposal.recruitingRoles.length > 3 && (
-                            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-500">
+                            <span className="rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs text-stone-500">
                               +{team.proposal.recruitingRoles.length - 3}
                             </span>
                           )}
@@ -523,10 +523,10 @@ export default function TeamListPage() {
                       </div>
                     )}
 
-                    <div className="mt-auto flex items-center justify-between border-t border-slate-100 pt-4">
-                      <span className="text-xs text-slate-400">자세히 보기</span>
+                    <div className="mt-auto flex items-center justify-between border-t border-stone-100 pt-4">
+                      <span className="text-xs text-stone-400">자세히 보기</span>
                       <svg
-                        className="h-4 w-4 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-indigo-500"
+                        className="h-4 w-4 text-stone-300 transition-transform group-hover:translate-x-0.5 group-hover:text-indigo-500"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -591,14 +591,14 @@ export default function TeamListPage() {
         }`}
       >
         {/* 핸들 + 헤더 */}
-        <div className="flex flex-col items-center border-b border-slate-100 pb-3 pt-3">
-          <span className="h-1.5 w-10 rounded-full bg-slate-200" aria-hidden="true" />
+        <div className="flex flex-col items-center border-b border-stone-100 pb-3 pt-3">
+          <span className="h-1.5 w-10 rounded-full bg-stone-200" aria-hidden="true" />
           <div className="mt-3 flex w-full items-center justify-between px-5">
-            <h2 className="text-base font-bold text-slate-900">필터</h2>
+            <h2 className="text-base font-bold text-stone-900">필터</h2>
             <button
               type="button"
               onClick={() => setMobileFilterOpen(false)}
-              className="rounded-full p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+              className="rounded-full p-1 text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-600"
               aria-label="필터 닫기"
             >
               <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -612,12 +612,12 @@ export default function TeamListPage() {
         <div className="flex-1 overflow-y-auto px-5 py-4">{filterControls}</div>
 
         {/* 시트 하단 액션 */}
-        <div className="flex gap-2 border-t border-slate-100 bg-white px-5 py-3">
+        <div className="flex gap-2 border-t border-stone-100 bg-white px-5 py-3">
           <button
             type="button"
             onClick={clearAll}
             disabled={!hasActiveFilters}
-            className="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50"
+            className="flex-1 rounded-xl border border-stone-200 bg-white py-2.5 text-sm font-medium text-stone-600 transition-colors hover:bg-stone-50 disabled:opacity-50"
           >
             초기화
           </button>

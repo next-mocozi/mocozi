@@ -81,7 +81,7 @@ function VisibilityBadge({
       className={`-mt-0.5 rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors disabled:opacity-50 ${
         isPublic
           ? 'border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
-          : 'border-slate-200 bg-slate-50 text-slate-400 hover:bg-slate-100'
+          : 'border-stone-200 bg-stone-50 text-stone-400 hover:bg-stone-100'
       }`}
     >
       {isLoading ? '···' : isPublic ? '공개' : '비공개'}
@@ -158,7 +158,7 @@ export default function TeamDetailPage({
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
-          <p className="text-sm text-slate-400">불러오는 중...</p>
+          <p className="text-sm text-stone-400">불러오는 중...</p>
         </div>
       </div>
     );
@@ -167,11 +167,11 @@ export default function TeamDetailPage({
   if (notFound || !team) {
     return (
       <div className="mx-auto flex min-h-[60vh] max-w-4xl flex-col items-center justify-center gap-4 px-4 py-8 text-center sm:px-6 lg:px-8">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-3xl">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-stone-100 text-3xl">
           🔍
         </div>
-        <p className="text-lg font-semibold text-slate-800">존재하지 않는 팀입니다</p>
-        <p className="text-sm text-slate-400">삭제되었거나 잘못된 주소일 수 있어요.</p>
+        <p className="text-lg font-semibold text-stone-800">존재하지 않는 팀입니다</p>
+        <p className="text-sm text-stone-400">삭제되었거나 잘못된 주소일 수 있어요.</p>
         <Link
           href="/team"
           className="mt-1 rounded-xl border border-indigo-200 px-6 py-2.5 text-sm font-medium text-indigo-600 transition-all hover:bg-indigo-600 hover:text-white"
@@ -200,7 +200,7 @@ export default function TeamDetailPage({
     <div className="mx-auto max-w-5xl px-4 py-8 pb-28 sm:px-6 lg:px-8 lg:pb-8">
       <Link
         href="/team"
-        className="mb-6 inline-flex items-center gap-1.5 text-sm text-slate-400 transition-colors hover:text-slate-700"
+        className="mb-6 inline-flex items-center gap-1.5 text-sm text-stone-400 transition-colors hover:text-stone-700"
       >
         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -212,7 +212,7 @@ export default function TeamDetailPage({
       <div
         className={`relative overflow-hidden rounded-3xl px-6 py-8 text-white shadow-lg sm:px-8 sm:py-10 ${
           !team.isRecruiting
-            ? 'bg-gradient-to-br from-slate-500 via-slate-600 to-slate-700'
+            ? 'bg-gradient-to-br from-stone-500 via-stone-600 to-stone-700'
             : 'bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-700'
         }`}
       >
@@ -230,7 +230,7 @@ export default function TeamDetailPage({
               className={`rounded-full px-3 py-1 text-xs font-medium ${
                 team.isRecruiting
                   ? 'bg-emerald-400/20 text-emerald-200 border border-emerald-400/30'
-                  : 'bg-slate-400/20 text-slate-200 border border-slate-400/30'
+                  : 'bg-stone-400/20 text-stone-200 border border-stone-400/30'
               }`}
             >
               {team.isRecruiting ? '● 모집 중' : '모집 완료'}
@@ -252,27 +252,27 @@ export default function TeamDetailPage({
             <>
               {/* 기획서 메인 카드 */}
               <div className="card space-y-5">
-                <h2 className="text-base font-semibold text-slate-800">기획서</h2>
+                <h2 className="text-base font-semibold text-stone-800">기획서</h2>
 
-                <div className="border-b border-slate-50 pb-5">
+                <div className="border-b border-stone-50 pb-5">
                   <FieldLabel>프로젝트명</FieldLabel>
-                  <p className="text-slate-800 font-medium">{team.proposal.projectName}</p>
+                  <p className="text-stone-800 font-medium">{team.proposal.projectName}</p>
                 </div>
 
-                <div className="border-b border-slate-50 pb-5">
+                <div className="border-b border-stone-50 pb-5">
                   <FieldLabel>프로젝트 개요 / 목표</FieldLabel>
-                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-stone-700">
                     {team.proposal.overview}
                   </p>
                 </div>
 
-                <div className={team.proposal.expectedOutcome || team.proposal.detailedPlan ? 'border-b border-slate-50 pb-5' : ''}>
+                <div className={team.proposal.expectedOutcome || team.proposal.detailedPlan ? 'border-b border-stone-50 pb-5' : ''}>
                   <FieldLabel>진행 일정</FieldLabel>
-                  <p className="text-sm text-slate-700">{team.proposal.schedule}</p>
+                  <p className="text-sm text-stone-700">{team.proposal.schedule}</p>
                 </div>
 
                 {team.proposal.expectedOutcome && (
-                  <div className={team.proposal.detailedPlan ? 'border-b border-slate-50 pb-5' : ''}>
+                  <div className={team.proposal.detailedPlan ? 'border-b border-stone-50 pb-5' : ''}>
                     <div className="mb-1.5 flex items-center gap-2">
                       <p className="text-[10px] font-semibold uppercase tracking-widest text-indigo-400">예상 결과물</p>
                       {isLeader && (
@@ -284,7 +284,7 @@ export default function TeamDetailPage({
                         />
                       )}
                     </div>
-                    <p className="text-sm text-slate-700">{team.proposal.expectedOutcome}</p>
+                    <p className="text-sm text-stone-700">{team.proposal.expectedOutcome}</p>
                   </div>
                 )}
 
@@ -301,7 +301,7 @@ export default function TeamDetailPage({
                         />
                       )}
                     </div>
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-stone-700">
                       {team.proposal.detailedPlan}
                     </p>
                   </div>
@@ -363,7 +363,7 @@ export default function TeamDetailPage({
                   {team.proposal.requiredSkills.map((skill) => (
                     <span
                       key={skill}
-                      className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-600"
+                      className="rounded-full border border-stone-200 bg-stone-50 px-3 py-1.5 text-sm text-stone-600"
                     >
                       {skill}
                     </span>
@@ -372,7 +372,7 @@ export default function TeamDetailPage({
               </div>
             </>
           ) : (
-            <div className="card flex items-center gap-3 text-slate-400">
+            <div className="card flex items-center gap-3 text-stone-400">
               <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
@@ -386,8 +386,8 @@ export default function TeamDetailPage({
           {/* 팀원 카드 */}
           <div className="card">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-slate-800">팀원</h2>
-              <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500">
+              <h2 className="text-base font-semibold text-stone-800">팀원</h2>
+              <span className="rounded-full bg-stone-100 px-2.5 py-0.5 text-xs font-medium text-stone-500">
                 {memberCount}{maxMembers ? `/${maxMembers}` : ''}명
               </span>
             </div>
@@ -403,14 +403,14 @@ export default function TeamDetailPage({
                     className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
                       m.role === 'LEADER'
                         ? 'bg-gradient-to-br from-indigo-500 to-violet-500 text-white'
-                        : 'bg-slate-100 text-slate-600'
+                        : 'bg-stone-100 text-stone-600'
                     }`}
                   >
                     {m.user.name[0]}
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-slate-800">{m.user.name}</p>
-                    <p className={`text-xs ${m.role === 'LEADER' ? 'text-indigo-500' : 'text-slate-400'}`}>
+                    <p className="text-sm font-medium text-stone-800">{m.user.name}</p>
+                    <p className={`text-xs ${m.role === 'LEADER' ? 'text-indigo-500' : 'text-stone-400'}`}>
                       {m.role === 'LEADER' ? '팀장' : '팀원'}
                     </p>
                   </div>
@@ -420,10 +420,10 @@ export default function TeamDetailPage({
               {maxMembers &&
                 Array.from({ length: maxMembers - memberCount }).map((_, i) => (
                   <div key={`empty-${i}`} className="flex items-center gap-3 px-2 py-2 opacity-40">
-                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-2 border-dashed border-slate-300 text-slate-400 text-lg">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-2 border-dashed border-stone-300 text-stone-400 text-lg">
                       +
                     </div>
-                    <p className="text-sm text-slate-400">빈 자리</p>
+                    <p className="text-sm text-stone-400">빈 자리</p>
                   </div>
                 ))}
             </div>
@@ -434,7 +434,7 @@ export default function TeamDetailPage({
             <div className="flex flex-col gap-2">
               <Link
                 href={`/team/${id}/edit`}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 py-3 text-sm font-medium text-slate-600 transition-all hover:bg-slate-50"
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-stone-200 py-3 text-sm font-medium text-stone-600 transition-all hover:bg-stone-50"
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -458,7 +458,7 @@ export default function TeamDetailPage({
             {applyBtn.disabled ? (
               <button
                 disabled
-                className="w-full cursor-not-allowed rounded-xl bg-slate-100 py-3.5 text-sm font-semibold text-slate-400"
+                className="w-full cursor-not-allowed rounded-xl bg-stone-100 py-3.5 text-sm font-semibold text-stone-400"
               >
                 {applyBtn.label}
               </button>
@@ -475,11 +475,11 @@ export default function TeamDetailPage({
       </div>
 
       {/* 모바일 sticky 지원 CTA — lg 이상에선 사이드바 버튼이 대신함 */}
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-sm lg:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-stone-200 bg-white/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-sm lg:hidden">
         {applyBtn.disabled ? (
           <button
             disabled
-            className="w-full cursor-not-allowed rounded-xl bg-slate-100 py-3.5 text-sm font-semibold text-slate-400"
+            className="w-full cursor-not-allowed rounded-xl bg-stone-100 py-3.5 text-sm font-semibold text-stone-400"
           >
             {applyBtn.label}
           </button>
@@ -504,8 +504,8 @@ export default function TeamDetailPage({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-5">
-              <h2 className="text-lg font-bold text-slate-900">지원하기</h2>
-              <p className="mt-1 text-sm text-slate-400">
+              <h2 className="text-lg font-bold text-stone-900">지원하기</h2>
+              <p className="mt-1 text-sm text-stone-400">
                 <span className="font-medium text-indigo-600">{team.name}</span>에 보낼 메시지를 작성해주세요.
               </p>
             </div>
@@ -524,7 +524,7 @@ export default function TeamDetailPage({
             <div className="mt-4 flex gap-3">
               <button
                 onClick={() => { setApplyOpen(false); setApplyError(''); }}
-                className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
+                className="flex-1 rounded-xl border border-stone-200 py-3 text-sm font-medium text-stone-600 transition-colors hover:bg-stone-50"
               >
                 취소
               </button>

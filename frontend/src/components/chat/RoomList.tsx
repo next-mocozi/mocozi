@@ -267,7 +267,7 @@ export default function RoomList() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+      <div className="flex items-center justify-between border-b border-stone-200 px-4 py-3">
         <h2 className="text-base font-bold">
           {showingHidden ? '숨긴 채팅' : '채팅'}
         </h2>
@@ -331,9 +331,9 @@ export default function RoomList() {
               return false;
             });
         return (
-      <div className="flex-1 divide-y divide-slate-200 overflow-y-auto">
+      <div className="flex-1 divide-y divide-stone-200 overflow-y-auto">
         {loading && (
-          <div className="p-6 text-center text-sm text-slate-500">불러오는 중…</div>
+          <div className="p-6 text-center text-sm text-stone-500">불러오는 중…</div>
         )}
 
         {!loading &&
@@ -348,7 +348,7 @@ export default function RoomList() {
               <div
                 key={room.id}
                 className={`relative flex min-w-0 items-center gap-1 ${
-                  isActive ? 'bg-indigo-50' : 'hover:bg-slate-50'
+                  isActive ? 'bg-indigo-50' : 'hover:bg-stone-50'
                 }`}
               >
                 <Link
@@ -368,16 +368,16 @@ export default function RoomList() {
                         <h3 className="truncate text-sm font-medium">{displayName}</h3>
                         {mutedRoomIds.has(room.id) && (
                           <BellOffIcon
-                            className="h-3.5 w-3.5 shrink-0 text-slate-400"
+                            className="h-3.5 w-3.5 shrink-0 text-stone-400"
                             aria-label="알림 꺼짐"
                           />
                         )}
                       </div>
                       {time && (
-                        <span className="shrink-0 text-xs text-slate-500">{time}</span>
+                        <span className="shrink-0 text-xs text-stone-500">{time}</span>
                       )}
                     </div>
-                    <p className="truncate text-xs text-slate-500">
+                    <p className="truncate text-xs text-stone-500">
                       {/* 미리보기 — 메시지 본문이 multi-line이거나 attachment 마커
                           ([[link:...]])를 포함할 수 있어 한 줄로 요약 + 마커 제거 */}
                       {sanitizePreview(room.lastMessage)}
@@ -397,7 +397,7 @@ export default function RoomList() {
                     e.stopPropagation();
                     setOpenMenuRoomId(menuOpen ? null : room.id);
                   }}
-                  className="mr-2 rounded-full p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700"
+                  className="mr-2 rounded-full p-1 text-stone-400 hover:bg-stone-200 hover:text-stone-700"
                   aria-label="채팅방 메뉴"
                 >
                   <svg
@@ -414,7 +414,7 @@ export default function RoomList() {
 
                 {menuOpen && (
                   <div
-                    className="absolute right-2 top-12 z-10 w-36 rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+                    className="absolute right-2 top-12 z-10 w-36 rounded-lg border border-stone-200 bg-white py-1 shadow-lg"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {/* 알림 끄기/켜기 — 가벼운 액션이라 다이얼로그 없이 즉시 적용 */}
@@ -422,7 +422,7 @@ export default function RoomList() {
                       mutedRoomIds.has(room.id) ? (
                         <button
                           type="button"
-                          className="block w-full px-3 py-1.5 text-left text-xs text-slate-800 hover:bg-slate-50"
+                          className="block w-full px-3 py-1.5 text-left text-xs text-stone-800 hover:bg-stone-50"
                           onClick={() => {
                             void handleUnmute(room.id);
                             setOpenMenuRoomId(null);
@@ -433,7 +433,7 @@ export default function RoomList() {
                       ) : (
                         <button
                           type="button"
-                          className="block w-full px-3 py-1.5 text-left text-xs text-slate-800 hover:bg-slate-50"
+                          className="block w-full px-3 py-1.5 text-left text-xs text-stone-800 hover:bg-stone-50"
                           onClick={() => {
                             void handleMute(room.id);
                             setOpenMenuRoomId(null);
@@ -446,7 +446,7 @@ export default function RoomList() {
                     {showingHidden ? (
                       <button
                         type="button"
-                        className="block w-full px-3 py-1.5 text-left text-xs text-slate-800 hover:bg-slate-50"
+                        className="block w-full px-3 py-1.5 text-left text-xs text-stone-800 hover:bg-stone-50"
                         onClick={() => {
                           void handleUnhide(room.id);
                           setOpenMenuRoomId(null);
@@ -457,7 +457,7 @@ export default function RoomList() {
                     ) : (
                       <button
                         type="button"
-                        className="block w-full px-3 py-1.5 text-left text-xs text-slate-800 hover:bg-slate-50"
+                        className="block w-full px-3 py-1.5 text-left text-xs text-stone-800 hover:bg-stone-50"
                         onClick={() => {
                           setConfirmAction({ type: 'hide', room });
                           setOpenMenuRoomId(null);
@@ -483,7 +483,7 @@ export default function RoomList() {
           })}
 
         {!loading && !error && visibleRooms.length === 0 && (
-          <div className="p-6 text-center text-sm text-slate-500">
+          <div className="p-6 text-center text-sm text-stone-500">
             {showingHidden
               ? '숨긴 채팅이 없습니다.'
               : '아직 채팅 내역이 없습니다.'}
@@ -498,7 +498,7 @@ export default function RoomList() {
         <button
           type="button"
           onClick={() => setShowingHidden(true)}
-          className="border-t border-slate-200 px-4 py-2 text-center text-xs text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+          className="border-t border-stone-200 px-4 py-2 text-center text-xs text-stone-500 hover:bg-stone-50 hover:text-stone-700"
         >
           숨긴 채팅 보기
         </button>
@@ -514,10 +514,10 @@ export default function RoomList() {
             className="w-full max-w-sm rounded-xl bg-white p-5 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-base font-semibold text-slate-900">
+            <h3 className="text-base font-semibold text-stone-900">
               {confirmAction.type === 'hide' ? '채팅방 숨기기' : '채팅방 나가기'}
             </h3>
-            <p className="mt-2 text-sm text-slate-600">
+            <p className="mt-2 text-sm text-stone-600">
               {confirmAction.type === 'hide'
                 ? '이 방이 목록에서 안 보이게 됩니다. 새 메시지는 계속 받으며, "숨긴 채팅 보기"에서 다시 활성화할 수 있습니다.'
                 : '이 방에서 영구히 나갑니다. 이후 새 메시지를 받지 못하고, 다시 들어가려면 다른 멤버의 초대가 필요합니다.'}
@@ -526,7 +526,7 @@ export default function RoomList() {
               <button
                 type="button"
                 onClick={() => setConfirmAction(null)}
-                className="rounded-lg border border-slate-300 bg-white px-4 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+                className="rounded-lg border border-stone-300 bg-white px-4 py-1.5 text-sm text-stone-700 hover:bg-stone-50"
               >
                 취소
               </button>

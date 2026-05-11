@@ -115,7 +115,7 @@ export default function CreateTeamPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-6 sm:mb-8">
-        <Link href="/team" className="mb-2 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
+        <Link href="/team" className="mb-2 inline-flex items-center gap-1 text-sm text-stone-500 hover:text-stone-700">
           ← 팀 목록으로
         </Link>
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">팀 만들기</h1>
@@ -124,10 +124,10 @@ export default function CreateTeamPage() {
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* 기본 정보 */}
         <section className="card space-y-4">
-          <h2 className="text-lg font-semibold text-slate-800">기본 정보</h2>
+          <h2 className="text-lg font-semibold text-stone-800">기본 정보</h2>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">팀명 *</label>
+            <label className="mb-1 block text-sm font-medium text-stone-700">팀명 *</label>
             <input
               type="text"
               value={name}
@@ -139,7 +139,7 @@ export default function CreateTeamPage() {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">팀 유형 *</label>
+            <label className="mb-2 block text-sm font-medium text-stone-700">팀 유형 *</label>
             <div className="flex flex-wrap gap-2">
               {TEAM_TYPE_OPTIONS.map((opt) => (
                 <button
@@ -149,7 +149,7 @@ export default function CreateTeamPage() {
                   className={`rounded-full border px-4 py-1.5 text-sm transition-all ${
                     teamType === opt.value
                       ? 'border-indigo-600 bg-indigo-600 text-white'
-                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                      : 'border-stone-200 text-stone-600 hover:bg-stone-50'
                   }`}
                 >
                   {opt.label}
@@ -159,8 +159,8 @@ export default function CreateTeamPage() {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              팀 소개 <span className="text-xs font-normal text-slate-400">(선택)</span>
+            <label className="mb-1 block text-sm font-medium text-stone-700">
+              팀 소개 <span className="text-xs font-normal text-stone-400">(선택)</span>
             </label>
             <textarea
               value={description}
@@ -172,8 +172,8 @@ export default function CreateTeamPage() {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              최대 팀원 수 <span className="text-xs font-normal text-slate-400">(선택)</span>
+            <label className="mb-1 block text-sm font-medium text-stone-700">
+              최대 팀원 수 <span className="text-xs font-normal text-stone-400">(선택)</span>
             </label>
             <input
               type="number"
@@ -190,12 +190,12 @@ export default function CreateTeamPage() {
         {/* 필수 공개 정보 (기획서) */}
         <section className="card space-y-4">
           <div>
-            <h2 className="text-lg font-semibold text-slate-800">기획서 — 필수 공개</h2>
-            <p className="mt-1 text-sm text-slate-500">모든 사용자에게 공개되는 정보입니다.</p>
+            <h2 className="text-lg font-semibold text-stone-800">기획서 — 필수 공개</h2>
+            <p className="mt-1 text-sm text-stone-500">모든 사용자에게 공개되는 정보입니다.</p>
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">프로젝트명 *</label>
+            <label className="mb-1 block text-sm font-medium text-stone-700">프로젝트명 *</label>
             <input
               type="text"
               value={projectName}
@@ -206,7 +206,7 @@ export default function CreateTeamPage() {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">프로젝트 개요 / 목표 *</label>
+            <label className="mb-1 block text-sm font-medium text-stone-700">프로젝트 개요 / 목표 *</label>
             <textarea
               value={overview}
               onChange={(e) => setOverview(e.target.value)}
@@ -218,7 +218,7 @@ export default function CreateTeamPage() {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">진행 일정 *</label>
+            <label className="mb-1 block text-sm font-medium text-stone-700">진행 일정 *</label>
             <textarea
               value={schedule}
               onChange={(e) => setSchedule(e.target.value)}
@@ -230,7 +230,7 @@ export default function CreateTeamPage() {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">모집 직군 *</label>
+            <label className="mb-2 block text-sm font-medium text-stone-700">모집 직군 *</label>
             <div className="flex flex-wrap gap-2">
               {ROLE_OPTIONS.map((role) => (
                 <button
@@ -250,7 +250,7 @@ export default function CreateTeamPage() {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">필요 기술 스택 *</label>
+            <label className="mb-2 block text-sm font-medium text-stone-700">필요 기술 스택 *</label>
             <div className="mb-2 flex gap-2">
               <input
                 type="text"
@@ -258,14 +258,14 @@ export default function CreateTeamPage() {
                 onChange={(e) => setSkillInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSkill(); } }}
                 placeholder="직접 입력 후 Enter"
-                className="flex-1 rounded-lg border border-slate-200 px-4 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                className="flex-1 rounded-lg border border-stone-200 px-4 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
               />
               <button type="button" onClick={addSkill} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700">추가</button>
             </div>
             <div className="mb-3 flex flex-wrap gap-1.5">
               {SKILL_GROUPS.map(({ label, skills }) => (
                 <div key={label} className="w-full">
-                  <p className="mb-1 text-xs text-slate-400">{label}</p>
+                  <p className="mb-1 text-xs text-stone-400">{label}</p>
                   <div className="flex flex-wrap gap-1">
                     {skills.map((skill) => (
                       <button
@@ -274,8 +274,8 @@ export default function CreateTeamPage() {
                         onClick={() => setRequiredSkills(toggle(skill, requiredSkills))}
                         className={`rounded-full border px-3 py-1 text-xs transition-all ${
                           requiredSkills.includes(skill)
-                            ? 'border-slate-700 bg-slate-700 text-white'
-                            : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                            ? 'border-stone-700 bg-stone-700 text-white'
+                            : 'border-stone-200 text-stone-600 hover:bg-stone-50'
                         }`}
                       >
                         {skill}
@@ -288,9 +288,9 @@ export default function CreateTeamPage() {
             {requiredSkills.length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {requiredSkills.map((s) => (
-                  <span key={s} className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-1 text-xs text-slate-700">
+                  <span key={s} className="inline-flex items-center gap-1 rounded bg-stone-100 px-2 py-1 text-xs text-stone-700">
                     {s}
-                    <button type="button" onClick={() => setRequiredSkills(requiredSkills.filter((x) => x !== s))} className="text-slate-400 hover:text-slate-700">✕</button>
+                    <button type="button" onClick={() => setRequiredSkills(requiredSkills.filter((x) => x !== s))} className="text-stone-400 hover:text-stone-700">✕</button>
                   </span>
                 ))}
               </div>
@@ -301,12 +301,12 @@ export default function CreateTeamPage() {
         {/* 선택 공개 정보 */}
         <section className="card space-y-4">
           <div>
-            <h2 className="text-lg font-semibold text-slate-800">기획서 — 선택 공개</h2>
-            <p className="mt-1 text-sm text-slate-500">아이디어 보호를 위해 공개 여부를 나중에 설정할 수 있습니다.</p>
+            <h2 className="text-lg font-semibold text-stone-800">기획서 — 선택 공개</h2>
+            <p className="mt-1 text-sm text-stone-500">아이디어 보호를 위해 공개 여부를 나중에 설정할 수 있습니다.</p>
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">상세 기획 내용</label>
+            <label className="mb-1 block text-sm font-medium text-stone-700">상세 기획 내용</label>
             <textarea
               value={detailedPlan}
               onChange={(e) => setDetailedPlan(e.target.value)}
@@ -317,7 +317,7 @@ export default function CreateTeamPage() {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">예상 결과물</label>
+            <label className="mb-1 block text-sm font-medium text-stone-700">예상 결과물</label>
             <input
               type="text"
               value={expectedOutcome}
@@ -328,7 +328,7 @@ export default function CreateTeamPage() {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">참고 링크</label>
+            <label className="mb-1 block text-sm font-medium text-stone-700">참고 링크</label>
             <div className="mb-2 flex gap-2">
               <input
                 type="url"
@@ -336,16 +336,16 @@ export default function CreateTeamPage() {
                 onChange={(e) => setReferenceInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addReference(); } }}
                 placeholder="https://..."
-                className="flex-1 rounded-lg border border-slate-200 px-4 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                className="flex-1 rounded-lg border border-stone-200 px-4 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
               />
-              <button type="button" onClick={addReference} className="rounded-lg bg-slate-600 px-4 py-2 text-sm text-white hover:bg-slate-700">추가</button>
+              <button type="button" onClick={addReference} className="rounded-lg bg-stone-600 px-4 py-2 text-sm text-white hover:bg-stone-700">추가</button>
             </div>
             {referenceLinks.length > 0 && (
               <div className="flex flex-col gap-1">
                 {referenceLinks.map((url) => (
-                  <span key={url} className="inline-flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-1.5 text-xs text-slate-700">
+                  <span key={url} className="inline-flex items-center gap-2 rounded-lg bg-stone-50 px-3 py-1.5 text-xs text-stone-700">
                     <a href={url} target="_blank" rel="noopener noreferrer" className="flex-1 truncate text-indigo-600 hover:underline">{url}</a>
-                    <button type="button" onClick={() => setReferenceLinks(referenceLinks.filter((l) => l !== url))} className="text-slate-400 hover:text-slate-700">✕</button>
+                    <button type="button" onClick={() => setReferenceLinks(referenceLinks.filter((l) => l !== url))} className="text-stone-400 hover:text-stone-700">✕</button>
                   </span>
                 ))}
               </div>
@@ -358,7 +358,7 @@ export default function CreateTeamPage() {
         <div className="flex gap-3">
           <Link
             href="/team"
-            className="flex-1 rounded-xl border border-slate-200 py-3 text-center text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
+            className="flex-1 rounded-xl border border-stone-200 py-3 text-center text-sm font-medium text-stone-600 transition-colors hover:bg-stone-50"
           >
             취소
           </Link>

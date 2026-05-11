@@ -50,10 +50,10 @@ function SectionHeader({
       </div>
       <div>
         <div className="flex items-center gap-2">
-          <h2 className="text-base font-semibold text-slate-800">{title}</h2>
+          <h2 className="text-base font-semibold text-stone-800">{title}</h2>
           {icon}
         </div>
-        {subtitle && <p className="mt-0.5 text-xs text-slate-400">{subtitle}</p>}
+        {subtitle && <p className="mt-0.5 text-xs text-stone-400">{subtitle}</p>}
       </div>
     </div>
   );
@@ -61,7 +61,7 @@ function SectionHeader({
 
 function FieldLabel({ required, children }: { required?: boolean; children: React.ReactNode }) {
   return (
-    <label className="mb-1.5 block text-sm font-medium text-slate-700">
+    <label className="mb-1.5 block text-sm font-medium text-stone-700">
       {children}
       {required && <span className="ml-1 text-indigo-500">*</span>}
     </label>
@@ -209,7 +209,7 @@ export default function EditTeamPage({
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
-          <p className="text-sm text-slate-400">불러오는 중...</p>
+          <p className="text-sm text-stone-400">불러오는 중...</p>
         </div>
       </div>
     );
@@ -221,15 +221,15 @@ export default function EditTeamPage({
       <div className="mb-6 sm:mb-8">
         <Link
           href={`/team/${id}`}
-          className="mb-3 inline-flex items-center gap-1.5 text-sm text-slate-400 transition-colors hover:text-slate-700"
+          className="mb-3 inline-flex items-center gap-1.5 text-sm text-stone-400 transition-colors hover:text-stone-700"
         >
           <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
           팀 상세로
         </Link>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl md:text-4xl">팀 정보 수정</h1>
-        <p className="mt-1 text-sm text-slate-400">변경한 내용은 즉시 반영됩니다.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl md:text-4xl">팀 정보 수정</h1>
+        <p className="mt-1 text-sm text-stone-400">변경한 내용은 즉시 반영됩니다.</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -252,7 +252,7 @@ export default function EditTeamPage({
 
             <div>
               <FieldLabel required>팀 유형</FieldLabel>
-              <div className="grid grid-cols-2 gap-1 rounded-2xl border border-slate-200 bg-slate-100 p-1 sm:inline-flex">
+              <div className="grid grid-cols-2 gap-1 rounded-2xl border border-stone-200 bg-stone-100 p-1 sm:inline-flex">
                 {TEAM_TYPE_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
@@ -261,7 +261,7 @@ export default function EditTeamPage({
                     className={`whitespace-nowrap rounded-xl px-3.5 py-2 text-sm font-medium transition-all ${
                       teamType === opt.value
                         ? 'bg-white text-indigo-700 shadow-sm'
-                        : 'text-slate-500 hover:text-slate-700'
+                        : 'text-stone-500 hover:text-stone-700'
                     }`}
                   >
                     <span className="mr-1.5">{opt.emoji}</span>
@@ -274,7 +274,7 @@ export default function EditTeamPage({
             <div>
               <FieldLabel>
                 팀 소개{' '}
-                <span className="ml-1 text-xs font-normal text-slate-400">(선택)</span>
+                <span className="ml-1 text-xs font-normal text-stone-400">(선택)</span>
               </FieldLabel>
               <textarea
                 value={description}
@@ -289,7 +289,7 @@ export default function EditTeamPage({
               <div>
                 <FieldLabel>
                   최대 팀원 수{' '}
-                  <span className="ml-1 text-xs font-normal text-slate-400">(선택)</span>
+                  <span className="ml-1 text-xs font-normal text-stone-400">(선택)</span>
                 </FieldLabel>
                 <input
                   type="number"
@@ -304,14 +304,14 @@ export default function EditTeamPage({
 
               <div>
                 <FieldLabel>모집 상태</FieldLabel>
-                <div className="inline-flex rounded-2xl border border-slate-200 bg-slate-100 p-1 gap-1">
+                <div className="inline-flex rounded-2xl border border-stone-200 bg-stone-100 p-1 gap-1">
                   <button
                     type="button"
                     onClick={() => setIsRecruiting(true)}
                     className={`rounded-xl px-4 py-1.5 text-sm font-medium transition-all ${
                       isRecruiting
                         ? 'bg-white text-emerald-600 shadow-sm'
-                        : 'text-slate-500 hover:text-slate-700'
+                        : 'text-stone-500 hover:text-stone-700'
                     }`}
                   >
                     모집 중
@@ -321,8 +321,8 @@ export default function EditTeamPage({
                     onClick={() => setIsRecruiting(false)}
                     className={`rounded-xl px-4 py-1.5 text-sm font-medium transition-all ${
                       !isRecruiting
-                        ? 'bg-white text-slate-600 shadow-sm'
-                        : 'text-slate-500 hover:text-slate-700'
+                        ? 'bg-white text-stone-600 shadow-sm'
+                        : 'text-stone-500 hover:text-stone-700'
                     }`}
                   >
                     모집 완료
@@ -415,7 +415,7 @@ export default function EditTeamPage({
                   onChange={(e) => setSkillInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSkill(); } }}
                   placeholder="목록에 없으면 직접 입력 후 Enter"
-                  className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none transition-all placeholder:text-slate-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                  className="flex-1 rounded-xl border border-stone-200 px-4 py-2.5 text-sm outline-none transition-all placeholder:text-stone-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                 />
                 <button
                   type="button"
@@ -427,10 +427,10 @@ export default function EditTeamPage({
               </div>
 
               {/* 카테고리별 스킬 선택 */}
-              <div className="space-y-3 rounded-2xl border border-slate-100 bg-slate-50 p-4">
+              <div className="space-y-3 rounded-2xl border border-stone-100 bg-stone-50 p-4">
                 {SKILL_GROUPS.map(({ label, skills }) => (
                   <div key={label}>
-                    <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                    <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-stone-400">
                       {label}
                     </p>
                     <div className="flex flex-wrap gap-1.5">
@@ -441,8 +441,8 @@ export default function EditTeamPage({
                           onClick={() => setRequiredSkills(toggle(skill, requiredSkills))}
                           className={`rounded-full border px-3 py-1 text-xs font-medium transition-all ${
                             requiredSkills.includes(skill)
-                              ? 'border-slate-800 bg-slate-800 text-white'
-                              : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-100'
+                              ? 'border-stone-800 bg-stone-800 text-white'
+                              : 'border-stone-200 bg-white text-stone-600 hover:border-stone-300 hover:bg-stone-100'
                           }`}
                         >
                           {skill}
@@ -459,13 +459,13 @@ export default function EditTeamPage({
                   {requiredSkills.map((s) => (
                     <span
                       key={s}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700"
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-stone-100 px-3 py-1 text-xs font-medium text-stone-700"
                     >
                       {s}
                       <button
                         type="button"
                         onClick={() => setRequiredSkills(requiredSkills.filter((x) => x !== s))}
-                        className="text-slate-400 transition-colors hover:text-slate-700"
+                        className="text-stone-400 transition-colors hover:text-stone-700"
                       >
                         ✕
                       </button>
@@ -522,12 +522,12 @@ export default function EditTeamPage({
                   onChange={(e) => setReferenceInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addReference(); } }}
                   placeholder="https://..."
-                  className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none transition-all placeholder:text-slate-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                  className="flex-1 rounded-xl border border-stone-200 px-4 py-2.5 text-sm outline-none transition-all placeholder:text-stone-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                 />
                 <button
                   type="button"
                   onClick={addReference}
-                  className="rounded-xl bg-slate-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800"
+                  className="rounded-xl bg-stone-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-stone-800"
                 >
                   추가
                 </button>
@@ -537,9 +537,9 @@ export default function EditTeamPage({
                   {referenceLinks.map((url) => (
                     <span
                       key={url}
-                      className="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 px-4 py-2.5 text-xs"
+                      className="flex items-center gap-2 rounded-xl border border-stone-100 bg-stone-50 px-4 py-2.5 text-xs"
                     >
-                      <svg className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="h-3.5 w-3.5 flex-shrink-0 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                       </svg>
                       <a
@@ -553,7 +553,7 @@ export default function EditTeamPage({
                       <button
                         type="button"
                         onClick={() => setReferenceLinks(referenceLinks.filter((l) => l !== url))}
-                        className="text-slate-400 transition-colors hover:text-slate-700"
+                        className="text-stone-400 transition-colors hover:text-stone-700"
                       >
                         ✕
                       </button>
@@ -579,7 +579,7 @@ export default function EditTeamPage({
         <div className="flex gap-3 pt-1">
           <Link
             href={`/team/${id}`}
-            className="flex-1 rounded-xl border border-slate-200 py-3.5 text-center text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
+            className="flex-1 rounded-xl border border-stone-200 py-3.5 text-center text-sm font-medium text-stone-600 transition-colors hover:bg-stone-50"
           >
             취소
           </Link>
