@@ -4,6 +4,11 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { use, useCallback, useEffect, useMemo, useRef, useState, Suspense } from 'react';
 import { AttachmentButton } from '@/components/chat/AttachmentButton';
+import {
+  AttachmentClipButton,
+  AttachmentPicker,
+  type AttachmentPickerHandle,
+} from '@/components/chat/AttachmentPicker';
 import { FileAttachmentCard } from '@/components/chat/FileAttachmentCard';
 import { ImageAttachment } from '@/components/chat/ImageAttachment';
 import { MessageMarkdown } from '@/components/chat/MessageMarkdown';
@@ -128,6 +133,10 @@ function ChatRoomPageContent({ params }: PageProps) {
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
+  /** 첨부 picker — 클립/paste/drag-drop으로 받은 파일들을 업로드 후 마커로 변환 */
+  const pickerRef = useRef<AttachmentPickerHandle | null>(null);
+  /** 첨부 draft 개수 (>0이면 텍스트 없이도 전송 가능) — picker가 onDraftsChange로 push */
+  const [attachmentCount, setAttachmentCount] = useState(0);
 
   /** 입력 미리보기 슬라이딩 패널 — 마크다운 렌더 결과 확인용 */
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -655,8 +664,11 @@ function ChatRoomPageContent({ params }: PageProps) {
   // ---------------------------------------------------------
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    const content = draft.trim();
-    if (!content || sending || !user) return;
+    let content = draft.trim();
+    const hasAttachments = pickerRef.current?.hasItems() ?? false;
+    // 텍스트도 없고 첨부도 없으면 전송 안 함
+    if (!content && !hasAttachments) return;
+    if (sending || !user) return;
 
     // 길이 사전 검증 — backend @MaxLength(4000) 초과 시 ack 콜백이 resolve 안 되어
     // "전송 중..." 영원히 표시되는 함정 회피. 사용자에 즉시 알림.
@@ -668,6 +680,19 @@ function ChatRoomPageContent({ params }: PageProps) {
     }
 
     setSending(true);
+
+    // 첨부가 있으면 업로드 완료 대기 후 마커 append
+    if (hasAttachments && pickerRef.current) {
+      const markers = await pickerRef.current.flushToMarkers();
+      if (markers.length > 0) {
+        content = content ? `${content}\n\n${markers.join('\n')}` : markers.join('\n');
+      } else if (!content) {
+        // 모든 첨부가 실패 + 텍스트 없음 → 전송 중단
+        setSending(false);
+        window.alert('첨부 업로드에 실패해 전송할 수 없습니다.');
+        return;
+      }
+    }
 
     const tempId = crypto.randomUUID();
     const parentId = replyTo?.id ?? undefined;
@@ -998,14 +1023,39 @@ function ChatRoomPageContent({ params }: PageProps) {
         <TemplateTrigger onClick={openTemplatePanel} />
       )}
 
+      {/* 첨부 picker — drafts UI(progress chip) + hidden file input. form 바로 위에 */}
+      <AttachmentPicker
+        ref={pickerRef}
+        roomId={roomId}
+        disabled={!isConnected}
+        onDraftsChange={setAttachmentCount}
+      />
+
       {/* 입력 */}
       <form
         onSubmit={handleSend}
+        onDragOver={(e) => {
+          // drag-drop 영역으로 입력 form 전체 활용
+          if (!isConnected) return;
+          if (e.dataTransfer.types.includes('Files')) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+          }
+        }}
+        onDrop={(e) => {
+          if (!isConnected) return;
+          const files = Array.from(e.dataTransfer.files);
+          if (files.length === 0) return;
+          e.preventDefault();
+          pickerRef.current?.addFiles(files);
+        }}
         className="flex items-end gap-2 border-t border-gray-200 bg-white p-4"
       >
         {/* multi-line 입력 — Enter=전송, Shift+Enter=줄바꿈 (Slack/Discord 표준).
             input → textarea로 바꾸면서 마크다운 본문(여러 줄 헤딩, 빈 줄, 표 등)이 정상 작성 가능.
             scrollHeight 기반 auto-resize (max 200px) — useEffect [draft]에서 갱신 */}
+        {/* 클립 버튼 — 첨부 picker의 file input trigger */}
+        <AttachmentClipButton picker={pickerRef} disabled={!isConnected} />
         <textarea
           ref={inputRef}
           value={draft}
@@ -1014,6 +1064,22 @@ function ChatRoomPageContent({ params }: PageProps) {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
               e.currentTarget.form?.requestSubmit();
+            }
+          }}
+          onPaste={(e) => {
+            if (!isConnected) return;
+            // 클립보드에 파일(이미지 캡처 등)이 있으면 picker로 흘려보냄
+            const items = Array.from(e.clipboardData.items);
+            const files: File[] = [];
+            for (const item of items) {
+              if (item.kind === 'file') {
+                const f = item.getAsFile();
+                if (f) files.push(f);
+              }
+            }
+            if (files.length > 0) {
+              e.preventDefault();
+              pickerRef.current?.addFiles(files);
             }
           }}
           placeholder={
@@ -1054,7 +1120,7 @@ function ChatRoomPageContent({ params }: PageProps) {
           disabled={
             !isConnected ||
             sending ||
-            draft.trim().length === 0 ||
+            (draft.trim().length === 0 && attachmentCount === 0) ||
             draft.length > MAX_MESSAGE_LENGTH
           }
         >
