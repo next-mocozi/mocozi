@@ -26,24 +26,27 @@ import type { ChatRoomWithMembers, RoomsPageResponse } from '@/types/chat';
 const SHOW_NEW_CHAT_BUTTON = false;
 
 /**
- * 같은 탭 세션 내에 RoomList가 한 번이라도 데이터 로드 완료했는지 추적.
+ * 같은 탭 세션 내에 RoomList가 한 번이라도 데이터 로드 완료했는지 추적 (모드별).
  *
  * useRef는 컴포넌트 인스턴스 lifecycle에 묶여서, `/chat ↔ /chat/[roomId]` 라우팅처럼
  * RoomList가 unmount/remount되면 ref도 false로 리셋 → 매 진입마다 "불러오는 중..." 깜빡임.
  * module-level let은 페이지 라우팅에도 살아남아 첫 진입(또는 hard reload/새 탭)에서만 spinner.
+ *
+ * 활성/숨김 모드는 응답이 분리되므로 각각 추적. 모드 토글 직후엔 명시 spinner 1회 유지
+ * (toggleHidden가 setLoading(true)), 같은 모드 내 remount는 silent.
  */
-let hasLoadedOnceInSession = false;
+let hasLoadedActiveInSession = false;
+let hasLoadedHiddenInSession = false;
 
 /**
- * 활성 방 목록 캐시 (showingHidden=false 응답만 저장).
+ * 모드별 방 목록 캐시 — RoomList unmount/remount 시 새 인스턴스의 lazy initializer에서
+ * 즉시 이전 데이터를 보여주고 fetch는 background로 갱신 (사용자 체감상 깜빡임 0).
  *
- * RoomList unmount/remount 시 새 인스턴스의 useState는 빈 배열로 시작 → fetch 응답 도착
- * 전까지 "아직 채팅 내역이 없습니다" 빈 상태가 잠깐 노출됨. 이 캐시로 lazy initializer에서
- * 즉시 이전 데이터를 보여주고 fetch는 background로 갱신 — 사용자 체감상 깜빡임 0.
- *
- * 숨김 방 목록(showingHidden=true)은 사용 빈도 낮고 단명이라 캐시 제외 — 매번 fresh fetch.
+ * 활성/숨김 응답은 분리되므로 각각 캐시. 모드 토글 후 첫 진입은 명시 spinner라 cache 없어도 OK,
+ * 같은 모드 내 라우팅 후엔 cache로 즉시 표시 + silent refresh.
  */
 let cachedActiveRooms: ChatRoomWithMembers[] | null = null;
+let cachedHiddenRooms: ChatRoomWithMembers[] | null = null;
 
 /**
  * 같은 탭 세션 내 "숨긴 채팅 보기" 모드 유지.
@@ -78,14 +81,13 @@ export default function RoomList() {
    */
   const [showingHidden, setShowingHidden] = useState(() => lastShowingHidden);
 
-  // 활성 모드면 cache로 즉시 복구. 숨김 모드는 cache 없으니 빈 배열 + spinner.
+  // lazy initializer로 모드별 cache 즉시 복구.
   const [rooms, setRooms] = useState<ChatRoomWithMembers[]>(() =>
-    showingHidden ? [] : (cachedActiveRooms ?? []),
+    showingHidden ? (cachedHiddenRooms ?? []) : (cachedActiveRooms ?? []),
   );
-  // 첫 마운트 + 활성 모드: hasLoadedOnceInSession=false면 spinner. true면 cache로 즉시 표시.
-  // 숨김 모드 마운트: 항상 spinner (cache 없음 + fetch 필요).
+  // 모드별 첫 호출이면 spinner, 같은 모드 후속 마운트면 silent.
   const [loading, setLoading] = useState(
-    showingHidden ? true : !hasLoadedOnceInSession,
+    showingHidden ? !hasLoadedHiddenInSession : !hasLoadedActiveInSession,
   );
   const [error, setError] = useState<string | null>(null);
   const [newChatOpen, setNewChatOpen] = useState(false);
@@ -99,24 +101,25 @@ export default function RoomList() {
 
   const load = useCallback(
     async (opts: { onlyHidden?: boolean } = {}) => {
+      const isHidden = opts.onlyHidden === true;
       try {
         setError(null);
-        // 첫 세션 진입만 spinner. 이후 refetch(socket 재연결, page 라우팅으로 인한 remount,
-        // useEffect deps 변경 등)는 silent — 기존 목록 유지하면서 백그라운드 갱신.
-        // 트레이드오프: showingHidden 토글 시에도 silent — 응답 빠르면 자연스럽고
-        // 실패는 별도 error 배너로 노출.
-        if (!hasLoadedOnceInSession) setLoading(true);
+        // 모드별 첫 호출만 spinner. 이후 refetch(socket 재연결, page 라우팅 remount,
+        // useEffect deps 변경)는 silent — cache로 즉시 표시 + 백그라운드 갱신.
+        // toggleHidden(모드 전환)에선 별도로 setLoading(true)를 명시 호출.
+        if (isHidden ? !hasLoadedHiddenInSession : !hasLoadedActiveInSession) {
+          setLoading(true);
+        }
         const params = new URLSearchParams({ limit: '50' });
-        if (opts.onlyHidden) params.set('onlyHidden', 'true');
+        if (isHidden) params.set('onlyHidden', 'true');
         const res = await api.get<{ data: RoomsPageResponse }>(
           `/api/chat/rooms?${params.toString()}`,
         );
         const list = res.data.data.rooms;
         setRooms(list);
-        // 활성 방 목록만 캐시 — remount 시 즉시 복구. 숨김 방 응답은 캐시 안 함.
-        if (!opts.onlyHidden) {
-          cachedActiveRooms = list;
-        }
+        // 모드별 캐시 — 다음 remount 시 즉시 복구
+        if (isHidden) cachedHiddenRooms = list;
+        else cachedActiveRooms = list;
         initFromRooms(
           list.map((r) => ({
             id: r.id,
@@ -131,7 +134,9 @@ export default function RoomList() {
         setError(msg);
       } finally {
         setLoading(false);
-        hasLoadedOnceInSession = true;
+        // 모드별 첫 로드 flag 갱신 — 다음 마운트가 silent로 시작
+        if (isHidden) hasLoadedHiddenInSession = true;
+        else hasLoadedActiveInSession = true;
       }
     },
     [initFromRooms],
@@ -196,13 +201,16 @@ export default function RoomList() {
     };
   }, [socket, load, showingHidden]);
 
-  // rooms 변경 시 module cache 동기화 (활성 화면일 때만).
+  // rooms 변경 시 module cache 동기화 — 모드별로 갈래.
   // socket onNewMessage / handleHide / handleLeave 등 모든 setRooms 호출을 자동 캐치.
   // 가드:
-  //  - hasLoadedOnceInSession=false (아직 첫 fetch 전) — 빈 배열로 덮지 않음
-  //  - rooms.length === 0 — showingHidden 토글 시 의도적 비움 / 전환 중 — cache는 옛 active 유지
+  //  - hasLoaded*=false (아직 첫 fetch 전) — 빈 배열로 덮지 않음
+  //  - rooms.length === 0 — toggleHidden 시 의도적 비움 / 전환 중 — cache는 직전 데이터 유지
   useEffect(() => {
-    if (!showingHidden && hasLoadedOnceInSession && rooms.length > 0) {
+    if (rooms.length === 0) return;
+    if (showingHidden && hasLoadedHiddenInSession) {
+      cachedHiddenRooms = rooms;
+    } else if (!showingHidden && hasLoadedActiveInSession) {
       cachedActiveRooms = rooms;
     }
   }, [rooms, showingHidden]);
