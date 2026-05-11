@@ -24,6 +24,26 @@ import type { ChatRoomWithMembers, RoomsPageResponse } from '@/types/chat';
  */
 const SHOW_NEW_CHAT_BUTTON = false;
 
+/**
+ * 같은 탭 세션 내에 RoomList가 한 번이라도 데이터 로드 완료했는지 추적.
+ *
+ * useRef는 컴포넌트 인스턴스 lifecycle에 묶여서, `/chat ↔ /chat/[roomId]` 라우팅처럼
+ * RoomList가 unmount/remount되면 ref도 false로 리셋 → 매 진입마다 "불러오는 중..." 깜빡임.
+ * module-level let은 페이지 라우팅에도 살아남아 첫 진입(또는 hard reload/새 탭)에서만 spinner.
+ */
+let hasLoadedOnceInSession = false;
+
+/**
+ * 활성 방 목록 캐시 (showingHidden=false 응답만 저장).
+ *
+ * RoomList unmount/remount 시 새 인스턴스의 useState는 빈 배열로 시작 → fetch 응답 도착
+ * 전까지 "아직 채팅 내역이 없습니다" 빈 상태가 잠깐 노출됨. 이 캐시로 lazy initializer에서
+ * 즉시 이전 데이터를 보여주고 fetch는 background로 갱신 — 사용자 체감상 깜빡임 0.
+ *
+ * 숨김 방 목록(showingHidden=true)은 사용 빈도 낮고 단명이라 캐시 제외 — 매번 fresh fetch.
+ */
+let cachedActiveRooms: ChatRoomWithMembers[] | null = null;
+
 export default function RoomList() {
   const router = useRouter();
   const pathname = usePathname();
@@ -39,8 +59,14 @@ export default function RoomList() {
     setRoomUnhidden,
   } = useChatNotifications();
 
-  const [rooms, setRooms] = useState<ChatRoomWithMembers[]>([]);
-  const [loading, setLoading] = useState(true);
+  // lazy initializer로 module cache에서 즉시 복구 — fetch 응답 전까지 이전 데이터 노출.
+  // 첫 마운트는 cache 없음 → [] 시작 + spinner. remount는 cache 있음 → 즉시 데이터 + silent.
+  const [rooms, setRooms] = useState<ChatRoomWithMembers[]>(
+    () => cachedActiveRooms ?? [],
+  );
+  // 첫 마운트면 spinner 보임(true), 같은 세션 내 remount면 즉시 silent(false).
+  // 첫 paint 시점부터 결정해야 깜빡임 없음 — useEffect로 늦게 끄면 한 frame spinner 노출.
+  const [loading, setLoading] = useState(!hasLoadedOnceInSession);
   const [error, setError] = useState<string | null>(null);
   const [newChatOpen, setNewChatOpen] = useState(false);
 
@@ -58,7 +84,11 @@ export default function RoomList() {
     async (opts: { onlyHidden?: boolean } = {}) => {
       try {
         setError(null);
-        setLoading(true);
+        // 첫 세션 진입만 spinner. 이후 refetch(socket 재연결, page 라우팅으로 인한 remount,
+        // useEffect deps 변경 등)는 silent — 기존 목록 유지하면서 백그라운드 갱신.
+        // 트레이드오프: showingHidden 토글 시에도 silent — 응답 빠르면 자연스럽고
+        // 실패는 별도 error 배너로 노출.
+        if (!hasLoadedOnceInSession) setLoading(true);
         const params = new URLSearchParams({ limit: '50' });
         if (opts.onlyHidden) params.set('onlyHidden', 'true');
         const res = await api.get<{ data: RoomsPageResponse }>(
@@ -66,6 +96,10 @@ export default function RoomList() {
         );
         const list = res.data.data.rooms;
         setRooms(list);
+        // 활성 방 목록만 캐시 — remount 시 즉시 복구. 숨김 방 응답은 캐시 안 함.
+        if (!opts.onlyHidden) {
+          cachedActiveRooms = list;
+        }
         initFromRooms(
           list.map((r) => ({
             id: r.id,
@@ -80,6 +114,7 @@ export default function RoomList() {
         setError(msg);
       } finally {
         setLoading(false);
+        hasLoadedOnceInSession = true;
       }
     },
     [initFromRooms],
@@ -143,6 +178,15 @@ export default function RoomList() {
       socket.off('notification:roomLastMessageChanged', onRoomLastMessageChanged);
     };
   }, [socket, load, showingHidden]);
+
+  // rooms 변경 시 module cache 동기화 (활성 화면일 때만).
+  // socket onNewMessage / handleHide / handleLeave 등 모든 setRooms 호출을 자동 캐치.
+  // hasLoadedOnceInSession=false 시점(아직 첫 fetch 전)에는 빈 배열로 덮지 않게 가드.
+  useEffect(() => {
+    if (!showingHidden && hasLoadedOnceInSession) {
+      cachedActiveRooms = rooms;
+    }
+  }, [rooms, showingHidden]);
 
   // 외부 클릭 시 ⋯ 메뉴 닫기
   useEffect(() => {
@@ -266,13 +310,34 @@ export default function RoomList() {
         </div>
       )}
 
+      {/* 빈 방(메시지 0개) 자동 숨김 정책 — docs/chat 정책 참조:
+          - 메시지 1개 이상이면 표시
+          - OR 본인이 그 방에 draft 작성 중이면 표시 (의도 보존)
+          - 둘 다 아니면 숨김 (양쪽 멤버 모두 동일 동작)
+          - "숨긴 채팅" 화면(showingHidden)에선 이 필터 우회 — 명시 숨김한 빈 방도 표시 */}
+      {(() => {
+        const visibleRooms = showingHidden
+          ? rooms
+          : rooms.filter((room) => {
+              if (room.lastMessage) return true;
+              if (typeof window !== 'undefined') {
+                try {
+                  const draft = localStorage.getItem(`chat-draft-${room.id}`);
+                  if (draft && draft.trim()) return true;
+                } catch {
+                  // private mode 등 storage 접근 실패 — 무시
+                }
+              }
+              return false;
+            });
+        return (
       <div className="flex-1 divide-y divide-slate-200 overflow-y-auto">
         {loading && (
           <div className="p-6 text-center text-sm text-slate-500">불러오는 중…</div>
         )}
 
         {!loading &&
-          rooms.map((room) => {
+          visibleRooms.map((room) => {
             const unread = unreadByRoom[room.id] ?? room.unreadCount;
             const displayName = roomDisplayName(room, user?.id);
             const time = room.lastMessageAt ? timeAgo(room.lastMessageAt) : '';
@@ -417,7 +482,7 @@ export default function RoomList() {
             );
           })}
 
-        {!loading && !error && rooms.length === 0 && (
+        {!loading && !error && visibleRooms.length === 0 && (
           <div className="p-6 text-center text-sm text-slate-500">
             {showingHidden
               ? '숨긴 채팅이 없습니다.'
@@ -425,6 +490,8 @@ export default function RoomList() {
           </div>
         )}
       </div>
+        );
+      })()}
 
       {/* 숨긴 채팅 보기 토글 (활성 목록 하단) */}
       {!showingHidden && (

@@ -826,17 +826,31 @@ function ChatRoomPageContent({ params }: PageProps) {
     }
   };
 
+  // 어떤 사이드 패널이든 열렸는지 — 채팅창/RoomList 슬라이드 트리거
+  // (panel(인사 양식) 또는 preview(입력 미리보기) 둘 중 하나라도 open이면 true)
+  const anyPanelOpen = panelOpen || previewOpen;
+
   return (
     <div className="relative h-[calc(100vh-11rem)] overflow-hidden">
-      {/* 좌측 사이드바 — 채팅창 가운데 정렬은 그대로 두고, 좌측 빈 공간에 absolute로 배치.
-          xl(1280px) 미만에선 채팅창과 겹쳐서 hidden 처리 (upstream develop 레이아웃 환원).
-          overflow-hidden 필수 — SlidingPanel이 closed 상태에서 translate-x-full로 우측 off-screen에
-          있는데, overflow-hidden 없으면 horizontal swipe/scroll로 그 panel이 노출됨 */}
-      <aside className="absolute right-[calc(50%+21rem)] top-0 hidden h-full w-72 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white xl:flex">
+      {/* 좌측 사이드바 — xl(1280px)+ 에서만 노출. 패널 열리면 왼쪽으로 슬라이드 아웃 + 페이드.
+          overflow-hidden(부모) 덕에 -translate-x-full로 화면 밖으로 빠져나가도 clip됨. */}
+      <aside
+        className={`absolute right-[calc(50%+21rem)] top-0 hidden h-full w-72 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-300 ease-out xl:flex ${
+          anyPanelOpen
+            ? 'xl:pointer-events-none xl:-translate-x-[150%] xl:opacity-0'
+            : ''
+        }`}
+      >
         <RoomList />
       </aside>
 
-      <div className="mx-auto flex h-full max-w-[40rem] flex-col overflow-hidden rounded-xl border border-gray-200 bg-white">
+      {/* 채팅창 — 패널 열리면 xl에서 좌측으로 -12rem(=-translate-x-48) 이동.
+          xl viewport 1280px에서 chat right edge가 정확히 panel xl:w-[32rem] left edge에 닿게 됨 → 가림 방지. */}
+      <div
+        className={`mx-auto flex h-full max-w-[40rem] flex-col overflow-hidden rounded-xl border border-gray-200 bg-white transition-transform duration-300 ease-out ${
+          anyPanelOpen ? 'xl:-translate-x-48' : ''
+        }`}
+      >
       {/* 헤더 */}
       <div className="flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-3">
         <Link

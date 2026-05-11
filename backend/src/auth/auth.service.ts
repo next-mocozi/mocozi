@@ -6,12 +6,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
-import { Resend } from 'resend';
 
 @Injectable()
 export class AuthService {
-  private resend = new Resend(process.env.RESEND_API_KEY);
-
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
@@ -44,26 +41,12 @@ export class AuthService {
       },
     });
 
-    const verifyUrl = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
-    await this.resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL ?? 'mocozi <onboarding@resend.dev>',
-      to: email,
-      subject: '[모코지] 이메일 인증을 완료해주세요',
-      html: `
-        <p>안녕하세요 ${name}님,</p>
-        <p>아래 버튼을 클릭하여 이메일 인증을 완료해주세요.</p>
-        <a href="${verifyUrl}" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#fff;text-decoration:none;border-radius:6px;font-weight:bold;">
-          이메일 인증하기
-        </a>
-        <p style="color:#6b7280;font-size:12px;margin-top:16px;">링크가 작동하지 않으면 아래 URL을 복사해서 브라우저에 붙여넣기 해주세요.<br/>${verifyUrl}</p>
-      `,
-    }).catch((err: unknown) => {
-      console.error('인증 메일 발송 실패:', err);
-    });
-
+    // Resend 의존성을 lockfile에서 제거한 상태(5030bfc 부분 revert)이므로 실제 메일 발송은 생략.
+    // 프론트는 응답의 verificationToken으로 /verify-email?token=... 호출해 dev 환경에서 직접 인증.
     return {
       message: '회원가입이 완료되었습니다. 이메일을 확인해주세요.',
       userId: user.id,
+      verificationToken: user.verificationToken,
     };
   }
 
@@ -77,7 +60,9 @@ export class AuthService {
     if (!passwordValid) {
       throw new UnauthorizedException('이메일 또는 비밀번호가 올바르지 않습니다.');
     }
-    if (!user.emailVerified) {
+    // production만 이메일 인증 강제. dev/local에선 Resend 미설정·메일 미수신 상황이라
+    // 인증 단계를 막으면 진입 자체가 불가 — 따라서 우회. verify-email API 자체는 유지.
+    if (!user.emailVerified && process.env.NODE_ENV === 'production') {
       throw new UnauthorizedException('이메일 인증이 필요합니다.');
     }
 

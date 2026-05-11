@@ -163,6 +163,16 @@
 }
 
 @theme {
+  /* Breakpoints — px로 강제. Tailwind v4 기본은 rem이지만 미디어 쿼리 내 rem은 브라우저
+     기본 font-size에 의존(html font-size 무관)해서, 사용자가 접근성 폰트 키우면 xl(80rem)이
+     1280px이 아닌 더 큰 값으로 해석돼 sm:/md:/lg:/xl: 등이 의도된 viewport에서 작동 안 함.
+     px로 고정하면 모든 환경에서 일관 동작. */
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+
   /* Indigo primary */
   --color-primary-50:  #eef2ff;
   --color-primary-100: #e0e7ff;

@@ -14,7 +14,7 @@
 |---|---|---|---|
 | 🔐 인증/보안 (외부 의존성) | 2 | 외부 일정 | ⭐⭐⭐ 운영 배포 전 필수 |
 | 🚀 운영/배포 | 3 | 중 | ⭐⭐ Phase B 초기 |
-| 💬 DM 모듈 진화 | 5 | 중·대 | ⭐⭐ 기능 확장 시 |
+| 💬 DM 모듈 진화 | 6 | 중·대 | ⭐⭐ 기능 확장 시 |
 | 🎨 UX 개선 (작은 작업) | 4 | 작음 | ⭐ 시간 될 때 |
 | 🧪 품질/회귀 | 3 | 중 | ⭐ 안정화 시 |
 
@@ -123,6 +123,17 @@
 | **현재 상태** | hidden 방의 새 메시지 도착해도 hidden 유지 (사용자 의도 존중, PR #25 결정) |
 | **대안 패턴** | 인스타 DM처럼 — 의도적 숨김이지만 새 활동 있으면 다시 노출 |
 | **착수 시 작업** | 1) ChatRoomMember에 `autoUnhideOnNewMessage` boolean 또는 사용자 설정, 2) hideRoom 시 사용자가 옵션 선택 |
+
+### B-DM-6. 빈 방(메시지 0개) 누적 정리 — Cron 삭제
+
+| 항목 | 내용 |
+|---|---|
+| **현재 상태** | Phase A에서 frontend RoomList 필터로 시각적으로만 숨김 (양쪽 멤버 동일). DB에는 빈 방이 그대로 누적 (`docs/chat/01-decisions.md` §15 참조). |
+| **착수 트리거** | 운영 환경 DB 부담 ↑ 또는 Supabase row 한도 근접 / 분석 쿼리 성능 저하 |
+| **이유** | 컨텍스트 진입 후 미발화한 빈 방이 시간 누적되면 ChatRoom row 수 ↑. 시각적으론 안 보이지만 인덱스/쿼리 비용 ↑. |
+| **착수 시 작업** | 1) Backend NestJS Cron(`@nestjs/schedule`) 또는 Supabase Edge Function으로 N일(예: 30일) 이상 메시지 0개 방 hard delete, 2) cascade로 ChatRoomMember 같이 삭제, 3) 운영 통계 로깅 (삭제 row 수) |
+| **고려사항** | draft localStorage는 클라이언트에 있으니 backend가 모름. 30일+ 빈 방은 사용자도 의도 잃었을 가능성 높아 안전. 더 보수적이면 90일. |
+| **연관** | `docs/chat/01-decisions.md` §15 빈 방 자동 숨김 정책 (Phase A 시각 정리), B-DM-3 방 폭파 (다른 의도) |
 
 ---
 
