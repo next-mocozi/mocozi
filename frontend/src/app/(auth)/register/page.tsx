@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
+import { UNIVERSITIES } from '@/lib/universities';
 
 /** 회원가입 페이지 */
 export default function RegisterPage() {
@@ -17,6 +18,24 @@ export default function RegisterPage() {
     department: '',
     grade: '',
   });
+
+  const [uniQuery, setUniQuery] = useState('');
+  const [uniOpen, setUniOpen] = useState(false);
+  const uniRef = useRef<HTMLDivElement>(null);
+
+  const filteredUnis = uniQuery.trim()
+    ? UNIVERSITIES.filter((u) => u.includes(uniQuery.trim()))
+    : UNIVERSITIES;
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (uniRef.current && !uniRef.current.contains(e.target as Node)) {
+        setUniOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -114,19 +133,44 @@ export default function RegisterPage() {
             />
           </div>
 
-          <div>
+          <div ref={uniRef} className="relative">
             <label className="mb-1 block text-sm font-medium text-gray-700">
               대학교
             </label>
             <input
               type="text"
-              name="university"
-              value={form.university}
-              onChange={handleChange}
-              placeholder="대학교명을 입력하세요"
+              value={uniQuery || form.university}
+              onChange={(e) => {
+                setUniQuery(e.target.value);
+                setForm({ ...form, university: '' });
+                setUniOpen(true);
+              }}
+              onFocus={() => setUniOpen(true)}
+              placeholder="대학교명을 검색하세요"
               className="input-field"
-              required
+              required={!form.university}
+              autoComplete="off"
             />
+            {uniOpen && filteredUnis.length > 0 && (
+              <ul className="absolute z-10 mt-1 max-h-52 w-full overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg">
+                {filteredUnis.map((u) => (
+                  <li
+                    key={u}
+                    onMouseDown={() => {
+                      setForm({ ...form, university: u });
+                      setUniQuery('');
+                      setUniOpen(false);
+                    }}
+                    className="cursor-pointer px-4 py-2 text-sm hover:bg-indigo-50 hover:text-indigo-700"
+                  >
+                    {u}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {form.university && (
+              <p className="mt-1 text-xs text-indigo-600">선택됨: {form.university}</p>
+            )}
           </div>
 
           <div>

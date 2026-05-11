@@ -14,4 +14,4 @@ RUN pnpm exec prisma generate
 
 EXPOSE 8080
 
-CMD ["sh", "-c", "pnpm exec prisma generate && pnpm start:dev"]
+CMD ["sh", "-c", "pnpm exec prisma generate && pnpm exec prisma db push && pnpm start:dev"]
