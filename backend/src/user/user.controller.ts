@@ -17,6 +17,7 @@ export class UserController {
   }
 
   /** GET /users/:id - 다른 사용자 프로필 조회 */
+  @UseGuards(JwtAuthGuard)
   @Get(':id')
   getProfile(@Param('id') id: string) {
     return this.userService.getProfile(id);

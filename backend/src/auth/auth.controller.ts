@@ -6,8 +6,11 @@ import { LoginDto } from './dto/login.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { IsNotEmpty, IsString } from 'class-validator';
 
 class RefreshDto {
+  @IsString()
+  @IsNotEmpty()
   refreshToken: string;
 }
 
