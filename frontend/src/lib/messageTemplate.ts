@@ -150,10 +150,13 @@ export function parseAttachmentMarker(content: string): ParsedMessage {
  *
  * 규칙:
  *  - 인앱 link 마커 → label만 (예: "[[link:profile:abc|김철수의 프로필]]" → "김철수의 프로필")
- *  - 텍스트 있으면 텍스트 우선 표시 (첨부 마커는 제거)
+ *  - 텍스트 있으면 텍스트 우선 표시 + 첨부 종류 라벨 append:
+ *      · 텍스트 + 이미지(만)            → "텍스트 (이미지)"
+ *      · 텍스트 + 파일(만)              → "텍스트 (파일)"
+ *      · 텍스트 + 이미지·파일 혼합      → "텍스트 (파일)" (혼합은 파일로 통합)
  *  - 텍스트 없고 첨부만 있으면:
- *      · 파일이 하나라도 있음 → "파일을 보냈습니다."  (file 우선 — 이미지+파일 혼합도 file 표시)
- *      · 이미지만 있음        → "이미지를 보냈습니다."
+ *      · 이미지만 → "이미지를 보냈습니다."
+ *      · 그 외(파일만 / 혼합) → "파일을 보냈습니다."
  *  - 빈 메시지 fallback → "메시지가 없습니다."
  */
 export function summarizePreview(raw: string | null | undefined): string {
@@ -173,8 +176,14 @@ export function summarizePreview(raw: string | null | undefined): string {
     .replace(/\s+/g, ' ')
     .trim();
 
-  // 4. 우선순위: 텍스트 > 파일 > 이미지 > fallback
-  if (s) return s;
+  // 4. 텍스트 있음 — 첨부 종류에 따라 라벨 append
+  if (s) {
+    if (hasFile) return `${s} (파일)`; // 파일 단독 또는 이미지+파일 혼합 → "(파일)"
+    if (hasImage) return `${s} (이미지)`;
+    return s;
+  }
+
+  // 5. 텍스트 없음 — 첨부 종류 안내 문구
   if (hasFile) return '파일을 보냈습니다.';
   if (hasImage) return '이미지를 보냈습니다.';
   return '메시지가 없습니다.';
