@@ -269,9 +269,62 @@ export async function hydratePortfolioFromBackend(): Promise<void> {
     mergeWorkExperiencesFromBackend(remote.workExperiences ?? []);
     mergeActivitiesFromBackend(remote.activities ?? []);
     mergeLinksFromBackend(remote.links ?? []);
+
+    // localStorage → backend 역방향 reconcile.
+    // 어떤 이유로 (silent fail / 작성 흐름 도중 멈춤 / 옛 코드 시절 작성 등)
+    // backend 에 안 간 항목들을 자동으로 sync. 사용자가 카드를 다시 만들지 않아도
+    // 페이지 진입만 하면 backend 가 채워진다. 멱등 — 매핑 있는 건 skip.
+    await reconcileLocalToBackend();
   } catch (err) {
     if (process.env.NODE_ENV !== 'production') {
       console.warn('[portfolio-sync] hydrate failed (localStorage 유지):', err);
+    }
+  }
+}
+
+/** localStorage 에만 있는 (= backend 매핑 없는) 항목들을 backend 로 sync.
+ *  items / work / activity / link 4종 모두 처리. 실패해도 throw 안 함. */
+async function reconcileLocalToBackend(): Promise<void> {
+  if (typeof window === 'undefined') return;
+
+  const readArr = <T,>(key: string): T[] => {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? (JSON.parse(raw) as T[]) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  // PortfolioItem
+  const items = readArr<PortfolioItem>(ITEMS_STORAGE_KEY);
+  for (const it of items) {
+    if (!getServerId(it.id)) {
+      await syncItemToBackend(it);
+    }
+  }
+
+  // 실무 경험
+  const exps = readArr<Experience>(EXPS_STORAGE_KEY);
+  for (const exp of exps) {
+    if (!getMappedServerId(WORK_ID_MAP_KEY, exp.id)) {
+      await syncWorkExperienceToBackend(exp);
+    }
+  }
+
+  // 대외 활동
+  const careers = readArr<CareerItem>(CAREERS_STORAGE_KEY);
+  for (const c of careers) {
+    if (!getMappedServerId(ACTIVITY_ID_MAP_KEY, c.id)) {
+      await syncActivityToBackend(c);
+    }
+  }
+
+  // 외부 링크
+  const links = readArr<ProfileLink>(LINKS_STORAGE_KEY);
+  for (const l of links) {
+    if (!getMappedServerId(LINK_ID_MAP_KEY, l.id)) {
+      await syncLinkToBackend(l);
     }
   }
 }

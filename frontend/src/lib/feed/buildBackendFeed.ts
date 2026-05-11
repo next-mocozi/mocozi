@@ -58,19 +58,27 @@ export function buildBackendFeedPosts(portfolios: FeedPortfolio[]): FeedPost[] {
     const author = makeAuthor(p);
     // ProfilePost 시점 결정 우선순위:
     //  1. portfolio.firstPostAt (onboarding 시 명시 설정)
-    //  2. 가장 오래된 portfolio item 의 createdAt (firstPostAt 미설정 사용자 대응)
-    //  3. 둘 다 없으면 null — 아래에서 ProfilePost 자체를 skip
-    // (이전엔 fallback 이 Date.now() 라 모든 ProfilePost 가 "방금 전" 으로 표시됨)
+    //  2. 모든 게시물(item/work/activity/link) 중 가장 오래된 createdAt
+    //  3. user.createdAt (가입 시점) — onboarding PATCH 가 어떤 이유로 실패해
+    //     firstPostAt 이 null 인 사용자도 자기소개·기술스택만 있으면 노출되도록
+    // 어떤 경우든 null 로 두지 않음 — "방금 전" 으로 표시되던 fallback 만 제거.
     let firstAt: number | null = null;
     if (p.firstPostAt) {
       const ts = new Date(p.firstPostAt).getTime();
       if (!Number.isNaN(ts)) firstAt = ts;
     }
-    if (firstAt === null && p.items.length > 0) {
-      const itemTimes = p.items
-        .map((i) => new Date(i.createdAt).getTime())
-        .filter((n) => !Number.isNaN(n));
-      if (itemTimes.length > 0) firstAt = Math.min(...itemTimes);
+    if (firstAt === null) {
+      const allTimes = [
+        ...p.items.map((i) => new Date(i.createdAt).getTime()),
+        ...(p.workExperiences ?? []).map((w) => new Date(w.createdAt).getTime()),
+        ...(p.activities ?? []).map((a) => new Date(a.createdAt).getTime()),
+        ...(p.links ?? []).map((l) => new Date(l.createdAt).getTime()),
+      ].filter((n) => !Number.isNaN(n));
+      if (allTimes.length > 0) firstAt = Math.min(...allTimes);
+    }
+    if (firstAt === null && p.user.createdAt) {
+      const ts = new Date(p.user.createdAt).getTime();
+      if (!Number.isNaN(ts)) firstAt = ts;
     }
 
     // 각 게시물 자체 createdAt 우선, 없을 땐 firstAt fallback. 둘 다 없으면 0.
@@ -123,9 +131,8 @@ export function buildBackendFeedPosts(portfolios: FeedPortfolio[]): FeedPost[] {
       } satisfies FeedPostCareer);
     });
 
-    // 4) ProfilePost — bio + skills 둘 다 있고 firstAt 도 결정됐을 때만 노출.
-    // firstAt 이 null (firstPostAt 미설정 + items 도 0개) 인 사용자는
-    // ProfilePost 자체를 만들지 않는다. "방금 전" 으로 표시되는 혼란 방지.
+    // 4) ProfilePost — bio + skills 만 있으면 무조건 노출.
+    // firstAt 은 위에서 user.createdAt fallback 까지 적용해 null 이 안 됨.
     const intro = (p.user.bio ?? '').trim();
     const skills = p.user.skills ?? [];
     if (intro && skills.length > 0 && firstAt !== null) {

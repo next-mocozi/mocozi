@@ -75,6 +75,10 @@ export class PortfolioService {
             profileImage: true,
             roles: true,
             skills: true,
+            // firstPostAt 미설정 사용자의 ProfilePost 시점 fallback 용도.
+            // (onboarding PATCH 가 어떤 이유로 실패한 사용자도 자기소개·기술스택만
+            //  있으면 메인 피드에 노출되도록.)
+            createdAt: true,
           },
         },
       },

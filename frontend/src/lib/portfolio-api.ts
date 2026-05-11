@@ -128,6 +128,8 @@ export type FeedUserMeta = {
   profileImage: string | null;
   roles: string[];
   skills: string[];
+  /** 사용자 가입 시점 — firstPostAt 미설정자의 ProfilePost fallback 용도 */
+  createdAt: string;
 };
 
 export type FeedPortfolio = BackendPortfolio & { user: FeedUserMeta };

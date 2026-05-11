@@ -13,6 +13,7 @@ import {
   deleteWorkExperienceFromBackend,
   syncActivityToBackend,
   deleteActivityFromBackend,
+  hydratePortfolioFromBackend,
 } from '@/lib/portfolio-mapper';
 import PortfolioSegmentedNav from '@/components/portfolio/PortfolioSegmentedNav';
 import {
@@ -194,9 +195,23 @@ export default function PortfolioDetailPage({
   );
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  // owner 만 localStorage 에서 본인 데이터 hydrate. viewer 는 viewerInitial 그대로 유지.
+  // owner 만 backend hydrate → localStorage 읽기 → state set. viewer 는 viewerInitial 유지.
+  // hydrate 를 먼저 await 해서 backend 의 isPublic/firstPostAt 등이 localStorage 에
+  // 머지된 뒤 읽도록 한다. (이전엔 localStorage 만 읽어서 새 환경/시크릿 창에서
+  // visibility 가 'private' 으로 잘못 보이는 문제 발생.)
   useEffect(() => {
     if (!isOwner) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        await hydratePortfolioFromBackend();
+      } catch {
+        // 무시 — localStorage 만으로도 동작 유지
+      }
+      if (cancelled) return;
+      hydrateFromLocalStorage();
+    })();
+    function hydrateFromLocalStorage() {
     const load = <T,>(key: string, fallback: T): T => {
       try {
         const raw = localStorage.getItem(key);
@@ -253,6 +268,10 @@ export default function PortfolioDetailPage({
     } catch {
       setVisibility('private');
     }
+    }
+    return () => {
+      cancelled = true;
+    };
     // user.bio / user.roles 가 늦게 도착(refreshUser 직후 등)하면 다시 머지하기 위해
     // user 도 deps 에 포함.
   }, [isOwner, user]);
