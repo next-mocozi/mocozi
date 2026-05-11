@@ -1,15 +1,38 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { TYPE_META } from '@/app/portfolio/_lib';
+import { TYPE_META, type PortfolioItem, type PortfolioItemType } from '@/app/portfolio/_lib';
 import ItemFullView, {
   loadItemDetails,
 } from '@/app/portfolio/_ItemFullView';
-import { findMockFeedUser } from '@/lib/mock/portfolioFeed';
+import api from '@/lib/api';
+import { getPortfolioByUserId, type BackendPortfolio } from '@/lib/portfolio-api';
 import type { FeedPost } from '@/lib/feed/types';
 import { timeAgo } from '@/lib/timeAgo';
+
+/** 작성자 종합 미리보기 패널에서 사용. backend GET /api/users/:id + /portfolios/users/:id 로
+ *  필요한 필드만 채운 가벼운 형태. */
+type AuthorDetailData = {
+  name: string;
+  university: string;
+  department: string;
+  grade: string | null;
+  profileImage: string | null;
+  bio: string | null;
+  roles: string[];
+  skills: string[];
+  portfolio: BackendPortfolio | null;
+};
+
+const TYPE_FROM_BACKEND: Record<string, PortfolioItemType> = {
+  PROJECT: 'project',
+  RESEARCH: 'research',
+  STUDY: 'study',
+  ACTIVITY: 'activity',
+  ETC: 'etc',
+};
 
 /** 우측 상세 패널 — 두 가지 모드:
  *  - 'post': 게시물(FeedPost) 상세. 작성자 + 본문(항목/경험/경력/프로필) 전체 노출.
@@ -37,11 +60,10 @@ export default function FeedDetailPanel({
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  // author 모드일 때 헤더에 표시할 이름 (없으면 fallback '프로필')
-  const authorName =
-    target.mode === 'author'
-      ? findMockFeedUser(target.userId)?.name
-      : undefined;
+  // author 모드일 때 헤더 이름은 AuthorDetail 내부 fetch 로 채워지므로
+  // 헤더에선 일반적인 "프로필" 라벨만 노출. (이전엔 mock 에서 동기로 이름을
+  // 가져왔는데, mock 제거 후 항상 undefined 가 되어 의미가 없어짐.)
+  const authorName: string | undefined = undefined;
 
   return (
     <aside className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-lg">
@@ -192,10 +214,62 @@ function PostBody({ post }: { post: Exclude<FeedPost, { kind: 'item' }> }) {
 }
 
 // ──────── 작성자 종합 미리보기 ────────
+// backend GET /api/users/:id + /api/portfolios/users/:id 로 데이터 fetch.
+// 비공개 portfolio 는 backend 가 items/work/activity/link 빈 배열로 응답.
 function AuthorDetail({ userId }: { userId: string }) {
-  const feedUser = useMemo(() => findMockFeedUser(userId), [userId]);
+  const [data, setData] = useState<AuthorDetailData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
-  if (!feedUser) {
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setNotFound(false);
+    (async () => {
+      try {
+        const [userRes, portfolio] = await Promise.all([
+          api.get(`/api/users/${userId}`),
+          getPortfolioByUserId(userId).catch(() => null),
+        ]);
+        if (cancelled) return;
+        const u = (userRes.data?.data ?? userRes.data) as
+          | (Omit<AuthorDetailData, 'portfolio'> & { id: string })
+          | null;
+        if (!u) {
+          setNotFound(true);
+          return;
+        }
+        setData({
+          name: u.name,
+          university: u.university,
+          department: u.department,
+          grade: u.grade ?? null,
+          profileImage: u.profileImage ?? null,
+          bio: u.bio ?? null,
+          roles: u.roles ?? [],
+          skills: u.skills ?? [],
+          portfolio,
+        });
+      } catch {
+        if (!cancelled) setNotFound(true);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <p className="text-sm text-gray-400">로딩 중…</p>
+      </div>
+    );
+  }
+
+  if (notFound || !data) {
     return (
       <div className="text-center">
         <div className="mb-2 text-3xl">🔒</div>
@@ -209,16 +283,36 @@ function AuthorDetail({ userId }: { userId: string }) {
     );
   }
 
-  const portfolio = feedUser.portfolio;
+  // backend roles[] → mainRole / subRoles 분리
+  const mainRole = data.roles[0];
+  const subRoles = data.roles.slice(1);
+  // 대표 프로젝트/연구/스터디 — backend item 형식을 프론트 type 으로 변환
+  const featured: PortfolioItem[] = (data.portfolio?.items ?? [])
+    .filter((b) => b.featured)
+    .map((b) => ({
+      id: new Date(b.createdAt).getTime() || Date.now(),
+      type: TYPE_FROM_BACKEND[b.type] ?? 'project',
+      title: b.title,
+      description: b.description,
+      summary: b.summary ?? undefined,
+      period: b.period ?? b.duration ?? '',
+      current: b.current ?? false,
+      domain: b.domain || undefined,
+      tags: b.tags ?? [],
+      featured: true,
+      thumbnail: b.thumbnail ?? undefined,
+      createdAt: new Date(b.createdAt).getTime(),
+    }));
+
   return (
     <div className="space-y-5">
       {/* 프로필 헤더 — 이름 오른쪽에 [포트폴리오로 →] 버튼 */}
       <div className="flex items-start gap-3">
         <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary-100 text-2xl text-primary-600">
-          {feedUser.profileImage ? (
+          {data.profileImage ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={feedUser.profileImage}
+              src={data.profileImage}
               alt=""
               className="h-full w-full rounded-full object-cover"
             />
@@ -229,35 +323,32 @@ function AuthorDetail({ userId }: { userId: string }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <h2 className="min-w-0 truncate text-lg font-bold text-gray-900">
-              {feedUser.name}
+              {data.name}
             </h2>
             <Link
-              href={`/portfolio/${feedUser.userId}`}
+              href={`/portfolio/${userId}`}
               className="inline-flex shrink-0 items-center gap-1 rounded-full border border-gray-200 px-3 py-1 text-xs text-gray-700 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
             >
               포트폴리오로 →
             </Link>
           </div>
           <p className="text-xs text-gray-500">
-            {feedUser.university} · {feedUser.department}
-            {feedUser.grade &&
-              ` · ${/^\d+$/.test(feedUser.grade) ? `${feedUser.grade}학년` : feedUser.grade}`}
+            {data.university} · {data.department}
+            {data.grade &&
+              ` · ${/^\d+$/.test(data.grade) ? `${data.grade}학년` : data.grade}`}
           </p>
-          {feedUser.bio && (
-            <p className="mt-1 text-xs text-gray-600">{feedUser.bio}</p>
-          )}
         </div>
       </div>
 
       {/* 직군 */}
-      {(feedUser.mainRole || (feedUser.subRoles && feedUser.subRoles.length > 0)) && (
+      {(mainRole || subRoles.length > 0) && (
         <div className="flex flex-wrap items-center gap-1">
-          {feedUser.mainRole && (
+          {mainRole && (
             <span className="rounded-full bg-blue-600 px-3 py-1 text-xs leading-none text-white">
-              {feedUser.mainRole}
+              {mainRole}
             </span>
           )}
-          {feedUser.subRoles?.map((r) => (
+          {subRoles.map((r) => (
             <span
               key={r}
               className="rounded-full border border-blue-200 px-3 py-1 text-xs leading-none text-blue-600"
@@ -269,11 +360,11 @@ function AuthorDetail({ userId }: { userId: string }) {
       )}
 
       {/* 기술 스택 */}
-      {feedUser.skills.length > 0 && (
+      {data.skills.length > 0 && (
         <div>
           <h3 className="mb-2 text-xs font-semibold text-gray-500">기술 스택</h3>
           <div className="flex flex-wrap gap-1">
-            {feedUser.skills.map((s) => (
+            {data.skills.map((s) => (
               <span
                 key={s}
                 className="rounded bg-blue-50 px-2 py-1 text-xs text-blue-600"
@@ -285,55 +376,49 @@ function AuthorDetail({ userId }: { userId: string }) {
         </div>
       )}
 
-      {/* 자기소개 */}
-      {portfolio.introduction && (
+      {/* 자기소개 — backend 는 user.bio 한 필드. mock 의 portfolio.introduction 와 동일 위치. */}
+      {data.bio && (
         <div>
           <h3 className="mb-2 text-xs font-semibold text-gray-500">자기소개</h3>
           <p className="whitespace-pre-wrap rounded-lg border border-gray-100 bg-gray-50/50 px-4 py-3 text-sm leading-relaxed text-gray-700">
-            {portfolio.introduction}
+            {data.bio}
           </p>
         </div>
       )}
 
-      {/* 항목 미리보기 — 작성자가 직접 고른 대표 항목만.
-         프로젝트 4 + 연구 2 + 스터디 2 = 최대 8개. 모두 다 보이면 번잡해지므로 대표만 노출. */}
-      {(() => {
-        const featured = portfolio.items.filter((it) => it.featured);
-        if (featured.length === 0) return null;
-        return (
-          <div>
-            <h3 className="mb-2 text-xs font-semibold text-gray-500">
-              대표 프로젝트·연구·스터디
-            </h3>
-            <ul className="space-y-2">
-              {featured.map((item) => {
-                const meta = TYPE_META[item.type];
-                return (
-                  <li
-                    key={item.id}
-                    className="rounded-lg border border-gray-100 px-3 py-2"
-                  >
-                    <div className="mb-1 flex flex-wrap items-center gap-2">
-                      <span
-                        className={`rounded px-2 py-0.5 text-[10px] ${meta.bg} ${meta.text}`}
-                      >
-                        {meta.label}
-                      </span>
-                      <span className="text-[11px] text-gray-500">
-                        {item.period}
-                      </span>
-                    </div>
-                    <p className="text-sm font-semibold text-gray-800">
-                      {item.title}
-                    </p>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        );
-      })()}
-
+      {/* 대표 프로젝트·연구·스터디 — featured 만 노출 */}
+      {featured.length > 0 && (
+        <div>
+          <h3 className="mb-2 text-xs font-semibold text-gray-500">
+            대표 프로젝트·연구·스터디
+          </h3>
+          <ul className="space-y-2">
+            {featured.map((item) => {
+              const meta = TYPE_META[item.type];
+              return (
+                <li
+                  key={item.id}
+                  className="rounded-lg border border-gray-100 px-3 py-2"
+                >
+                  <div className="mb-1 flex flex-wrap items-center gap-2">
+                    <span
+                      className={`rounded px-2 py-0.5 text-[10px] ${meta.bg} ${meta.text}`}
+                    >
+                      {meta.label}
+                    </span>
+                    <span className="text-[11px] text-gray-500">
+                      {item.period}
+                    </span>
+                  </div>
+                  <p className="text-sm font-semibold text-gray-800">
+                    {item.title}
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
