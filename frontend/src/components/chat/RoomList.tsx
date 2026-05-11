@@ -45,6 +45,18 @@ let hasLoadedOnceInSession = false;
  */
 let cachedActiveRooms: ChatRoomWithMembers[] | null = null;
 
+/**
+ * 같은 탭 세션 내 "숨긴 채팅 보기" 모드 유지.
+ *
+ * showingHidden을 useState만 쓰면 `/chat` ↔ `/chat/[roomId]` 라우팅 시 RoomList가
+ * unmount/remount되면서 false로 리셋 → 숨김 모드에서 방 클릭 시 라우팅 후 활성 모드로 바뀜
+ * (사용자 의도와 다름). module-level 변수로 페이지 라우팅에 살아남게 함.
+ *
+ * "활성 채팅" 버튼 클릭(toggleHidden(false))으로만 명시적 복귀. hard reload / 새 탭 시는
+ * 초기값(false)으로 자연 리셋.
+ */
+let lastShowingHidden = false;
+
 export default function RoomList() {
   const router = useRouter();
   const pathname = usePathname();
@@ -60,19 +72,23 @@ export default function RoomList() {
     setRoomUnhidden,
   } = useChatNotifications();
 
-  // lazy initializer로 module cache에서 즉시 복구 — fetch 응답 전까지 이전 데이터 노출.
-  // 첫 마운트는 cache 없음 → [] 시작 + spinner. remount는 cache 있음 → 즉시 데이터 + silent.
-  const [rooms, setRooms] = useState<ChatRoomWithMembers[]>(
-    () => cachedActiveRooms ?? [],
+  /**
+   * "숨긴 채팅 보기" 토글 — true면 onlyHidden, false면 active만.
+   * 마운트 초기값은 module-level `lastShowingHidden` (페이지 라우팅 후에도 모드 유지).
+   */
+  const [showingHidden, setShowingHidden] = useState(() => lastShowingHidden);
+
+  // 활성 모드면 cache로 즉시 복구. 숨김 모드는 cache 없으니 빈 배열 + spinner.
+  const [rooms, setRooms] = useState<ChatRoomWithMembers[]>(() =>
+    showingHidden ? [] : (cachedActiveRooms ?? []),
   );
-  // 첫 마운트면 spinner 보임(true), 같은 세션 내 remount면 즉시 silent(false).
-  // 첫 paint 시점부터 결정해야 깜빡임 없음 — useEffect로 늦게 끄면 한 frame spinner 노출.
-  const [loading, setLoading] = useState(!hasLoadedOnceInSession);
+  // 첫 마운트 + 활성 모드: hasLoadedOnceInSession=false면 spinner. true면 cache로 즉시 표시.
+  // 숨김 모드 마운트: 항상 spinner (cache 없음 + fetch 필요).
+  const [loading, setLoading] = useState(
+    showingHidden ? true : !hasLoadedOnceInSession,
+  );
   const [error, setError] = useState<string | null>(null);
   const [newChatOpen, setNewChatOpen] = useState(false);
-
-  /** "숨긴 채팅 보기" 토글 — true면 onlyHidden, false면 active만 */
-  const [showingHidden, setShowingHidden] = useState(false);
   /** ⋯ 메뉴 열린 방 id (한 번에 하나만) */
   const [openMenuRoomId, setOpenMenuRoomId] = useState<string | null>(null);
   /** 확인 다이얼로그 — 'hide' / 'leave' 행동 + 대상 방 */
@@ -200,6 +216,7 @@ export default function RoomList() {
    *   회피. fetch 완료(load의 finally)에서 자동 setLoading(false)
    */
   const toggleHidden = useCallback((next: boolean) => {
+    lastShowingHidden = next; // module-level과 동기화 — 다음 마운트가 이 모드로 시작
     setRooms([]);
     setLoading(true);
     setShowingHidden(next);
