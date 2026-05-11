@@ -439,7 +439,7 @@ export default function RoomList() {
           - 셋 다 아니면 숨김 (양쪽 멤버 모두 동일 동작)
           - "숨긴 채팅" 화면(showingHidden)에선 이 필터 우회 — 명시 숨김한 빈 방도 표시 */}
       {(() => {
-        const visibleRooms = showingHidden
+        const filtered = showingHidden
           ? rooms
           : rooms.filter((room) => {
               // 현재 보고 있는 방 — 빈 방이어도 list에 노출
@@ -455,6 +455,15 @@ export default function RoomList() {
               }
               return false;
             });
+        // 정렬 기준: lastMessageAt ?? createdAt — 빈 방은 자기 생성 시점.
+        // backend는 NULLS LAST로 빈 방 가장 아래에 두지만, §15 정책상 빈 방도
+        // "진입 시점(createdAt)" 기준으로 timeline에 끼워넣어야 자연스러움.
+        // socket으로 lastMessageAt 갱신되면 자동 재정렬됨 (sort 매 render 적용).
+        const visibleRooms = filtered.slice().sort((a, b) => {
+          const aTs = new Date(a.lastMessageAt ?? a.createdAt).getTime();
+          const bTs = new Date(b.lastMessageAt ?? b.createdAt).getTime();
+          return bTs - aTs;
+        });
         return (
       <div className="flex-1 divide-y divide-stone-200 overflow-y-auto">
         {loading && (

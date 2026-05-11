@@ -355,6 +355,14 @@ if (message.deletedAt) {
 
 **예외**: "숨긴 채팅" 화면(`showingHidden=true`)에선 필터 우회. 명시 숨김한 방은 메시지 유무 무관 표시.
 
+**정렬 기준** (필터 통과 후 frontend client-side sort, useMemo 캐싱):
+`lastMessageAt ?? createdAt` DESC. 즉 빈 방은 자기 생성 시점(=진입 시점)으로 timeline에
+끼워넣음. 예: 10:01 진입한 빈 방은 9:55 메시지 받은 방보다 위, 10:02 메시지 받은 방보다
+아래. socket으로 lastMessageAt 갱신되면 sort가 매 render 재계산되어 자동 정렬.
+
+backend `getUserRooms`는 `lastMessageAt DESC NULLS LAST`라 빈 방을 모두 가장 아래로
+밀지만, frontend 정렬 보정으로 진입 시점 기준 우선. (backend 변경 없음)
+
 **근거**:
 - **삭제 vs 숨김 비교 시 "삭제" 불필요**: backend는 DIRECT 방에 find-or-create 패턴이라 같은 멤버 조합으로 재진입 시 기존 방 재사용. 메시지 0개 방을 list에서 숨겨도 재진입 동작 동일.
 - **양쪽 일관성**: 본인만 숨기는 hiddenAt 방식은 상대 화면엔 여전히 빈 방 남음 → 상대도 더러워 보임. 양쪽 모두 필터 적용해야 깔끔.
