@@ -35,7 +35,10 @@ const PORTFOLIO_INCLUDE = {
 export class PortfolioService {
   constructor(private prisma: PrismaService) {}
 
-  /** 내 포트폴리오 조회 (없으면 생성) */
+  /** 내 포트폴리오 조회 (없으면 생성).
+   *  firstPostAt 이 null 이면 user.createdAt 으로 자동 채움. (onboarding PATCH 가
+   *  실패한 사용자 + 카드/work/activity/link 도 0 인 신규 사용자의 ProfilePost 가
+   *  "방금 전" 으로 표시되던 현상 차단 — 가입 시점으로 안정화.) */
   async getMyPortfolio(userId: string) {
     let portfolio = await this.prisma.portfolio.findUnique({
       where: { userId },
@@ -47,6 +50,20 @@ export class PortfolioService {
         data: { userId },
         include: PORTFOLIO_INCLUDE,
       });
+    }
+
+    if (!portfolio.firstPostAt) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { createdAt: true },
+      });
+      if (user?.createdAt) {
+        portfolio = await this.prisma.portfolio.update({
+          where: { id: portfolio.id },
+          data: { firstPostAt: user.createdAt },
+          include: PORTFOLIO_INCLUDE,
+        });
+      }
     }
 
     return portfolio;
