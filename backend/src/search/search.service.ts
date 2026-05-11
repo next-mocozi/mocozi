@@ -67,6 +67,8 @@ export class SearchService {
       where.university = { contains: filters.university, mode: 'insensitive' };
     }
 
+    where.emailVerified = true;
+
     return this.prisma.user.findMany({
       where,
       select: {

@@ -10,6 +10,10 @@ function VerifyEmailContent() {
   const router = useRouter();
   const token = searchParams.get('token');
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const [errorMessage, setErrorMessage] = useState('유효하지 않거나 만료된 링크입니다.');
+  const [resendEmail, setResendEmail] = useState('');
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendDone, setResendDone] = useState(false);
   const called = useRef(false);
 
   useEffect(() => {
@@ -20,8 +24,24 @@ function VerifyEmailContent() {
         setStatus('success');
         setTimeout(() => router.push('/login'), 2000);
       })
-      .catch(() => setStatus('error'));
+      .catch((err: any) => {
+        setErrorMessage(err.response?.data?.message || '유효하지 않거나 만료된 링크입니다.');
+        setStatus('error');
+      });
   }, [token]);
+
+  const handleResend = async () => {
+    if (!resendEmail) return;
+    setResendLoading(true);
+    try {
+      await api.post('/api/auth/resend-verification', { email: resendEmail });
+      setResendDone(true);
+    } catch {
+      alert('재발송에 실패했습니다. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setResendLoading(false);
+    }
+  };
 
   return (
     <div className="card w-full max-w-md text-center">
@@ -55,10 +75,30 @@ function VerifyEmailContent() {
         <>
           <div className="mb-4 text-5xl">❌</div>
           <h1 className="mb-4 text-2xl font-bold">인증 실패</h1>
-          <p className="text-gray-600">유효하지 않거나 만료된 링크입니다.</p>
-          <Link href="/register" className="btn-primary mt-6 inline-block">
-            다시 회원가입
-          </Link>
+          <p className="mb-6 text-gray-600">{errorMessage}</p>
+          {resendDone ? (
+            <p className="text-sm text-green-600">인증 메일을 재발송했습니다. 메일함을 확인해주세요.</p>
+          ) : (
+            <div className="mt-2 text-left">
+              <p className="mb-2 text-sm text-gray-500">인증 메일을 다시 받으시겠어요?</p>
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  value={resendEmail}
+                  onChange={(e) => setResendEmail(e.target.value)}
+                  placeholder="가입한 이메일 주소"
+                  className="input-field flex-1"
+                />
+                <button
+                  onClick={handleResend}
+                  disabled={resendLoading || !resendEmail}
+                  className="btn-primary px-4 disabled:opacity-50"
+                >
+                  {resendLoading ? '발송 중...' : '재발송'}
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

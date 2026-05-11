@@ -17,6 +17,8 @@ export default function RegisterPage() {
     grade: '',
   });
   const [emailSent, setEmailSent] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendDone, setResendDone] = useState(false);
 
   const [uniQuery, setUniQuery] = useState('');
   const [uniOpen, setUniOpen] = useState(false);
@@ -61,6 +63,18 @@ export default function RegisterPage() {
     }
   };
 
+  const handleResend = async () => {
+    setResendLoading(true);
+    try {
+      await api.post('/api/auth/resend-verification', { email: form.email });
+      setResendDone(true);
+    } catch {
+      alert('재발송에 실패했습니다. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
   if (emailSent) {
     return (
       <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center py-8">
@@ -73,16 +87,21 @@ export default function RegisterPage() {
           <p className="mb-6 text-gray-600">
             인증 링크를 보냈습니다. 메일함을 확인해주세요.
           </p>
-          <p className="text-xs text-gray-400">
-            메일이 오지 않으면 스팸함을 확인하거나{' '}
-            <button
-              onClick={() => setEmailSent(false)}
-              className="text-indigo-500 underline hover:text-indigo-700"
-            >
-              다시 시도
-            </button>
-            해주세요.
-          </p>
+          {resendDone ? (
+            <p className="text-xs text-green-600">인증 메일을 재발송했습니다.</p>
+          ) : (
+            <p className="text-xs text-gray-400">
+              메일이 오지 않으면 스팸함을 확인하거나{' '}
+              <button
+                onClick={handleResend}
+                disabled={resendLoading}
+                className="text-indigo-500 underline hover:text-indigo-700 disabled:opacity-50"
+              >
+                {resendLoading ? '발송 중...' : '재발송'}
+              </button>
+              해주세요.
+            </p>
+          )}
           <div className="mt-6">
             <Link href="/login" className="text-sm text-gray-500 hover:underline">
               로그인 페이지로 이동
