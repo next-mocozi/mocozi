@@ -193,11 +193,15 @@ export default function RoomList() {
 
   /**
    * "숨긴 채팅 보기" ↔ "활성 채팅" 토글.
-   * setRooms([])로 즉시 비워서, 토글 직후 fetch 도착 전까지 옛 rooms가 visibleRooms 필터
-   * 우회로 raw 노출되는 깜빡임 회피. fetch 완료되면 새 모드 rooms로 채워짐.
+   *
+   * - setRooms([])로 즉시 비움: 토글 직후 옛 rooms가 visibleRooms 필터 우회로 raw 노출되는
+   *   깜빡임 회피
+   * - setLoading(true)로 명시 spinner: 빈 list가 "아직 채팅 내역이 없습니다"로 잘못 신호되는 것
+   *   회피. fetch 완료(load의 finally)에서 자동 setLoading(false)
    */
   const toggleHidden = useCallback((next: boolean) => {
     setRooms([]);
+    setLoading(true);
     setShowingHidden(next);
   }, []);
 
