@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
+import useSWR from 'swr';
 import { useAuth } from '@/hooks/useAuth';
 import { TYPE_META, type PortfolioItem, type PortfolioItemType } from '@/app/portfolio/_lib';
 import ItemFullView, {
@@ -100,26 +101,29 @@ function PostDetail({ post }: { post: FeedPost }) {
   const { user } = useAuth();
   const created = timeAgo(post.createdAt);
 
-  // 본인 게시물의 item — localStorage 에서 인터뷰/연구/스터디 상세 로드.
-  // 타인 게시물 — backend 의 rawDetails(통합 Json) 를 kind 별로 분해해 동일 형식으로
-  // 만들어 ItemFullView 가 작성자 미리보기 그대로(사진·마크다운·인터뷰 답변 등) 노출.
+  // 본인·타인 모두 rawDetails 를 공통 파서로 처리.
+  // 본인 게시물은 localStorage 에서 먼저 시도하고, 비어있으면 rawDetails 로 fallback.
+  // (새 기기/시크릿 창에서 localStorage 가 없을 때 첫 번째 질문만 보이던 문제 수정)
   const itemDetails = useMemo(() => {
     if (post.kind !== 'item') return null;
+
+    const parseRaw = () => {
+      const raw = post.rawDetails;
+      if (!raw || typeof raw !== 'object') return null;
+      if (raw.kind === 'interview') return { details: raw.data as never, research: null, study: null };
+      if (raw.kind === 'research') return { details: null, research: raw.data as never, study: null };
+      if (raw.kind === 'study') return { details: null, research: null, study: raw.data as never };
+      return null;
+    };
+
     if (user && user.id === post.author.userId) {
-      return loadItemDetails(post.item.id);
+      const local = loadItemDetails(post.item.id);
+      if (local.details !== null || local.research !== null || local.study !== null) {
+        return local;
+      }
+      return parseRaw();
     }
-    const raw = post.rawDetails;
-    if (!raw || typeof raw !== 'object') return null;
-    if (raw.kind === 'interview') {
-      return { details: raw.data as never, research: null, study: null };
-    }
-    if (raw.kind === 'research') {
-      return { details: null, research: raw.data as never, study: null };
-    }
-    if (raw.kind === 'study') {
-      return { details: null, research: null, study: raw.data as never };
-    }
-    return null;
+    return parseRaw();
   }, [post, user]);
 
   return (
@@ -230,52 +234,37 @@ function PostBody({ post }: { post: Exclude<FeedPost, { kind: 'item' }> }) {
 // ──────── 작성자 종합 미리보기 ────────
 // backend GET /api/users/:id + /api/portfolios/users/:id 로 데이터 fetch.
 // 비공개 portfolio 는 backend 가 items/work/activity/link 빈 배열로 응답.
+// SWR로 캐싱 — 60초 내 같은 작성자 재클릭 시 즉시 표시.
+async function fetchAuthorDetail(userId: string): Promise<AuthorDetailData> {
+  const [userRes, portfolio] = await Promise.all([
+    api.get(`/api/users/${userId}`),
+    getPortfolioByUserId(userId).catch(() => null),
+  ]);
+  const u = (userRes.data?.data ?? userRes.data) as
+    | (Omit<AuthorDetailData, 'portfolio'> & { id: string })
+    | null;
+  if (!u) throw new Error('not found');
+  return {
+    name: u.name,
+    university: u.university,
+    department: u.department,
+    grade: u.grade ?? null,
+    profileImage: u.profileImage ?? null,
+    bio: u.bio ?? null,
+    roles: u.roles ?? [],
+    skills: u.skills ?? [],
+    portfolio,
+  };
+}
+
 function AuthorDetail({ userId }: { userId: string }) {
-  const [data, setData] = useState<AuthorDetailData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
+  const { data, isLoading, error } = useSWR(
+    `author-${userId}`,
+    () => fetchAuthorDetail(userId),
+    { revalidateOnFocus: false, dedupingInterval: 60_000 },
+  );
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setNotFound(false);
-    (async () => {
-      try {
-        const [userRes, portfolio] = await Promise.all([
-          api.get(`/api/users/${userId}`),
-          getPortfolioByUserId(userId).catch(() => null),
-        ]);
-        if (cancelled) return;
-        const u = (userRes.data?.data ?? userRes.data) as
-          | (Omit<AuthorDetailData, 'portfolio'> & { id: string })
-          | null;
-        if (!u) {
-          setNotFound(true);
-          return;
-        }
-        setData({
-          name: u.name,
-          university: u.university,
-          department: u.department,
-          grade: u.grade ?? null,
-          profileImage: u.profileImage ?? null,
-          bio: u.bio ?? null,
-          roles: u.roles ?? [],
-          skills: u.skills ?? [],
-          portfolio,
-        });
-      } catch {
-        if (!cancelled) setNotFound(true);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [userId]);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
         <p className="text-sm text-gray-400">로딩 중…</p>
@@ -283,7 +272,7 @@ function AuthorDetail({ userId }: { userId: string }) {
     );
   }
 
-  if (notFound || !data) {
+  if (error || !data) {
     return (
       <div className="text-center">
         <div className="mb-2 text-3xl">🔒</div>
