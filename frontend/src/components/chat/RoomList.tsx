@@ -182,12 +182,24 @@ export default function RoomList() {
 
   // rooms 변경 시 module cache 동기화 (활성 화면일 때만).
   // socket onNewMessage / handleHide / handleLeave 등 모든 setRooms 호출을 자동 캐치.
-  // hasLoadedOnceInSession=false 시점(아직 첫 fetch 전)에는 빈 배열로 덮지 않게 가드.
+  // 가드:
+  //  - hasLoadedOnceInSession=false (아직 첫 fetch 전) — 빈 배열로 덮지 않음
+  //  - rooms.length === 0 — showingHidden 토글 시 의도적 비움 / 전환 중 — cache는 옛 active 유지
   useEffect(() => {
-    if (!showingHidden && hasLoadedOnceInSession) {
+    if (!showingHidden && hasLoadedOnceInSession && rooms.length > 0) {
       cachedActiveRooms = rooms;
     }
   }, [rooms, showingHidden]);
+
+  /**
+   * "숨긴 채팅 보기" ↔ "활성 채팅" 토글.
+   * setRooms([])로 즉시 비워서, 토글 직후 fetch 도착 전까지 옛 rooms가 visibleRooms 필터
+   * 우회로 raw 노출되는 깜빡임 회피. fetch 완료되면 새 모드 rooms로 채워짐.
+   */
+  const toggleHidden = useCallback((next: boolean) => {
+    setRooms([]);
+    setShowingHidden(next);
+  }, []);
 
   // 외부 클릭 시 ⋯ 메뉴 닫기
   useEffect(() => {
@@ -284,7 +296,7 @@ export default function RoomList() {
         {showingHidden && (
           <button
             type="button"
-            onClick={() => setShowingHidden(false)}
+            onClick={() => toggleHidden(false)}
             className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:underline"
           >
             <ArrowLeftIcon className="h-3 w-3" />
@@ -498,7 +510,7 @@ export default function RoomList() {
       {!showingHidden && (
         <button
           type="button"
-          onClick={() => setShowingHidden(true)}
+          onClick={() => toggleHidden(true)}
           className="border-t border-stone-200 px-4 py-2 text-center text-xs text-stone-500 hover:bg-stone-50 hover:text-stone-700"
         >
           숨긴 채팅 보기
@@ -566,7 +578,12 @@ function roomDisplayName(
     if (myId) {
       const other = room.members.find((m) => m.userId !== myId);
       if (other?.user?.name) return other.user.name;
+      // myId 명시됐는데 상대방 없음 — backend `roomInclude()`가 `leftAt: null` 필터링하므로
+      // 상대방이 leaveRoom한 DIRECT 방은 본인 멤버만 들어옴.
+      // 본인 이름으로 fallback하면 "자기 자신과 대화"처럼 보여 혼란 → 명시 문구.
+      return '(나간 사용자)';
     }
+    // myId 미로드 — 첫 멤버 이름이라도 표시 (useAuth.user 완성되면 자동 교체)
     const fallback = room.members[0]?.user?.name;
     if (fallback) return fallback;
   }
