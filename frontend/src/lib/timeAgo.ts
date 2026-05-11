@@ -1,10 +1,14 @@
 // 게시물 등록 시간 → "방금 전", "N분 전", "N시간 전", "N일 전", "N주 전",
-// 그 이상은 YYYY.MM.DD 절대 표기.
+// "N개월 전", "N년 전" 의 상대 표기. 절대 날짜로 떨어뜨리지 않는다 —
+// "2025.05.11" 같은 표기는 사용자에게 시점 감각을 주지 못하고, 본인이 한참 전에
+// 작성한 게시물을 "왜 2025년이지?" 로 받아들이는 혼란을 만들었다.
 
 const MIN = 60_000;
 const HOUR = 60 * MIN;
 const DAY = 24 * HOUR;
 const WEEK = 7 * DAY;
+const MONTH = 30 * DAY;
+const YEAR = 365 * DAY;
 
 export function timeAgo(epochMs: number, now: number = Date.now()): string {
   const diff = Math.max(0, now - epochMs);
@@ -13,10 +17,6 @@ export function timeAgo(epochMs: number, now: number = Date.now()): string {
   if (diff < DAY) return `${Math.floor(diff / HOUR)}시간 전`;
   if (diff < WEEK) return `${Math.floor(diff / DAY)}일 전`;
   if (diff < 4 * WEEK) return `${Math.floor(diff / WEEK)}주 전`;
-  // 그 이전: 절대 날짜 — YYYY.MM.DD
-  const d = new Date(epochMs);
-  const yy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${yy}.${mm}.${dd}`;
+  if (diff < YEAR) return `${Math.floor(diff / MONTH)}개월 전`;
+  return `${Math.floor(diff / YEAR)}년 전`;
 }
