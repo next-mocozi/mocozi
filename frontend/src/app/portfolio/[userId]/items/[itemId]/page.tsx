@@ -83,28 +83,10 @@ export default function PortfolioItemPage({
   }
   if (!user) return null;
 
-  // 타인이고 mock 피드에서 못 찾았거나 비공개 처리된 경우
-  if (!isOwner && !feedUser) {
-    return (
-      <div className="mx-auto max-w-3xl px-4 py-8">
-        <Link
-          href="/portfolio"
-          className="mb-4 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
-        >
-          ← 피드로
-        </Link>
-        <div className="card text-center">
-          <div className="mb-2 text-4xl">🔒</div>
-          <p className="font-semibold text-gray-700">
-            비공개 처리된 포트폴리오입니다.
-          </p>
-          <p className="mt-1 text-sm text-gray-500">
-            소유자가 공개로 전환하면 열람할 수 있어요.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // (mock 시대 분기 제거) — feedUser 가 항상 undefined 가 되어 누구를 봐도
+  // "비공개" 안내가 잘못 떴음. 타인 viewer 의 진짜 비공개/없음 처리는 추후
+  // backend GET /portfolios/users/:id 호출로 대체 예정. 그 전엔 item === null
+  // 이면 아래의 "존재하지 않는 항목" 안내가 자연스럽게 표시됨.
 
   /** 별 토글 — items 전체를 다시 저장 (단일 항목 페이지여도 전체 상태 일관성 유지) */
   const toggleFeatured = () => {

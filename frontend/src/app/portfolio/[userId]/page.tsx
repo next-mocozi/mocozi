@@ -194,6 +194,13 @@ export default function PortfolioDetailPage({
     viewerInitial?.visibility ?? 'private',
   );
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // 타인 portfolio 조회 결과. backend 호출 결과에 따라 비공개/없음을 정확히
+  // 분기하기 위해 별도 state 로 관리. (mock 시대엔 findMockFeedUser 결과로
+  // 분기했지만 mock 제거 후 항상 undefined 가 되어 누구를 보든 "비공개" 안내가
+  // 잘못 떴다.)
+  const [viewerStatus, setViewerStatus] = useState<
+    'pending' | 'visible' | 'hidden' | 'notfound'
+  >('pending');
 
   // owner 만 backend hydrate → localStorage 읽기 → state set. viewer 는 viewerInitial 유지.
   // hydrate 를 먼저 await 해서 backend 의 isPublic/firstPostAt 등이 localStorage 에
@@ -282,10 +289,22 @@ export default function PortfolioDetailPage({
   useEffect(() => {
     if (isOwner || !user || loading) return;
     let cancelled = false;
+    setViewerStatus('pending');
     (async () => {
       try {
         const remote = await getPortfolioByUserId(paramUserId);
-        if (cancelled || !remote) return;
+        if (cancelled) return;
+        if (!remote) {
+          setViewerStatus('notfound');
+          return;
+        }
+        if (!remote.isPublic) {
+          // 비공개 portfolio + 타인 viewer — 본문 가려야 함.
+          // backend 가 메타+user 만 반환하지만, 화면에선 "비공개" 안내만.
+          setViewerStatus('hidden');
+          return;
+        }
+        setViewerStatus('visible');
         // items: backend 형식 → 프론트 형식
         const remoteItems: PortfolioItem[] = (remote.items ?? []).map((b) => ({
           id: new Date(b.createdAt).getTime() || Date.now(),
@@ -345,7 +364,8 @@ export default function PortfolioDetailPage({
           // user 메타 실패는 무시 — portfolio 본문만 보여줘도 충분.
         }
       } catch {
-        // 백엔드 미구현/네트워크 오류 → mock 으로 fallback 유지
+        // 백엔드 호출 실패 — 사용자/포트폴리오를 못 가져옴 → 안내 화면.
+        if (!cancelled) setViewerStatus('notfound');
       }
     })();
     return () => {
@@ -376,28 +396,42 @@ export default function PortfolioDetailPage({
     );
   if (!user) return null;
 
-  // 타인이 mock 피드에서 찾을 수 없거나 비공개면 안내 화면.
-  // (현재는 mock 피드 데이터가 모두 isPublic=true 이므로 미존재 케이스만 발생.)
-  if (!isOwner && !feedUser) {
-    return (
-      <div className="mx-auto max-w-3xl px-4 py-8">
-        <Link
-          href="/portfolio"
-          className="mb-4 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
-        >
-          ← 포트폴리오 피드로
-        </Link>
-        <div className="card text-center">
-          <div className="mb-2 text-4xl">🔒</div>
-          <p className="font-semibold text-gray-700">
-            비공개 처리된 포트폴리오입니다.
-          </p>
-          <p className="mt-1 text-sm text-gray-500">
-            소유자가 공개로 전환하면 열람할 수 있어요.
-          </p>
+  // 타인 viewer 의 안내 화면 — backend 호출 결과 기반.
+  // pending → 로딩 (잠깐), hidden → 비공개, notfound → 사용자/포트폴리오 없음.
+  if (!isOwner) {
+    if (viewerStatus === 'pending') {
+      return (
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <p className="text-sm text-gray-400">로딩 중…</p>
         </div>
-      </div>
-    );
+      );
+    }
+    if (viewerStatus === 'hidden' || viewerStatus === 'notfound') {
+      const isHidden = viewerStatus === 'hidden';
+      return (
+        <div className="mx-auto max-w-3xl px-4 py-8">
+          <Link
+            href="/portfolio"
+            className="mb-4 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+          >
+            ← 포트폴리오 피드로
+          </Link>
+          <div className="card text-center">
+            <div className="mb-2 text-4xl">🔒</div>
+            <p className="font-semibold text-gray-700">
+              {isHidden
+                ? '비공개 처리된 포트폴리오입니다.'
+                : '사용자를 찾을 수 없습니다.'}
+            </p>
+            <p className="mt-1 text-sm text-gray-500">
+              {isHidden
+                ? '소유자가 공개로 전환하면 열람할 수 있어요.'
+                : '잘못된 링크이거나 삭제된 사용자일 수 있어요.'}
+            </p>
+          </div>
+        </div>
+      );
+    }
   }
 
   const persist = (key: string, value: unknown) => {
