@@ -399,7 +399,7 @@ export default function StudyForm() {
             <label className={`${labelClass}`}>
               7. 한 줄 요약 <span className="text-red-500">*</span>
             </label>
-            <span className="text-[11px] text-blue-600">
+            <span className="text-2xs text-blue-600">
               ⓘ 작성한 내용이 피드에 올라갑니다.
             </span>
           </div>

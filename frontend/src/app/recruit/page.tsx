@@ -278,7 +278,7 @@ export default function RecruitListPage() {
           if (filtered.length === 0) return null;
           return (
             <div key={label}>
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-stone-400">{label}</p>
+              <p className="mb-1 text-3xs font-semibold uppercase tracking-widest text-stone-400">{label}</p>
               <div className="flex flex-wrap gap-1">
                 {filtered.map((skill) => (
                   <button
@@ -471,23 +471,23 @@ export default function RecruitListPage() {
                       <div className="mb-2 flex min-h-[1.75rem] flex-wrap items-center gap-1">
                         {mainRole ? (
                           <>
-                            <span className="inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white px-2.5 py-0.5 text-[11px] font-medium text-stone-700">
+                            <span className="inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white px-2.5 py-0.5 text-2xs font-medium text-stone-700">
                               <span className="h-1.5 w-1.5 rounded-full bg-[#ff6e2a]" aria-hidden="true" />
                               {mainRole}
                             </span>
                             {subRoles.slice(0, 2).map((role) => (
-                              <span key={role} className="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-0.5 text-[11px] text-stone-500">
+                              <span key={role} className="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-0.5 text-2xs text-stone-500">
                                 {role}
                               </span>
                             ))}
                             {subRoles.length > 2 && (
-                              <span className="rounded-full border border-stone-200 px-2.5 py-0.5 text-[11px] text-stone-400">
+                              <span className="rounded-full border border-stone-200 px-2.5 py-0.5 text-2xs text-stone-400">
                                 +{subRoles.length - 2}
                               </span>
                             )}
                           </>
                         ) : (
-                          <span className="rounded-full border border-dotted border-stone-200 px-2.5 py-0.5 text-[11px] font-medium text-stone-300">
+                          <span className="rounded-full border border-dotted border-stone-200 px-2.5 py-0.5 text-2xs font-medium text-stone-300">
                             직군 미등록
                           </span>
                         )}
@@ -497,14 +497,14 @@ export default function RecruitListPage() {
                         {(person.skills ?? []).length > 0 ? (
                           <>
                             {(person.skills ?? []).slice(0, 4).map((skill) => (
-                              <span key={skill} className="rounded-md bg-stone-100 px-2 py-0.5 text-[11px] text-stone-600">{skill}</span>
+                              <span key={skill} className="rounded-md bg-stone-100 px-2 py-0.5 text-2xs text-stone-600">{skill}</span>
                             ))}
                             {(person.skills ?? []).length > 4 && (
-                              <span className="rounded-md bg-stone-100 px-2 py-0.5 text-[11px] text-stone-400">+{person.skills.length - 4}</span>
+                              <span className="rounded-md bg-stone-100 px-2 py-0.5 text-2xs text-stone-400">+{person.skills.length - 4}</span>
                             )}
                           </>
                         ) : (
-                          <span className="rounded-md border border-dotted border-stone-200 px-2 py-0.5 text-[11px] text-stone-300">스킬 미등록</span>
+                          <span className="rounded-md border border-dotted border-stone-200 px-2 py-0.5 text-2xs text-stone-300">스킬 미등록</span>
                         )}
                       </div>
 
@@ -534,7 +534,7 @@ export default function RecruitListPage() {
         </svg>
         필터
         {activeFilterCount > 0 && (
-          <span className="ml-0.5 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white/20 px-1.5 text-[11px] font-bold">
+          <span className="ml-0.5 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white/20 px-1.5 text-2xs font-bold">
             {activeFilterCount}
           </span>
         )}

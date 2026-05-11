@@ -416,11 +416,11 @@ function AuthorDetail({ userId }: { userId: string }) {
                 >
                   <div className="mb-1 flex flex-wrap items-center gap-2">
                     <span
-                      className={`rounded px-2 py-0.5 text-[10px] ${meta.bg} ${meta.text}`}
+                      className={`rounded px-2 py-0.5 text-3xs ${meta.bg} ${meta.text}`}
                     >
                       {meta.label}
                     </span>
-                    <span className="text-[11px] text-gray-500">
+                    <span className="text-2xs text-gray-500">
                       {item.period}
                     </span>
                   </div>

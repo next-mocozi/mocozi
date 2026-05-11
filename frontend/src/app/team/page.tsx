@@ -295,7 +295,7 @@ export default function TeamListPage() {
           if (filtered.length === 0) return null;
           return (
             <div key={label}>
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-stone-400">{label}</p>
+              <p className="mb-1 text-3xs font-semibold uppercase tracking-widest text-stone-400">{label}</p>
               <div className="flex flex-wrap gap-1">
                 {filtered.map((skill) => (
                   <button
@@ -502,7 +502,7 @@ export default function TeamListPage() {
 
                     {team.proposal?.recruitingRoles && team.proposal.recruitingRoles.length > 0 && (
                       <div className="mb-4">
-                        <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-indigo-400">
+                        <p className="mb-2 text-3xs font-semibold uppercase tracking-widest text-indigo-400">
                           모집 직군
                         </p>
                         <div className="flex flex-wrap gap-1.5">
@@ -568,7 +568,7 @@ export default function TeamListPage() {
         </svg>
         필터
         {activeFilterCount > 0 && (
-          <span className="ml-0.5 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white/20 px-1.5 text-[11px] font-bold">
+          <span className="ml-0.5 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white/20 px-1.5 text-2xs font-bold">
             {activeFilterCount}
           </span>
         )}

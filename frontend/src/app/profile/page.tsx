@@ -676,7 +676,7 @@ function SectionCardList({
                         {item.tags.map((tag) => (
                           <span
                             key={tag}
-                            className="rounded bg-gray-100 px-2 py-0.5 text-[10px] text-gray-600"
+                            className="rounded bg-gray-100 px-2 py-0.5 text-3xs text-gray-600"
                           >
                             {tag}
                           </span>

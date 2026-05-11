@@ -199,7 +199,7 @@ export default function ItemFullView({
                   key={g.label}
                   className="flex flex-wrap items-center gap-2"
                 >
-                  <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                  <span className="shrink-0 text-2xs font-semibold uppercase tracking-wider text-gray-400">
                     {g.label}
                   </span>
                   <div className="flex flex-wrap gap-1.5">
