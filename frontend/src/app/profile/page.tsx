@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { hydratePortfolioFromBackend } from '@/lib/portfolio-mapper';
+import { getMyPortfolio } from '@/lib/portfolio-api';
 import {
   PlatformIcon,
   PLATFORM_META,
@@ -12,16 +12,9 @@ import {
   type ProfileLink,
 } from './_platforms';
 
-const LINKS_STORAGE_KEY = 'mock_profile_links';
-const INTRO_STORAGE_KEY = 'mock_portfolio_intro';
-const EXPS_STORAGE_KEY = 'mock_portfolio_experiences';
-const CAREERS_STORAGE_KEY = 'mock_portfolio_career_items';
-const ITEMS_STORAGE_KEY = 'mock_portfolio_items';
 const PROFILE_SECTIONS_KEY = 'mock_profile_portfolio_sections';
 
 const DEFAULT_LINKS: ProfileLink[] = [];
-
-const ROLES_STORAGE_KEY = 'mock_profile_roles';
 
 // /portfolio 페이지와 같은 형태 — 단순 표시 용도라 import 없이 정의
 type Experience = {
@@ -150,47 +143,75 @@ export default function MyProfilePage() {
     }
   }, [selected, activeTab]);
 
-  // localStorage 에서 모든 데이터 로드 (edit / portfolio 페이지가 저장한 값)
-  // 로그인 후 백엔드에서 최신 데이터를 hydrate 한 뒤 읽어야 새 기기에서도 포트폴리오가 보임
+  // 백엔드 API에서 포트폴리오 데이터 직접 로드
   useEffect(() => {
     if (loading || !user) return;
 
     const run = async () => {
-      await hydratePortfolioFromBackend();
-
-      const loadJson = <T,>(key: string, fallback: T): T => {
-        try {
-          const raw = localStorage.getItem(key);
-          return raw ? (JSON.parse(raw) as T) : fallback;
-        } catch {
-          return fallback;
-        }
-      };
-      setLinks(loadJson(LINKS_STORAGE_KEY, [] as ProfileLink[]));
-      const roles = loadJson<{ mainRole: string; subRoles: string[] } | null>(
-        ROLES_STORAGE_KEY,
-        null,
-      );
-      if (roles) {
-        setMainRole(roles.mainRole);
-        setSubRoles(roles.subRoles);
-      }
-      setExperiences(loadJson(EXPS_STORAGE_KEY, [] as Experience[]));
-      setCareers(loadJson(CAREERS_STORAGE_KEY, [] as CareerItem[]));
-      setItems(loadJson(ITEMS_STORAGE_KEY, [] as PortfolioItem[]));
       try {
-        const i = localStorage.getItem(INTRO_STORAGE_KEY);
-        if (i !== null) setIntro(i);
+        const portfolio = await getMyPortfolio();
+
+        setIntro(portfolio.intro ?? '');
+        setExperiences(
+          (portfolio.workExperiences ?? []).map((b) => ({
+            id: new Date(b.createdAt).getTime(),
+            company: b.company,
+            team: b.team ?? '',
+            role: b.role,
+            period: b.period,
+            current: b.current,
+          })),
+        );
+        setCareers(
+          (portfolio.activities ?? []).map((b) => ({
+            id: new Date(b.createdAt).getTime(),
+            year: b.year,
+            month: b.month ?? undefined,
+            content: b.content,
+          })),
+        );
+        setItems(
+          (portfolio.items ?? []).map((b) => ({
+              id: new Date(b.createdAt).getTime(),
+              type: (
+                { PROJECT: 'project', RESEARCH: 'research', STUDY: 'study', ACTIVITY: 'activity', ETC: 'etc' } as Record<string, PortfolioItemType>
+              )[b.type] ?? 'etc',
+              title: b.title,
+              description: b.description,
+              period: b.period ?? b.duration ?? '',
+              current: b.current ?? false,
+              domain: b.domain || undefined,
+              tags: b.tags ?? [],
+              thumbnail: b.thumbnail ?? undefined,
+            })),
+        );
+        setLinks(
+          (portfolio.links ?? []).map((b) => ({
+            id: new Date(b.createdAt).getTime(),
+            url: b.url,
+            label: b.label ?? undefined,
+          })),
+        );
+      } catch {
+        // API 실패 시 빈 상태 유지
+      }
+
+      // 직군은 user.roles 에서 직접
+      if (user.roles && user.roles.length > 0) {
+        setMainRole(user.roles[0]);
+        setSubRoles(user.roles.slice(1));
+      }
+
+      // 프로필 표시 섹션 선택은 UI 설정이라 localStorage 유지
+      try {
+        const raw = localStorage.getItem(PROFILE_SECTIONS_KEY);
+        if (raw) {
+          const saved = JSON.parse(raw) as SectionKey[];
+          setSelected(saved);
+          setDraftSelected(saved);
+        }
       } catch {
         // 무시
-      }
-      const savedSections = loadJson<SectionKey[] | null>(
-        PROFILE_SECTIONS_KEY,
-        null,
-      );
-      if (savedSections) {
-        setSelected(savedSections);
-        setDraftSelected(savedSections);
       }
     };
 

@@ -8,11 +8,9 @@ import {
   useMyPortfolioStatus,
   notifyPortfolioChanged,
 } from '@/hooks/useMyPortfolioStatus';
-import { buildOwnerFeedPosts } from '@/lib/feed/buildOwnerFeed';
+import { buildOwnerFeedPostsFromApi } from '@/lib/feed/buildOwnerFeed';
 import { buildBackendFeedPosts } from '@/lib/feed/buildBackendFeed';
-import { getFeed, type FeedPortfolio } from '@/lib/portfolio-api';
-import { hydratePortfolioFromBackend } from '@/lib/portfolio-mapper';
-import { INTRO_STORAGE_KEY } from '@/app/portfolio/_lib';
+import { getFeed, getMyPortfolio, type FeedPortfolio, type BackendPortfolio } from '@/lib/portfolio-api';
 import type { FeedPost } from '@/lib/feed/types';
 import PortfolioSegmentedNav from '@/components/portfolio/PortfolioSegmentedNav';
 import FeedPostCard from '@/components/portfolio/FeedPostCard';
@@ -55,22 +53,14 @@ export default function PortfolioFeedPage() {
     }
   }, [loading, status, user, router]);
 
-  // 백엔드에서 내 포트폴리오 hydrate (다른 기기/세션 복원).
-  // /portfolio/me 와 동일하게 메인 피드 진입 시점에도 실행해서,
-  // localStorage 비어있을 때(다른 계정 reconcile 직후 등) 본인 게시물이 누락되는 현상 방지.
+  const [myPortfolio, setMyPortfolio] = useState<BackendPortfolio | null>(null);
+
+  // 내 포트폴리오를 API에서 직접 로드
   useEffect(() => {
     if (!user || loading) return;
-    void hydratePortfolioFromBackend().then(() => {
-      try {
-        const cached = localStorage.getItem(INTRO_STORAGE_KEY);
-        if ((!cached || cached.trim().length === 0) && user.bio?.trim()) {
-          localStorage.setItem(INTRO_STORAGE_KEY, user.bio);
-        }
-        notifyPortfolioChanged();
-      } catch {
-        // 무시
-      }
-    });
+    getMyPortfolio()
+      .then(setMyPortfolio)
+      .catch(() => setMyPortfolio(null));
   }, [user, loading]);
 
   // 백엔드 메인 피드 — 실제 공개 사용자들의 게시물.
@@ -101,12 +91,12 @@ export default function PortfolioFeedPage() {
   // 피드 데이터: 백엔드(타인 공개) + 본인(공개일 때).
   const posts: FeedPost[] = useMemo(() => {
     const others = buildBackendFeedPosts(remotePortfolios ?? []);
-    if (user && status === 'public') {
-      const mine = buildOwnerFeedPosts(user, { isPrivate: false });
+    if (user && myPortfolio && status === 'public') {
+      const mine = buildOwnerFeedPostsFromApi(myPortfolio, user, { isPrivate: false });
       return [...others, ...mine].sort((a, b) => b.createdAt - a.createdAt);
     }
     return [...others].sort((a, b) => b.createdAt - a.createdAt);
-  }, [user, status, remotePortfolios]);
+  }, [user, status, remotePortfolios, myPortfolio]);
 
   // 아주 초기(auth/status 자체가 미정) 만 전체 화면 로딩. backend 메인 피드 fetch
   // 자체는 nav 까지 가리지 않고, 아래쪽 posts 영역에서만 로딩 표시.

@@ -1,7 +1,8 @@
-// 본인 포트폴리오 데이터(localStorage)를 FeedPost[] 로 변환.
+// 본인 포트폴리오 데이터(localStorage 또는 API 응답)를 FeedPost[] 로 변환.
 // 메인 피드에서 본인이 공개 상태일 때, 그리고 내 피드(/portfolio/me)에서 항상 사용.
 
 import type { AuthUser } from '@/contexts/AuthContext';
+import type { BackendPortfolio } from '@/lib/portfolio-api';
 import {
   CAREERS_STORAGE_KEY,
   EXPS_STORAGE_KEY,
@@ -11,6 +12,7 @@ import {
   type CareerItem,
   type Experience,
   type PortfolioItem,
+  type PortfolioItemType,
 } from '@/app/portfolio/_lib';
 import type {
   FeedAuthor,
@@ -138,6 +140,109 @@ export function buildOwnerFeedPosts(
       // 저장 안 하면 hydrate 가 와서 backend 값으로 채움 → 다음 렌더에서 정정.
       createdAt = Date.now();
     }
+    posts.push({
+      kind: 'profile',
+      postId: `${user.id}-profile`,
+      author,
+      createdAt,
+      intro,
+      skills,
+      isOwnerPrivate: options.isPrivate,
+    } satisfies FeedPostProfile);
+  }
+
+  return posts;
+}
+
+const BACKEND_TYPE_MAP: Record<string, PortfolioItemType> = {
+  PROJECT: 'project',
+  RESEARCH: 'research',
+  STUDY: 'study',
+  ACTIVITY: 'activity',
+  ETC: 'etc',
+};
+
+/** 백엔드 API 응답(BackendPortfolio)을 FeedPost[] 로 변환.
+ *  localStorage 를 전혀 읽지 않음 — 새 기기/세션에서도 올바른 데이터를 표시. */
+export function buildOwnerFeedPostsFromApi(
+  portfolio: BackendPortfolio,
+  user: AuthUser,
+  options: { isPrivate: boolean; mainRole?: string } = { isPrivate: false },
+): FeedPost[] {
+  const author = makeAuthor(user, options.mainRole);
+  const posts: FeedPost[] = [];
+
+  // PortfolioItem
+  for (const b of portfolio.items ?? []) {
+    const item: PortfolioItem = {
+      id: new Date(b.createdAt).getTime(),
+      type: (BACKEND_TYPE_MAP[b.type] ?? 'etc') as PortfolioItemType,
+      title: b.title,
+      description: b.description,
+      summary: b.summary ?? undefined,
+      period: b.period ?? b.duration ?? '',
+      current: b.current ?? false,
+      domain: b.domain || undefined,
+      tags: b.tags ?? [],
+      featured: b.featured ?? false,
+      thumbnail: b.thumbnail ?? undefined,
+      createdAt: new Date(b.createdAt).getTime(),
+    };
+    posts.push({
+      kind: 'item',
+      postId: `${user.id}-item-${item.id}`,
+      author,
+      createdAt: item.createdAt ?? item.id,
+      item,
+      isOwnerPrivate: options.isPrivate,
+    } satisfies FeedPostItem);
+  }
+
+  // 실무 경험
+  for (const b of portfolio.workExperiences ?? []) {
+    const exp: Experience = {
+      id: new Date(b.createdAt).getTime(),
+      company: b.company,
+      team: b.team ?? '',
+      role: b.role,
+      period: b.period,
+      current: b.current,
+    };
+    posts.push({
+      kind: 'experience',
+      postId: `${user.id}-exp-${exp.id}`,
+      author,
+      createdAt: exp.id,
+      exp,
+      isOwnerPrivate: options.isPrivate,
+    } satisfies FeedPostExperience);
+  }
+
+  // 대외 활동
+  for (const b of portfolio.activities ?? []) {
+    const career: CareerItem = {
+      id: new Date(b.createdAt).getTime(),
+      year: b.year,
+      month: b.month ?? undefined,
+      content: b.content,
+    };
+    posts.push({
+      kind: 'career',
+      postId: `${user.id}-career-${career.id}`,
+      author,
+      createdAt: career.id,
+      career,
+      isOwnerPrivate: options.isPrivate,
+    } satisfies FeedPostCareer);
+  }
+
+  // ProfilePost (자기소개 + 기술스택)
+  const intro = (portfolio.intro ?? '').trim();
+  const skills = user.skills ?? [];
+  if (intro && skills.length > 0) {
+    const createdAt = portfolio.firstPostAt
+      ? new Date(portfolio.firstPostAt).getTime()
+      : Date.now();
     posts.push({
       kind: 'profile',
       postId: `${user.id}-profile`,

@@ -141,7 +141,8 @@ export default function PortfolioOnboardingPage() {
         bio: trimmed,
         skills,
       });
-      // 2) localStorage 캐시 (빠른 읽기용) + 소유자 저장 (visibility 는 모달에서 선택 후 저장)
+      // 2) 포트폴리오 intro 백엔드 저장 + localStorage 캐시
+      await updateMyMeta({ intro: trimmed }).catch(() => {});
       localStorage.setItem(INTRO_STORAGE_KEY, trimmed);
       localStorage.setItem(OWNER_STORAGE_KEY, user.id);
       await refreshUser();

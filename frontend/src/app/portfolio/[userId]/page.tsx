@@ -514,6 +514,7 @@ export default function PortfolioDetailPage({
     if (!introDirty) return;
     setIntroSaved(introDraft);
     persist(INTRO_STORAGE_KEY, introDraft);
+    void updateMyMeta({ intro: introDraft }).catch(() => {});
     notifyPortfolioChanged();
     setIntroJustSaved(true);
     setTimeout(() => setIntroJustSaved(false), 2000);

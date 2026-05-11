@@ -6,11 +6,9 @@ import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import {
   useMyPortfolioStatus,
-  notifyPortfolioChanged,
 } from '@/hooks/useMyPortfolioStatus';
-import { buildOwnerFeedPosts } from '@/lib/feed/buildOwnerFeed';
-import { hydratePortfolioFromBackend } from '@/lib/portfolio-mapper';
-import { INTRO_STORAGE_KEY } from '@/app/portfolio/_lib';
+import { buildOwnerFeedPostsFromApi } from '@/lib/feed/buildOwnerFeed';
+import { getMyPortfolio, type BackendPortfolio } from '@/lib/portfolio-api';
 import type { FeedPost } from '@/lib/feed/types';
 import PortfolioSegmentedNav from '@/components/portfolio/PortfolioSegmentedNav';
 import FeedPostCard from '@/components/portfolio/FeedPostCard';
@@ -49,34 +47,24 @@ export default function MyFeedPage() {
     }
   }, [loading, status, user, router]);
 
-  // 백엔드에서 내 포트폴리오 가져와 localStorage와 머지 (다른 기기/세션 복원).
-  // 인증된 사용자에 한해 1회 호출, 실패해도 localStorage 기반 동작은 유지.
+  const [myPortfolio, setMyPortfolio] = useState<BackendPortfolio | null>(null);
+
+  // 백엔드 API에서 내 포트폴리오 직접 로드
   useEffect(() => {
     if (!user || loading) return;
-    void hydratePortfolioFromBackend().then(() => {
-      // 자기소개(bio)도 백엔드 → localStorage 머지. localStorage 가 비어있을 때만 채움.
-      try {
-        const cached = localStorage.getItem(INTRO_STORAGE_KEY);
-        if ((!cached || cached.trim().length === 0) && user.bio?.trim()) {
-          localStorage.setItem(INTRO_STORAGE_KEY, user.bio);
-        }
-        // status 재계산 트리거
-        notifyPortfolioChanged();
-      } catch {
-        // 무시
-      }
-    });
+    getMyPortfolio()
+      .then(setMyPortfolio)
+      .catch(() => setMyPortfolio(null));
   }, [user, loading]);
 
-  // 본인 게시물 — 비공개 여부와 무관하게 표시. isOwnerPrivate 플래그로
-  // 카드/패널에 "공개로 전환하면 노출됨" 힌트를 표시할지 결정한다.
+  // 본인 게시물 — 비공개 여부와 무관하게 표시.
   const posts: FeedPost[] = useMemo(() => {
-    if (!user) return [];
+    if (!user || !myPortfolio) return [];
     const isPrivate = status !== 'public';
-    return buildOwnerFeedPosts(user, { isPrivate }).sort(
+    return buildOwnerFeedPostsFromApi(myPortfolio, user, { isPrivate }).sort(
       (a, b) => b.createdAt - a.createdAt,
     );
-  }, [user, status]);
+  }, [user, status, myPortfolio]);
 
   if (loading || status === 'loading') {
     return (

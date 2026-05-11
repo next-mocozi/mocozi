@@ -183,6 +183,8 @@ model Portfolio {
   isPublic    Boolean         @default(false)
   // 첫 게시 시각 — 메인/내 피드 정렬 기준
   firstPostAt DateTime?
+  // 포트폴리오 자기소개 섹션
+  intro       String?
   user        User            @relation(fields: [userId], references: [id])
   items       PortfolioItem[]
 
