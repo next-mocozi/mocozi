@@ -6,7 +6,14 @@ import { use, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { findMockFeedUser, type FeedUser } from '@/lib/mock/portfolioFeed';
 import { notifyPortfolioChanged } from '@/hooks/useMyPortfolioStatus';
-import { updateMyMeta } from '@/lib/portfolio-api';
+import api from '@/lib/api';
+import { updateMyMeta, getPortfolioByUserId } from '@/lib/portfolio-api';
+import {
+  syncWorkExperienceToBackend,
+  deleteWorkExperienceFromBackend,
+  syncActivityToBackend,
+  deleteActivityFromBackend,
+} from '@/lib/portfolio-mapper';
 import PortfolioSegmentedNav from '@/components/portfolio/PortfolioSegmentedNav';
 import {
   PlatformIcon,
@@ -50,6 +57,7 @@ import {
   type ExpFormState,
   type Experience,
   type PortfolioItem,
+  type PortfolioItemType,
   type PortfolioVisibility,
 } from '../_lib';
 
@@ -239,6 +247,83 @@ export default function PortfolioDetailPage({
     }
   }, [isOwner]);
 
+  // 타인 프로필일 때 백엔드에서 직접 데이터 조회. mock 은 fallback 으로만 유지.
+  // 백엔드 호출이 성공하면 viewerInitial(mock) 위에 실제 데이터를 덮어쓴다.
+  // 실패하면(미구현 백엔드/네트워크 오류 등) 기존 viewerInitial 그대로 보여줌.
+  useEffect(() => {
+    if (isOwner || !user || loading) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const remote = await getPortfolioByUserId(paramUserId);
+        if (cancelled || !remote) return;
+        // items: backend 형식 → 프론트 형식
+        const remoteItems: PortfolioItem[] = (remote.items ?? []).map((b) => ({
+          id: new Date(b.createdAt).getTime() || Date.now(),
+          type: (b.type.toLowerCase() as PortfolioItemType) ?? 'project',
+          title: b.title,
+          description: b.description,
+          summary: b.summary ?? undefined,
+          period: b.period ?? b.duration ?? '',
+          current: b.current ?? false,
+          domain: b.domain || undefined,
+          tags: b.tags ?? [],
+          featured: b.featured ?? false,
+          thumbnail: b.thumbnail ?? undefined,
+          createdAt: new Date(b.createdAt).getTime(),
+        }));
+        setItems(remoteItems);
+        setExperiences(
+          (remote.workExperiences ?? []).map((w, i) => ({
+            id: i + 1,
+            company: w.company,
+            team: w.team ?? '',
+            role: w.role,
+            period: w.period,
+            current: w.current,
+          })),
+        );
+        setCareers(
+          (remote.activities ?? []).map((c, i) => ({
+            id: i + 1,
+            year: c.year,
+            month: c.month ?? undefined,
+            content: c.content,
+          })),
+        );
+        setLinks(
+          (remote.links ?? []).map((l, i) => ({
+            id: i + 1,
+            url: l.url,
+            label: l.label ?? undefined,
+          })),
+        );
+        setVisibility(remote.isPublic ? 'public' : 'private');
+
+        // 사용자 메타(이름·학교·자기소개·skills·직군)는 user 엔드포인트에서.
+        // 비공개 portfolio 라도 user 공개 정보는 보여줘도 OK.
+        try {
+          const userRes = await api.get(`/api/users/${paramUserId}`);
+          if (cancelled) return;
+          const u = (userRes.data?.data ?? userRes.data) as {
+            bio?: string;
+          };
+          if (u?.bio) {
+            setIntroSaved(u.bio);
+            setIntroDraft(u.bio);
+          }
+        } catch {
+          // user 메타 실패는 무시 — portfolio 본문만 보여줘도 충분.
+        }
+      } catch {
+        // 백엔드 미구현/네트워크 오류 → mock 으로 fallback 유지
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOwner, user, loading, paramUserId]);
+
   // 본인일 때 OWNER_STORAGE_KEY 를 현재 user.id 로 항상 동기화.
   // (이전에는 빈 값일 때만 기록했지만, 다른 계정으로 재로그인 시 stale 한 ID 가
   //  남아 edit 페이지 권한 거절·getMyPortfolioPath() 가 잘못된 사용자로 라우팅되는
@@ -303,8 +388,18 @@ export default function PortfolioDetailPage({
     persist(VISIBILITY_STORAGE_KEY, v);
     notifyPortfolioChanged();
     setSettingsOpen(false);
-    // 백엔드 동기화 (실패해도 localStorage로 폴백)
-    void updateMyMeta({ isPublic: v === 'public' }).catch(() => {});
+    // 백엔드 동기화. 실패해도 localStorage 는 갱신했으므로 화면 동작은 유지되지만,
+    // 다른 기기/세션에선 반영 안 됨 → 사용자에게 알림.
+    void updateMyMeta({ isPublic: v === 'public' }).catch((err) => {
+      if (process.env.NODE_ENV !== 'production') {
+        // eslint-disable-next-line no-console
+        console.warn('[portfolio] visibility 백엔드 동기화 실패:', err);
+      }
+      alert(
+        '공개 설정이 서버에 저장되지 못했어요. 잠시 후 다시 시도해주세요.\n' +
+          '(이 기기 화면에는 즉시 반영됩니다)',
+      );
+    });
   };
 
   // ───────── 자기소개 ─────────
@@ -388,14 +483,16 @@ export default function PortfolioDetailPage({
       period,
       current: expForm.current,
     };
+    const newId = expEditId ?? Date.now();
+    const saved: Experience = { id: newId, ...payload };
     const next: Experience[] =
       expEditId === null
-        ? [...experiences, { id: Date.now(), ...payload }]
-        : experiences.map((e) =>
-            e.id === expEditId ? { id: e.id, ...payload } : e,
-          );
+        ? [...experiences, saved]
+        : experiences.map((e) => (e.id === expEditId ? saved : e));
     setExperiences(next);
     persist(EXPS_STORAGE_KEY, next);
+    // 백엔드 동기화 — 실패해도 localStorage 기반 동작 유지
+    void syncWorkExperienceToBackend(saved);
     resetExpForm(); // 모달은 열린 상태 유지 → 리스트에서 결과 확인
   };
 
@@ -404,6 +501,7 @@ export default function PortfolioDetailPage({
     const next = experiences.filter((e) => e.id !== id);
     setExperiences(next);
     persist(EXPS_STORAGE_KEY, next);
+    void deleteWorkExperienceFromBackend(id);
     if (expEditId === id) resetExpForm();
   };
 
@@ -447,14 +545,15 @@ export default function PortfolioDetailPage({
       setCareerError('내용을 입력해주세요.');
       return;
     }
+    const newId = careerEditId ?? Date.now();
+    const saved: CareerItem = { id: newId, year, month, content };
     const next: CareerItem[] =
       careerEditId === null
-        ? [...careers, { id: Date.now(), year, month, content }]
-        : careers.map((c) =>
-            c.id === careerEditId ? { id: c.id, year, month, content } : c,
-          );
+        ? [...careers, saved]
+        : careers.map((c) => (c.id === careerEditId ? saved : c));
     setCareers(next);
     persist(CAREERS_STORAGE_KEY, next);
+    void syncActivityToBackend(saved);
     resetCareerForm();
   };
 
@@ -463,6 +562,7 @@ export default function PortfolioDetailPage({
     const next = careers.filter((c) => c.id !== id);
     setCareers(next);
     persist(CAREERS_STORAGE_KEY, next);
+    void deleteActivityFromBackend(id);
     if (careerEditId === id) resetCareerForm();
   };
 

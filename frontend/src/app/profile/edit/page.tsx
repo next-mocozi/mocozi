@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
+import { syncLinksAllToBackend } from '@/lib/portfolio-mapper';
 import {
   PlatformIcon,
   PLATFORM_META,
@@ -200,6 +201,9 @@ export default function ProfileEditPage() {
       await api.put('/api/users/me', { name, university, department, grade, bio, skills });
       localStorage.setItem(LINKS_STORAGE_KEY, JSON.stringify(links));
       localStorage.setItem(ROLES_STORAGE_KEY, JSON.stringify({ mainRole, subRoles }));
+      // 백엔드 링크 동기화 — 실패해도 localStorage 기준으로 동작 유지.
+      // 편집 페이지는 add/remove 가 모두 일어나므로 bulk 동기화로 처리.
+      void syncLinksAllToBackend(links);
       await refreshUser();
       router.push('/profile');
     } catch {

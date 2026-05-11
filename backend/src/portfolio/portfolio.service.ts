@@ -1,9 +1,34 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePortfolioDto } from './dto/create-portfolio.dto';
 import { UpdatePortfolioDto } from './dto/update-portfolio.dto';
 import { UpdatePortfolioMetaDto } from './dto/update-portfolio-meta.dto';
+import {
+  CreateWorkExperienceDto,
+  UpdateWorkExperienceDto,
+} from './dto/work-experience.dto';
+import {
+  CreateExternalActivityDto,
+  UpdateExternalActivityDto,
+} from './dto/external-activity.dto';
+import {
+  CreatePortfolioLinkDto,
+  UpdatePortfolioLinkDto,
+} from './dto/portfolio-link.dto';
+
+/** Portfolio 응답에 항상 포함하는 부속 데이터.
+ *  Phase 3에서 추가된 work/activity/link 도 한 번에 묶어 한 응답으로 끝낸다. */
+const PORTFOLIO_INCLUDE = {
+  items: { orderBy: { createdAt: 'desc' as const } },
+  workExperiences: { orderBy: { createdAt: 'desc' as const } },
+  activities: { orderBy: { createdAt: 'desc' as const } },
+  links: { orderBy: { createdAt: 'asc' as const } },
+} satisfies Prisma.PortfolioInclude;
 
 /** 포트폴리오 서비스 - 포트폴리오 CRUD */
 @Injectable()
@@ -14,17 +39,73 @@ export class PortfolioService {
   async getMyPortfolio(userId: string) {
     let portfolio = await this.prisma.portfolio.findUnique({
       where: { userId },
-      include: { items: { orderBy: { createdAt: 'desc' } } },
+      include: PORTFOLIO_INCLUDE,
     });
 
     if (!portfolio) {
       portfolio = await this.prisma.portfolio.create({
         data: { userId },
-        include: { items: true },
+        include: PORTFOLIO_INCLUDE,
       });
     }
 
     return portfolio;
+  }
+
+  /** 메인 피드 — 공개(isPublic=true) 포트폴리오 전체.
+   *  본인 포트폴리오는 응답에서 제외 (프론트에서 본인은 따로 합침).
+   *  Phase 3 첫 버전은 페이지네이션 없이 firstPostAt 내림차순 전체 반환.
+   *  사용자 수가 늘어나면 cursor 도입. */
+  async getFeed(viewerId: string) {
+    const portfolios = await this.prisma.portfolio.findMany({
+      where: {
+        isPublic: true,
+        userId: { not: viewerId },
+      },
+      include: {
+        ...PORTFOLIO_INCLUDE,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            university: true,
+            department: true,
+            grade: true,
+            bio: true,
+            profileImage: true,
+            roles: true,
+            skills: true,
+          },
+        },
+      },
+      orderBy: [{ firstPostAt: 'desc' }, { id: 'desc' }],
+    });
+    return { portfolios };
+  }
+
+  /** 임의 사용자의 포트폴리오 조회.
+   *  - viewer === owner : 비공개 여부와 무관하게 전체 반환
+   *  - 그 외 : isPublic=true 면 전체 반환, false 면 메타만 + items/work/activity/link 빈 배열.
+   *  사용자 자체가 없거나 portfolio 가 없으면 null.
+   *  (없을 때 자동 생성하지 않는다 — 본인 진입 시에만 생성하는 게 자연스러움) */
+  async getPortfolioByUserId(viewerId: string, ownerId: string) {
+    const portfolio = await this.prisma.portfolio.findUnique({
+      where: { userId: ownerId },
+      include: PORTFOLIO_INCLUDE,
+    });
+    if (!portfolio) return null;
+
+    const isOwner = viewerId === ownerId;
+    if (isOwner || portfolio.isPublic) return portfolio;
+
+    // 비공개 상태에서 타인 조회 — 메타만 노출, 본문은 비움.
+    return {
+      ...portfolio,
+      items: [],
+      workExperiences: [],
+      activities: [],
+      links: [],
+    };
   }
 
   /** 내 포트폴리오 메타 부분 수정 (isPublic, firstPostAt) */
@@ -69,7 +150,9 @@ export class PortfolioService {
     }
 
     if (item.portfolio.userId !== userId) {
-      throw new ForbiddenException('본인의 포트폴리오 아이템만 수정할 수 있습니다.');
+      throw new ForbiddenException(
+        '본인의 포트폴리오 아이템만 수정할 수 있습니다.',
+      );
     }
 
     const { details, ...rest } = dto;
@@ -96,11 +179,133 @@ export class PortfolioService {
     }
 
     if (item.portfolio.userId !== userId) {
-      throw new ForbiddenException('본인의 포트폴리오 아이템만 삭제할 수 있습니다.');
+      throw new ForbiddenException(
+        '본인의 포트폴리오 아이템만 삭제할 수 있습니다.',
+      );
     }
 
     return this.prisma.portfolioItem.delete({
       where: { id: itemId },
     });
+  }
+
+  // =====================================================
+  // Phase 3 — 부속 메타 CRUD (실무경험 / 대외활동 / 외부 링크)
+  // =====================================================
+
+  /** 본인 portfolio.id 보장 + 권한 체크 공통 헬퍼 */
+  private async ensureOwnedPortfolioId(userId: string): Promise<string> {
+    const portfolio = await this.getMyPortfolio(userId);
+    return portfolio.id;
+  }
+
+  // ──── 실무 경험 ────
+  async createWorkExperience(userId: string, dto: CreateWorkExperienceDto) {
+    const portfolioId = await this.ensureOwnedPortfolioId(userId);
+    return this.prisma.portfolioWorkExperience.create({
+      data: { portfolioId, ...dto },
+    });
+  }
+
+  async updateWorkExperience(
+    userId: string,
+    id: string,
+    dto: UpdateWorkExperienceDto,
+  ) {
+    const row = await this.prisma.portfolioWorkExperience.findUnique({
+      where: { id },
+      include: { portfolio: true },
+    });
+    if (!row) throw new NotFoundException('실무 경험을 찾을 수 없습니다.');
+    if (row.portfolio.userId !== userId) {
+      throw new ForbiddenException('본인의 항목만 수정할 수 있습니다.');
+    }
+    return this.prisma.portfolioWorkExperience.update({
+      where: { id },
+      data: dto,
+    });
+  }
+
+  async deleteWorkExperience(userId: string, id: string) {
+    const row = await this.prisma.portfolioWorkExperience.findUnique({
+      where: { id },
+      include: { portfolio: true },
+    });
+    if (!row) throw new NotFoundException('실무 경험을 찾을 수 없습니다.');
+    if (row.portfolio.userId !== userId) {
+      throw new ForbiddenException('본인의 항목만 삭제할 수 있습니다.');
+    }
+    return this.prisma.portfolioWorkExperience.delete({ where: { id } });
+  }
+
+  // ──── 대외 활동 ────
+  async createActivity(userId: string, dto: CreateExternalActivityDto) {
+    const portfolioId = await this.ensureOwnedPortfolioId(userId);
+    return this.prisma.portfolioExternalActivity.create({
+      data: { portfolioId, ...dto },
+    });
+  }
+
+  async updateActivity(
+    userId: string,
+    id: string,
+    dto: UpdateExternalActivityDto,
+  ) {
+    const row = await this.prisma.portfolioExternalActivity.findUnique({
+      where: { id },
+      include: { portfolio: true },
+    });
+    if (!row) throw new NotFoundException('대외 활동을 찾을 수 없습니다.');
+    if (row.portfolio.userId !== userId) {
+      throw new ForbiddenException('본인의 항목만 수정할 수 있습니다.');
+    }
+    return this.prisma.portfolioExternalActivity.update({
+      where: { id },
+      data: dto,
+    });
+  }
+
+  async deleteActivity(userId: string, id: string) {
+    const row = await this.prisma.portfolioExternalActivity.findUnique({
+      where: { id },
+      include: { portfolio: true },
+    });
+    if (!row) throw new NotFoundException('대외 활동을 찾을 수 없습니다.');
+    if (row.portfolio.userId !== userId) {
+      throw new ForbiddenException('본인의 항목만 삭제할 수 있습니다.');
+    }
+    return this.prisma.portfolioExternalActivity.delete({ where: { id } });
+  }
+
+  // ──── 외부 링크 ────
+  async createLink(userId: string, dto: CreatePortfolioLinkDto) {
+    const portfolioId = await this.ensureOwnedPortfolioId(userId);
+    return this.prisma.portfolioLink.create({
+      data: { portfolioId, ...dto },
+    });
+  }
+
+  async updateLink(userId: string, id: string, dto: UpdatePortfolioLinkDto) {
+    const row = await this.prisma.portfolioLink.findUnique({
+      where: { id },
+      include: { portfolio: true },
+    });
+    if (!row) throw new NotFoundException('링크를 찾을 수 없습니다.');
+    if (row.portfolio.userId !== userId) {
+      throw new ForbiddenException('본인의 항목만 수정할 수 있습니다.');
+    }
+    return this.prisma.portfolioLink.update({ where: { id }, data: dto });
+  }
+
+  async deleteLink(userId: string, id: string) {
+    const row = await this.prisma.portfolioLink.findUnique({
+      where: { id },
+      include: { portfolio: true },
+    });
+    if (!row) throw new NotFoundException('링크를 찾을 수 없습니다.');
+    if (row.portfolio.userId !== userId) {
+      throw new ForbiddenException('본인의 항목만 삭제할 수 있습니다.');
+    }
+    return this.prisma.portfolioLink.delete({ where: { id } });
   }
 }

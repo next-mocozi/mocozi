@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
@@ -9,6 +10,8 @@ import {
 } from '@/hooks/useMyPortfolioStatus';
 import { getMockFeedPosts } from '@/lib/mock/portfolioFeed';
 import { buildOwnerFeedPosts } from '@/lib/feed/buildOwnerFeed';
+import { buildBackendFeedPosts } from '@/lib/feed/buildBackendFeed';
+import { getFeed, type FeedPortfolio } from '@/lib/portfolio-api';
 import { hydratePortfolioFromBackend } from '@/lib/portfolio-mapper';
 import { INTRO_STORAGE_KEY } from '@/app/portfolio/_lib';
 import type { FeedPost } from '@/lib/feed/types';
@@ -71,15 +74,43 @@ export default function PortfolioFeedPage() {
     });
   }, [user, loading]);
 
-  // 피드 데이터: mock 사용자 게시물 + 본인이 공개 상태일 때 본인 게시물
+  // 백엔드 메인 피드 (다른 사용자들의 공개 게시물).
+  // 실패하거나 비어있으면 mock 으로 fallback. dev/staging 등 백엔드에 데이터가 없는
+  // 환경에서 빈 피드로 보이지 않도록.
+  const [remotePortfolios, setRemotePortfolios] = useState<FeedPortfolio[] | null>(
+    null,
+  );
+  useEffect(() => {
+    if (!user || loading) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await getFeed();
+        if (cancelled) return;
+        setRemotePortfolios(res.portfolios ?? []);
+      } catch {
+        // 백엔드 미가동/네트워크 실패 → mock fallback (state 는 null 유지)
+        if (!cancelled) setRemotePortfolios(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, loading]);
+
+  // 피드 데이터: 백엔드(타인 공개) + 본인(공개일 때).
+  // 백엔드 응답이 비어있거나 실패하면 mock 으로 보충 — 신규 환경에서 빈 화면 방지.
   const posts: FeedPost[] = useMemo(() => {
-    const mock = getMockFeedPosts();
+    const others: FeedPost[] =
+      remotePortfolios && remotePortfolios.length > 0
+        ? buildBackendFeedPosts(remotePortfolios)
+        : getMockFeedPosts();
     if (user && status === 'public') {
       const mine = buildOwnerFeedPosts(user, { isPrivate: false });
-      return [...mock, ...mine].sort((a, b) => b.createdAt - a.createdAt);
+      return [...others, ...mine].sort((a, b) => b.createdAt - a.createdAt);
     }
-    return [...mock].sort((a, b) => b.createdAt - a.createdAt);
-  }, [user, status]);
+    return [...others].sort((a, b) => b.createdAt - a.createdAt);
+  }, [user, status, remotePortfolios]);
 
   if (loading || status === 'loading') {
     return (
@@ -120,6 +151,29 @@ export default function PortfolioFeedPage() {
               둘러보세요.
             </p>
           </header>
+
+          {status === 'private' && (
+            <div className="mb-4 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+              <span className="mt-0.5 text-lg" aria-hidden>
+                🔒
+              </span>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-amber-900">
+                  내 포트폴리오는 비공개 상태예요
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                  메인 피드에는 다른 사람의 공개 게시물만 보입니다. 공개로
+                  전환하면 내 게시물도 다른 사람에게 노출돼요.
+                </p>
+              </div>
+              <Link
+                href={user ? `/portfolio/${user.id}` : '/portfolio/me'}
+                className="shrink-0 rounded-full bg-amber-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-amber-700"
+              >
+                공개로 전환
+              </Link>
+            </div>
+          )}
 
           {posts.length === 0 ? (
             <p className="card text-center text-sm text-gray-500">

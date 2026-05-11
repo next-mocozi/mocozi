@@ -5,6 +5,8 @@
 // 점진적으로 백엔드 동기화를 도입하기 위함.
 
 import type {
+  CareerItem,
+  Experience,
   PortfolioItem,
   PortfolioItemType,
 } from '@/app/portfolio/_lib';
@@ -12,16 +14,32 @@ import {
   ITEMS_STORAGE_KEY,
   VISIBILITY_STORAGE_KEY,
   FIRST_POST_STORAGE_KEY,
+  EXPS_STORAGE_KEY,
+  CAREERS_STORAGE_KEY,
+  LINKS_STORAGE_KEY,
 } from '@/app/portfolio/_lib';
+import type { ProfileLink } from '@/app/portfolio/_platforms';
 import {
   createItem as apiCreateItem,
   updateItem as apiUpdateItem,
   deleteItem as apiDeleteItem,
   getMyPortfolio as apiGetMyPortfolio,
+  createWorkExperience as apiCreateWork,
+  updateWorkExperience as apiUpdateWork,
+  deleteWorkExperience as apiDeleteWork,
+  createExternalActivity as apiCreateActivity,
+  updateExternalActivity as apiUpdateActivity,
+  deleteExternalActivity as apiDeleteActivity,
+  createPortfolioLink as apiCreateLink,
+  updatePortfolioLink as apiUpdateLink,
+  deletePortfolioLink as apiDeleteLink,
 } from './portfolio-api';
 import type {
   BackendPortfolioItem,
   BackendPortfolioItemType,
+  BackendWorkExperience,
+  BackendExternalActivity,
+  BackendPortfolioLink,
   CreateItemPayload,
   UpdateItemPayload,
 } from './portfolio-api';
@@ -213,22 +231,161 @@ export async function hydratePortfolioFromBackend(): Promise<void> {
 
     // 메타(visibility, firstPostAt)도 백엔드 → localStorage 머지.
     // 다른 기기/세션에서 로그인 시 백엔드 값으로 정정.
+    //
+    // visibility 덮어쓰기 정책 (firstPostAt 와 동일):
+    //  - local 비어있음 → backend 값으로 채움 (다른 기기 첫 진입)
+    //  - local='private', backend=true → backend 신뢰 (다른 기기에서 공개로 전환)
+    //  - local='public', backend=false → 사용자 의도 우선, local 유지.
+    //    PATCH /portfolios/me 가 실패한 직후에도 사용자가 방금 한 "공개" 가
+    //    다음 hydrate 에서 "비공개" 로 덮어써지는 문제(=visibility 토글이 자꾸
+    //    풀리는 현상) 를 차단. 다른 기기 동기화는 backend가 진실이 되는 다음
+    //    명시적 PATCH 까지 deferred.
     if (typeof remote.isPublic === 'boolean') {
-      localStorage.setItem(
-        VISIBILITY_STORAGE_KEY,
-        remote.isPublic ? 'public' : 'private',
-      );
+      const localV = localStorage.getItem(VISIBILITY_STORAGE_KEY);
+      if (!localV) {
+        localStorage.setItem(
+          VISIBILITY_STORAGE_KEY,
+          remote.isPublic ? 'public' : 'private',
+        );
+      } else if (localV === 'private' && remote.isPublic === true) {
+        localStorage.setItem(VISIBILITY_STORAGE_KEY, 'public');
+      }
+      // localV === 'public' && remote.isPublic === false → local 유지
     }
     if (remote.firstPostAt) {
       const ts = new Date(remote.firstPostAt).getTime();
       if (!Number.isNaN(ts)) {
-        localStorage.setItem(FIRST_POST_STORAGE_KEY, String(ts));
+        // 로컬에 값이 있으면 backend 값으로 덮어쓰지 않는다.
+        // 다른 기기에서 처음 진입한 경우(local 미설정)에만 backend 값을 채운다.
+        // backend 의 옛 firstPostAt 이 사용자가 방금 설정한 값을 갈아치우는 걸 방지.
+        const localRaw = localStorage.getItem(FIRST_POST_STORAGE_KEY);
+        if (!localRaw) {
+          localStorage.setItem(FIRST_POST_STORAGE_KEY, String(ts));
+        }
       }
     }
+
+    // Phase 3 — 부속 메타 머지 (백엔드에만 있는 항목 → localStorage 추가)
+    mergeWorkExperiencesFromBackend(remote.workExperiences ?? []);
+    mergeActivitiesFromBackend(remote.activities ?? []);
+    mergeLinksFromBackend(remote.links ?? []);
   } catch (err) {
     if (process.env.NODE_ENV !== 'production') {
       console.warn('[portfolio-sync] hydrate failed (localStorage 유지):', err);
     }
+  }
+}
+
+// ──── hydrate 머지 헬퍼 ────
+function mergeWorkExperiencesFromBackend(
+  remote: BackendWorkExperience[],
+): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const localRaw = localStorage.getItem(EXPS_STORAGE_KEY);
+    const local: Experience[] = localRaw ? JSON.parse(localRaw) : [];
+    const knownIds = new Set(local.map((e) => e.id));
+    const toAdd: Experience[] = [];
+    for (const b of remote) {
+      const mapped = findLocalIdByServerIdIn(WORK_ID_MAP_KEY, b.id);
+      if (mapped !== undefined && knownIds.has(mapped)) continue;
+      const localId = mapped ?? new Date(b.createdAt).getTime();
+      if (knownIds.has(localId)) continue;
+      if (mapped === undefined) setMappedServerId(WORK_ID_MAP_KEY, localId, b.id);
+      toAdd.push({
+        id: localId,
+        company: b.company,
+        team: b.team ?? '',
+        role: b.role,
+        period: b.period,
+        current: b.current,
+      });
+      knownIds.add(localId);
+    }
+    if (toAdd.length > 0) {
+      localStorage.setItem(
+        EXPS_STORAGE_KEY,
+        JSON.stringify([...local, ...toAdd]),
+      );
+    }
+  } catch {
+    // 무시
+  }
+}
+
+function mergeActivitiesFromBackend(remote: BackendExternalActivity[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const localRaw = localStorage.getItem(CAREERS_STORAGE_KEY);
+    const local: CareerItem[] = localRaw ? JSON.parse(localRaw) : [];
+    const knownIds = new Set(local.map((c) => c.id));
+    const toAdd: CareerItem[] = [];
+    for (const b of remote) {
+      const mapped = findLocalIdByServerIdIn(ACTIVITY_ID_MAP_KEY, b.id);
+      if (mapped !== undefined && knownIds.has(mapped)) continue;
+      const localId = mapped ?? new Date(b.createdAt).getTime();
+      if (knownIds.has(localId)) continue;
+      if (mapped === undefined)
+        setMappedServerId(ACTIVITY_ID_MAP_KEY, localId, b.id);
+      toAdd.push({
+        id: localId,
+        year: b.year,
+        month: b.month ?? undefined,
+        content: b.content,
+      });
+      knownIds.add(localId);
+    }
+    if (toAdd.length > 0) {
+      localStorage.setItem(
+        CAREERS_STORAGE_KEY,
+        JSON.stringify([...local, ...toAdd]),
+      );
+    }
+  } catch {
+    // 무시
+  }
+}
+
+function mergeLinksFromBackend(remote: BackendPortfolioLink[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const localRaw = localStorage.getItem(LINKS_STORAGE_KEY);
+    const local: ProfileLink[] = localRaw ? JSON.parse(localRaw) : [];
+    const knownIds = new Set(local.map((l) => l.id));
+    const knownUrls = new Set(local.map((l) => l.url));
+    const toAdd: ProfileLink[] = [];
+    for (const b of remote) {
+      const mapped = findLocalIdByServerIdIn(LINK_ID_MAP_KEY, b.id);
+      if (mapped !== undefined && knownIds.has(mapped)) continue;
+      // URL 중복도 중복 추가 방지
+      if (knownUrls.has(b.url)) {
+        if (mapped === undefined) {
+          // 기존 link 와 매핑만 연결
+          const existing = local.find((l) => l.url === b.url);
+          if (existing) setMappedServerId(LINK_ID_MAP_KEY, existing.id, b.id);
+        }
+        continue;
+      }
+      const localId = mapped ?? new Date(b.createdAt).getTime();
+      if (knownIds.has(localId)) continue;
+      if (mapped === undefined)
+        setMappedServerId(LINK_ID_MAP_KEY, localId, b.id);
+      toAdd.push({
+        id: localId,
+        url: b.url,
+        label: b.label ?? undefined,
+      });
+      knownIds.add(localId);
+      knownUrls.add(b.url);
+    }
+    if (toAdd.length > 0) {
+      localStorage.setItem(
+        LINKS_STORAGE_KEY,
+        JSON.stringify([...local, ...toAdd]),
+      );
+    }
+  } catch {
+    // 무시
   }
 }
 
@@ -244,5 +401,214 @@ export async function deleteItemFromBackend(localId: number): Promise<void> {
     }
   } finally {
     removeServerId(localId);
+  }
+}
+
+// =====================================================
+// Phase 3 — 부속 메타 (실무경험 / 대외활동 / 외부 링크) 매핑·동기화
+// =====================================================
+
+/** 종류별 id 매핑 테이블 키 — 충돌 방지를 위해 prefix 분리 */
+const WORK_ID_MAP_KEY = 'mock_portfolio_work_id_map';
+const ACTIVITY_ID_MAP_KEY = 'mock_portfolio_activity_id_map';
+const LINK_ID_MAP_KEY = 'mock_portfolio_link_id_map';
+
+function readMap(key: string): IdMap {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeMap(key: string, map: IdMap): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(key, JSON.stringify(map));
+  } catch {
+    // 무시
+  }
+}
+
+function getMappedServerId(mapKey: string, localId: number): string | undefined {
+  return readMap(mapKey)[localId];
+}
+
+function setMappedServerId(
+  mapKey: string,
+  localId: number,
+  serverId: string,
+): void {
+  const m = readMap(mapKey);
+  m[localId] = serverId;
+  writeMap(mapKey, m);
+}
+
+function removeMappedServerId(mapKey: string, localId: number): void {
+  const m = readMap(mapKey);
+  delete m[localId];
+  writeMap(mapKey, m);
+}
+
+function findLocalIdByServerIdIn(
+  mapKey: string,
+  serverId: string,
+): number | undefined {
+  const m = readMap(mapKey);
+  for (const [k, v] of Object.entries(m)) {
+    if (v === serverId) return Number(k);
+  }
+  return undefined;
+}
+
+// ──── 실무 경험 ────
+export async function syncWorkExperienceToBackend(
+  exp: Experience,
+): Promise<BackendWorkExperience | null> {
+  try {
+    const serverId = getMappedServerId(WORK_ID_MAP_KEY, exp.id);
+    const payload = {
+      company: exp.company,
+      team: exp.team || undefined,
+      role: exp.role,
+      period: exp.period,
+      current: exp.current,
+    };
+    if (serverId) {
+      return await apiUpdateWork(serverId, payload);
+    }
+    const created = await apiCreateWork(payload);
+    if (created?.id) setMappedServerId(WORK_ID_MAP_KEY, exp.id, created.id);
+    return created;
+  } catch (err) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('[portfolio-sync] work sync failed:', err);
+    }
+    return null;
+  }
+}
+
+export async function deleteWorkExperienceFromBackend(
+  localId: number,
+): Promise<void> {
+  const serverId = getMappedServerId(WORK_ID_MAP_KEY, localId);
+  if (!serverId) return;
+  try {
+    await apiDeleteWork(serverId);
+  } catch (err) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('[portfolio-sync] work delete failed:', err);
+    }
+  } finally {
+    removeMappedServerId(WORK_ID_MAP_KEY, localId);
+  }
+}
+
+// ──── 대외 활동 ────
+export async function syncActivityToBackend(
+  c: CareerItem,
+): Promise<BackendExternalActivity | null> {
+  try {
+    const serverId = getMappedServerId(ACTIVITY_ID_MAP_KEY, c.id);
+    const payload = {
+      year: c.year,
+      month: c.month || undefined,
+      content: c.content,
+    };
+    if (serverId) {
+      return await apiUpdateActivity(serverId, payload);
+    }
+    const created = await apiCreateActivity(payload);
+    if (created?.id) setMappedServerId(ACTIVITY_ID_MAP_KEY, c.id, created.id);
+    return created;
+  } catch (err) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('[portfolio-sync] activity sync failed:', err);
+    }
+    return null;
+  }
+}
+
+export async function deleteActivityFromBackend(
+  localId: number,
+): Promise<void> {
+  const serverId = getMappedServerId(ACTIVITY_ID_MAP_KEY, localId);
+  if (!serverId) return;
+  try {
+    await apiDeleteActivity(serverId);
+  } catch (err) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('[portfolio-sync] activity delete failed:', err);
+    }
+  } finally {
+    removeMappedServerId(ACTIVITY_ID_MAP_KEY, localId);
+  }
+}
+
+// ──── 외부 링크 ────
+export async function syncLinkToBackend(
+  link: ProfileLink,
+): Promise<BackendPortfolioLink | null> {
+  try {
+    const serverId = getMappedServerId(LINK_ID_MAP_KEY, link.id);
+    const payload = { url: link.url, label: link.label || undefined };
+    if (serverId) {
+      return await apiUpdateLink(serverId, payload);
+    }
+    const created = await apiCreateLink(payload);
+    if (created?.id) setMappedServerId(LINK_ID_MAP_KEY, link.id, created.id);
+    return created;
+  } catch (err) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('[portfolio-sync] link sync failed:', err);
+    }
+    return null;
+  }
+}
+
+export async function deleteLinkFromBackend(localId: number): Promise<void> {
+  const serverId = getMappedServerId(LINK_ID_MAP_KEY, localId);
+  if (!serverId) return;
+  try {
+    await apiDeleteLink(serverId);
+  } catch (err) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('[portfolio-sync] link delete failed:', err);
+    }
+  } finally {
+    removeMappedServerId(LINK_ID_MAP_KEY, localId);
+  }
+}
+
+/** 전체 배열 동기화 — 편집 페이지에서 한 번에 저장하는 흐름용.
+ *  현재 localStorage 의 array 와 백엔드 매핑을 비교해서:
+ *   - 매핑이 있는데 array 에 없으면 → 백엔드 삭제
+ *   - array 에 있으면 → upsert(syncXxx)
+ *  실패해도 throw 안 함. */
+export async function syncLinksAllToBackend(
+  links: ProfileLink[],
+): Promise<void> {
+  try {
+    const map = readMap(LINK_ID_MAP_KEY);
+    const localIds = new Set(links.map((l) => l.id));
+    // 삭제: 매핑에는 있지만 array 에서 사라진 것들
+    for (const k of Object.keys(map)) {
+      const localId = Number(k);
+      if (!localIds.has(localId)) {
+        await deleteLinkFromBackend(localId);
+      }
+    }
+    // upsert
+    for (const link of links) {
+      await syncLinkToBackend(link);
+    }
+  } catch (err) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('[portfolio-sync] links bulk sync failed:', err);
+    }
   }
 }

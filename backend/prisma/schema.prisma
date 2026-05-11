@@ -185,6 +185,12 @@ model Portfolio {
   user        User            @relation(fields: [userId], references: [id])
   items       PortfolioItem[]
 
+  // Phase 3 — 부속 메타 (실무경험, 대외활동, 외부 링크)
+  // Prisma 양방향 관계 요구로 역참조 3줄 추가. DB에는 컬럼 변경 0건.
+  workExperiences PortfolioWorkExperience[]
+  activities      PortfolioExternalActivity[]
+  links           PortfolioLink[]
+
   @@map("portfolios")
 }
 
@@ -222,6 +228,61 @@ enum PortfolioItemType {
   STUDY
   ACTIVITY
   ETC
+}
+
+// =====================================================
+// Phase 3 — 포트폴리오 부속 메타
+// =====================================================
+
+// 포트폴리오 - 실무 경험 (회사·인턴 등)
+model PortfolioWorkExperience {
+  id          String    @id @default(uuid())
+  portfolioId String
+  company     String
+  team        String?
+  role        String
+  // "2024.06 - 2024.08" / "2024.06 - 현재" 등 표시용 raw string.
+  // 정렬·검색은 Phase 3 범위 외 — 추후 startDate/endDate 컬럼으로 정규화 가능.
+  period      String
+  current     Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@index([portfolioId])
+  @@map("portfolio_work_experiences")
+}
+
+// 포트폴리오 - 대외 활동 (수상/수료/발표 등 단발성)
+model PortfolioExternalActivity {
+  id          String    @id @default(uuid())
+  portfolioId String
+  year        String    // 4자리 표시용
+  month       String?   // "01"~"12" zero-padded, optional (기존 데이터 호환)
+  content     String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@index([portfolioId])
+  @@map("portfolio_external_activities")
+}
+
+// 포트폴리오 - 외부 링크 (GitHub, 블로그 등)
+model PortfolioLink {
+  id          String    @id @default(uuid())
+  portfolioId String
+  url         String
+  label       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@index([portfolioId])
+  @@map("portfolio_links")
 }
 
 // =====================================================

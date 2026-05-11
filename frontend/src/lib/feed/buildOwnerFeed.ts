@@ -129,13 +129,20 @@ export function buildOwnerFeedPosts(
     let createdAt: number;
     if (stored) {
       createdAt = stored;
-    } else if (posts.length > 0) {
-      // FIRST_POST_STORAGE_KEY 미설정 (이전 사용자) — 모든 다른 게시물보다 1일 이전
-      const oldest = Math.min(...posts.map((p) => p.createdAt));
-      createdAt = oldest - 86_400_000;
     } else {
-      // 다른 게시물도 없음 — 1년 전 가정
-      createdAt = Date.now() - 365 * 86_400_000;
+      // FIRST_POST_STORAGE_KEY 미설정 — 오늘로 처리.
+      // (이전 fallback 은 "다른 게시물보다 1일 이전" 또는 "1년 전" 이었지만,
+      //  근거 없는 과거 시점이 사용자에게 "왜 1년 전?" 으로 보이는 혼란만 만들었다.
+      //  정보가 없으면 가장 자연스러운 default 인 "지금" 으로 처리.)
+      createdAt = Date.now();
+      // 다음 진입에서 안정적으로 같은 시점이 보이도록 즉시 저장.
+      try {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(FIRST_POST_STORAGE_KEY, String(createdAt));
+        }
+      } catch {
+        // 저장 실패해도 표시는 정상 — 다음 새로고침에서 또 Date.now() 로 fallback.
+      }
     }
     posts.push({
       kind: 'profile',
