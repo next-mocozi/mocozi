@@ -432,15 +432,18 @@ export default function RoomList() {
         </div>
       )}
 
-      {/* 빈 방(메시지 0개) 자동 숨김 정책 — docs/chat 정책 참조:
+      {/* 빈 방(메시지 0개) 자동 숨김 정책 — docs/chat 정책 §15 참조:
           - 메시지 1개 이상이면 표시
           - OR 본인이 그 방에 draft 작성 중이면 표시 (의도 보존)
-          - 둘 다 아니면 숨김 (양쪽 멤버 모두 동일 동작)
+          - OR 현재 보고 있는 방이면 표시 (사용자가 열어둔 방이 list에서 사라지면 혼란)
+          - 셋 다 아니면 숨김 (양쪽 멤버 모두 동일 동작)
           - "숨긴 채팅" 화면(showingHidden)에선 이 필터 우회 — 명시 숨김한 빈 방도 표시 */}
       {(() => {
         const visibleRooms = showingHidden
           ? rooms
           : rooms.filter((room) => {
+              // 현재 보고 있는 방 — 빈 방이어도 list에 노출
+              if (pathname === `/chat/${room.id}`) return true;
               if (room.lastMessage) return true;
               if (typeof window !== 'undefined') {
                 try {
