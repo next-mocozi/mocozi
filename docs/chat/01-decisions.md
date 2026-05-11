@@ -387,7 +387,7 @@ ChatMessage 모델 변경 없음 — 마커가 본문 content TEXT에 inline. pa
 | 이미지 (jpg/png/webp/gif) | **20MB** | 캡처·일반 사진 충분 |
 | PDF | **50MB** | 일반 자료·논문·스캔본 |
 | Office (.docx/.xlsx/.pptx) | **30MB** | 일반 문서 + 큰 PPT |
-| zip | **100MB** | 포트폴리오/소스 묶음. 그 이상은 cloud link로 |
+| zip | **50MB** | 포트폴리오/소스 묶음. Free plan 한도와 일치. 본격 운영 시 Pro plan으로 100MB+ 확장 검토 |
 
 ### 허용 MIME (화이트리스트)
 

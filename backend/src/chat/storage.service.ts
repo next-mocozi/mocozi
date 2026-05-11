@@ -53,8 +53,8 @@ const SIZE_LIMITS: Record<string, number> = {
     30 * 1024 * 1024,
   'application/vnd.openxmlformats-officedocument.presentationml.presentation':
     30 * 1024 * 1024,
-  // zip — 100MB
-  'application/zip': 100 * 1024 * 1024,
+  // zip — 50MB (Free plan 한도와 일치. Pro 도입 시 100MB+로 늘릴 수 있음)
+  'application/zip': 50 * 1024 * 1024,
 };
 
 /** 사이즈 한도 조회. 화이트리스트에 없으면 null. */
