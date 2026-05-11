@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { use, useCallback, useEffect, useMemo, useRef, useState, Suspense } from 'react';
 import { AttachmentButton } from '@/components/chat/AttachmentButton';
+import { FileAttachmentCard } from '@/components/chat/FileAttachmentCard';
+import { ImageAttachment } from '@/components/chat/ImageAttachment';
 import { MessageMarkdown } from '@/components/chat/MessageMarkdown';
 import RoomList from '@/components/chat/RoomList';
 import { RoleSelector } from '@/components/chat/RoleSelector';
@@ -1352,13 +1354,26 @@ function MessageItem({
               ) : (
                 <MessageMarkdown content={parsed.cleanContent} />
               )}
-              {parsed.attachments.map((a, i) => (
-                <AttachmentButton
-                  key={`${a.type}-${a.target}-${i}`}
-                  attachment={a}
-                  isMine={isMine}
-                />
-              ))}
+              {parsed.attachments.map((a, i) => {
+                const key = `${a.type}-${a.target}-${i}`;
+                if (a.type === 'image') {
+                  return (
+                    <ImageAttachment key={key} attachment={a} isMine={isMine} />
+                  );
+                }
+                if (a.type === 'file') {
+                  return (
+                    <FileAttachmentCard
+                      key={key}
+                      attachment={a}
+                      isMine={isMine}
+                    />
+                  );
+                }
+                return (
+                  <AttachmentButton key={key} attachment={a} isMine={isMine} />
+                );
+              })}
             </>
           );
         })()}

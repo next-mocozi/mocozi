@@ -252,3 +252,35 @@ export function XIcon(props: IconProps) {
     </IconBase>
   );
 }
+
+/** 파일 일반 — file (Lucide). 첨부 카드 아이콘 (mime 미정 시 기본) */
+export function FileIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+    </IconBase>
+  );
+}
+
+/** 이미지 — image (Lucide). image 마커 카드 fallback / mime 표시 */
+export function ImageIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+      <circle cx="9" cy="9" r="2" />
+      <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+    </IconBase>
+  );
+}
+
+/** 다운로드 — download (Lucide). 파일 카드 다운로드 버튼 */
+export function DownloadIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" x2="12" y1="15" y2="3" />
+    </IconBase>
+  );
+}

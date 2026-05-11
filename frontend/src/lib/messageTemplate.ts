@@ -58,12 +58,31 @@ export function buildDefaultTemplate(
 /**
  * Attachment 마커 파싱 결과.
  * 메시지 본문에서 모든 마커를 추출하고, 본문에서 마커 텍스트는 제거된 cleanContent를 함께 반환.
+ *
+ * 두 종류:
+ *  - **인앱 link**: `[[link:profile|portfolio|team|external:target|label]]`
+ *  - **첨부 파일/이미지** (§16): `[[file:storagePath|filename|sizeBytes|mime]]`,
+ *    `[[image:storagePath|alt|sizeBytes|mime]]`
+ *    — target에 storage path, url은 backend sign endpoint로 별도 주입(런타임에 추가)
  */
-export interface ParsedAttachment {
-  type: 'profile' | 'portfolio' | 'team' | 'external';
-  target: string;
-  label: string;
+/** 첨부 파일/이미지 공통 메타 */
+interface ParsedAttachmentMediaBase {
+  target: string; // storage path
+  label: string; // filename / alt
+  size: number; // bytes
+  mime: string; // e.g. application/pdf
+  /** backend sign endpoint가 발급한 1h TTL URL. 표시 시점에 주입 */
+  url?: string;
 }
+
+// 각 type을 별도 variant로 분리 — `Extract<ParsedAttachment, { type: 'file' }>` 등 narrow 가능
+export type ParsedAttachment =
+  | { type: 'profile'; target: string; label: string }
+  | { type: 'portfolio'; target: string; label: string }
+  | { type: 'team'; target: string; label: string }
+  | { type: 'external'; target: string; label: string }
+  | ({ type: 'file' } & ParsedAttachmentMediaBase)
+  | ({ type: 'image' } & ParsedAttachmentMediaBase);
 
 export interface ParsedMessage {
   /** 마커가 제거된 본문 (메시지 풍선에 표시) */
@@ -81,24 +100,45 @@ export interface ParsedMessage {
  *
  * 마커 형식이 잘못된 경우 무시 — 본문에 그대로 남김.
  */
-export function parseAttachmentMarker(content: string): ParsedMessage {
-  const ATTACHMENT_REGEX =
-    /\[\[link:(profile|portfolio|team|external):([^|\]]+)\|([^\]]+)\]\]/g;
+/**
+ * 통합 마커 regex — 인앱 link + file/image 첨부 모두 처리.
+ *
+ * - `[[link:profile|portfolio|team|external:target|label]]` (3개 capture group: linkType, target, label)
+ * - `[[file:path|name|size|mime]]` / `[[image:path|name|size|mime]]` (4개 추가: target, label, size, mime)
+ *
+ * 정렬: link variant 먼저 매치 → file/image
+ */
+const ATTACHMENT_REGEX =
+  /\[\[(?:link:(profile|portfolio|team|external):([^|\]]+)\|([^\]]+)|(file|image):([^|\]]+)\|([^|\]]*)\|(\d+)\|([^\]]+))\]\]/g;
 
+export function parseAttachmentMarker(content: string): ParsedMessage {
   const attachments: ParsedAttachment[] = [];
+  const re = new RegExp(ATTACHMENT_REGEX.source, 'g');
   let match: RegExpExecArray | null;
 
-  while ((match = ATTACHMENT_REGEX.exec(content)) !== null) {
-    attachments.push({
-      type: match[1] as ParsedAttachment['type'],
-      target: match[2].trim(),
-      label: match[3].trim(),
-    });
+  while ((match = re.exec(content)) !== null) {
+    if (match[1]) {
+      // link 매치
+      attachments.push({
+        type: match[1] as 'profile' | 'portfolio' | 'team' | 'external',
+        target: match[2].trim(),
+        label: match[3].trim(),
+      });
+    } else if (match[4]) {
+      // file / image 매치
+      attachments.push({
+        type: match[4] as 'file' | 'image',
+        target: match[5].trim(),
+        label: match[6].trim(),
+        size: Number(match[7]),
+        mime: match[8].trim(),
+      });
+    }
   }
 
   // 마커 제거 + 마커 주변 빈 줄 정리 (양식 본문에 trailing newline 자주 들어감)
   const cleanContent = content
-    .replace(ATTACHMENT_REGEX, '')
+    .replace(new RegExp(ATTACHMENT_REGEX.source, 'g'), '')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 

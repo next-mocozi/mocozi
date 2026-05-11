@@ -561,8 +561,12 @@ export default function RoomList() {
  */
 function sanitizePreview(raw: string | null | undefined): string {
   if (!raw) return '메시지가 없습니다.';
-  const noMarker = raw.replace(/\[\[link:[^|\]]+\|([^\]]+)\]\]/g, '$1');
-  const oneLine = noMarker.replace(/\s+/g, ' ').trim();
+  // 인앱 link 마커 → label만 남김
+  let s = raw.replace(/\[\[link:[^|\]]+\|([^\]]+)\]\]/g, '$1');
+  // 첨부 마커(파일/이미지) — preview는 "📎 파일명" 단축 표현 (label만 추출, size·mime 버림)
+  s = s.replace(/\[\[file:[^|\]]+\|([^|\]]*)\|\d+\|[^\]]+\]\]/g, '📎 $1');
+  s = s.replace(/\[\[image:[^|\]]+\|([^|\]]*)\|\d+\|[^\]]+\]\]/g, '🖼 $1');
+  const oneLine = s.replace(/\s+/g, ' ').trim();
   return oneLine || '메시지가 없습니다.';
 }
 
