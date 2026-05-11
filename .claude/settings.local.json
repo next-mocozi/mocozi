@@ -55,7 +55,18 @@
       "Bash(docker volume ls *)",
       "PowerShell(head *)",
       "Bash(railway status *)",
-      "Bash(echo \"---EXIT:$?\")"
+      "Bash(echo \"---EXIT:$?\")",
+      "PowerShell(Get-ChildItem -Path \"D:\\\\2026\\\\mocozi-temp\\\\frontend\\\\src\\\\app\\\\\\(auth\\)\" -Force -Recurse | Where-Object {$_.PSIsContainer -or $_.Name -like \"page.tsx\"})",
+      "PowerShell(Get-ChildItem -Path \"D:\\\\2026\\\\mocozi-temp\\\\frontend\\\\src\\\\app\" -Recurse | Where-Object {$_.Name -eq \"page.tsx\" -or $_.Name -eq \"layout.tsx\"} | Select-Object FullName)",
+      "PowerShell(Get-ChildItem -Path \"D:\\\\2026\\\\mocozi-temp\\\\frontend\\\\src\\\\app\\\\team\" -Force -Recurse | Where-Object {$_.PSIsContainer -or $_.Name -like \"page.tsx\"})",
+      "PowerShell(Get-ChildItem -Path \"D:\\\\2026\\\\mocozi-temp\\\\frontend\\\\src\\\\app\\\\profile\" -Force -Recurse | Where-Object {$_.PSIsContainer -or $_.Name -like \"page.tsx\"})",
+      "PowerShell(Get-ChildItem -Path \"D:\\\\2026\\\\mocozi-temp\\\\frontend\\\\src\\\\app\\\\chat\" -Force -Recurse | Where-Object {$_.PSIsContainer -or $_.Name -like \"page.tsx\"})",
+      "PowerShell(Get-ChildItem -Path \"D:\\\\2026\\\\mocozi-temp\\\\frontend\\\\src\\\\app\" -Force | Where-Object {$_.Name -eq \"layout.tsx\" -or $_.Name -eq \"page.tsx\"})",
+      "PowerShell(Get-ChildItem -Path \"D:\\\\2026\\\\mocozi-temp\" -Force -Recurse | Where-Object {$_.Name -match \"\\(Dockerfile|\\\\.env|\\\\.docker|vercel|deploy\\)\" -and $_.PSIsContainer -eq $false} | Select-Object FullName)",
+      "Bash(pnpm add *)",
+      "Bash(Test-Path *)",
+      "Bash(node *)",
+      "Bash(docker volume *)"
     ]
   },
   "enabledPlugins": {

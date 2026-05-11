@@ -6,9 +6,12 @@ import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
+import { Resend } from 'resend';
 
 @Injectable()
 export class AuthService {
+  private resend = new Resend(process.env.RESEND_API_KEY);
+
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
@@ -41,10 +44,26 @@ export class AuthService {
       },
     });
 
+    const verifyUrl = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
+    await this.resend.emails.send({
+      from: process.env.RESEND_FROM_EMAIL ?? 'mocozi <onboarding@resend.dev>',
+      to: email,
+      subject: '[모코지] 이메일 인증을 완료해주세요',
+      html: `
+        <p>안녕하세요 ${name}님,</p>
+        <p>아래 버튼을 클릭하여 이메일 인증을 완료해주세요.</p>
+        <a href="${verifyUrl}" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#fff;text-decoration:none;border-radius:6px;font-weight:bold;">
+          이메일 인증하기
+        </a>
+        <p style="color:#6b7280;font-size:12px;margin-top:16px;">링크가 작동하지 않으면 아래 URL을 복사해서 브라우저에 붙여넣기 해주세요.<br/>${verifyUrl}</p>
+      `,
+    }).catch((err: unknown) => {
+      console.error('인증 메일 발송 실패:', err);
+    });
+
     return {
       message: '회원가입이 완료되었습니다. 이메일을 확인해주세요.',
       userId: user.id,
-      verificationToken: user.verificationToken,
     };
   }
 

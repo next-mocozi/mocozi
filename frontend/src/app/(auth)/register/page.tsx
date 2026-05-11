@@ -2,13 +2,11 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { UNIVERSITIES } from '@/lib/universities';
 
 /** 회원가입 페이지 */
 export default function RegisterPage() {
-  const router = useRouter();
   const [form, setForm] = useState({
     email: '',
     password: '',
@@ -18,6 +16,7 @@ export default function RegisterPage() {
     department: '',
     grade: '',
   });
+  const [emailSent, setEmailSent] = useState(false);
 
   const [uniQuery, setUniQuery] = useState('');
   const [uniOpen, setUniOpen] = useState(false);
@@ -48,7 +47,7 @@ export default function RegisterPage() {
       return;
     }
     try {
-      const res = await api.post('/api/auth/register', {
+      await api.post('/api/auth/register', {
         email: form.email,
         password: form.password,
         name: form.name,
@@ -56,12 +55,43 @@ export default function RegisterPage() {
         department: form.department,
         grade: form.grade,
       });
-      const { verificationToken } = res.data.data;
-      router.push(`/verify-email?token=${verificationToken}`);
+      setEmailSent(true);
     } catch (err: any) {
       alert(err.response?.data?.message || '회원가입에 실패했습니다.');
     }
   };
+
+  if (emailSent) {
+    return (
+      <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center py-8">
+        <div className="card w-full max-w-md text-center">
+          <div className="mb-4 text-5xl">📬</div>
+          <h1 className="mb-2 text-2xl font-bold">인증 메일을 발송했습니다</h1>
+          <p className="mb-1 text-gray-600">
+            <span className="font-medium text-indigo-600">{form.email}</span>로
+          </p>
+          <p className="mb-6 text-gray-600">
+            인증 링크를 보냈습니다. 메일함을 확인해주세요.
+          </p>
+          <p className="text-xs text-gray-400">
+            메일이 오지 않으면 스팸함을 확인하거나{' '}
+            <button
+              onClick={() => setEmailSent(false)}
+              className="text-indigo-500 underline hover:text-indigo-700"
+            >
+              다시 시도
+            </button>
+            해주세요.
+          </p>
+          <div className="mt-6">
+            <Link href="/login" className="text-sm text-gray-500 hover:underline">
+              로그인 페이지로 이동
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center py-8">
