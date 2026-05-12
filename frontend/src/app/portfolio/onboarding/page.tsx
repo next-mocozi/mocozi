@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
@@ -54,7 +54,16 @@ const SKILL_GROUPS: { label: string; skills: string[] }[] = [
  *  이미 작성한 사용자는 /portfolio 로 리다이렉트(피드 노출). */
 export default function PortfolioOnboardingPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, loading, refreshUser } = useAuth();
+
+  // ?edit=1 또는 ?edit=true 로 진입 시 "수정 모드".
+  //  - 이미 작성한 사용자도 redirect 안 하고 폼 표시 (FeedDetailPanel 의 ProfilePost
+  //    "프로필 수정" 메뉴가 이쪽으로 보냄).
+  //  - 기존 intro / skills 를 폼에 채워서 그대로 수정 가능.
+  //  - 저장 후 visibility 모달 거치지 않고 바로 본인 portfolio 로 이동.
+  const editMode =
+    searchParams.get('edit') === '1' || searchParams.get('edit') === 'true';
 
   const [intro, setIntro] = useState('');
   const [skills, setSkills] = useState<string[]>([]);
@@ -68,17 +77,14 @@ export default function PortfolioOnboardingPage() {
     useState<PortfolioVisibility>('public');
   const [finalizing, setFinalizing] = useState(false);
 
-  // 비로그인 → 로그인 페이지. 이미 작성됨 → 피드.
-  // 단, 제출 중/공개여부 모달 표시 중/마무리 중에는 user.skills 가 막 갱신되어
-  // 가짜로 "이미 작성됨" 처럼 보이므로 리다이렉트 하지 않는다.
-  // (이전엔 이로 인해 visibility 모달이 0.5초만 보이고 '/portfolio' 로 튕겨
-  //  visibility 가 저장되지 않은 채 기본값 'private' 으로 처리되는 버그가 있었음.)
+  // 비로그인 → 로그인 페이지. 이미 작성됨 → 피드 (단 edit 모드면 redirect 안 함).
   useEffect(() => {
     if (loading) return;
     if (!user) {
       router.replace('/login');
       return;
     }
+    if (editMode) return; // 수정 모드는 redirect 우회
     if (saving || showVisibilityModal || finalizing) return;
     try {
       const existingIntro = localStorage.getItem(INTRO_STORAGE_KEY) ?? '';
@@ -89,15 +95,25 @@ export default function PortfolioOnboardingPage() {
     } catch {
       // localStorage 실패 시 그냥 폼 표시
     }
-  }, [loading, user, router, saving, showVisibilityModal, finalizing]);
+  }, [loading, user, router, saving, showVisibilityModal, finalizing, editMode]);
 
-  // 온보딩 폼은 항상 빈 상태로 시작한다.
-  // (이전엔 user.skills 가 있으면 자동으로 칩을 활성화했지만, 그러면 이전에 한 번
-  //  온보딩을 마친 적 있는 계정으로 로그인했을 때 의도치 않게 과거 선택이 그대로
-  //  남아 보이는 문제가 있었다. 사용자가 직접 칩을 골라 의도를 확정하도록 한다.)
+  // 신규 모드: 폼 빈 상태로 시작.
+  // 수정 모드: 기존 intro (user.bio / localStorage) + 기술스택 (user.skills) prefill.
   useEffect(() => {
-    setSkills([]);
-  }, [user?.id]);
+    if (!user) return;
+    if (editMode) {
+      let existingIntro = '';
+      try {
+        existingIntro = localStorage.getItem(INTRO_STORAGE_KEY) ?? '';
+      } catch {
+        // 무시
+      }
+      setIntro(existingIntro || user.bio || '');
+      setSkills(user.skills ?? []);
+    } else {
+      setSkills([]);
+    }
+  }, [user?.id, editMode]);
 
   const toggleSkill = (s: string) =>
     setSkills((prev) =>
@@ -147,7 +163,14 @@ export default function PortfolioOnboardingPage() {
       localStorage.setItem(INTRO_STORAGE_KEY, trimmed);
       localStorage.setItem(OWNER_STORAGE_KEY, user.id);
       await refreshUser();
-      // 3) 공개/비공개 선택 모달 노출
+      // 3) 수정 모드면 visibility 모달 건너뛰고 본인 portfolio 로 바로 이동.
+      //    (이미 한 번 onboarding 거친 사용자라 visibility 도 이미 set 되어 있음.)
+      if (editMode) {
+        notifyPortfolioChanged();
+        router.replace(`/portfolio/${user.id}`);
+        return;
+      }
+      // 신규 모드 — 공개/비공개 선택 모달 노출
       setShowVisibilityModal(true);
     } catch {
       setError('저장에 실패했습니다. 다시 시도해주세요.');

@@ -85,8 +85,11 @@ function getOwnerMenuLinks(post: FeedPost, ownerId: string): OwnerMenuLink[] {
     ];
   }
   if (post.kind === 'profile') {
+    // 자기소개·기술스택 수정 — onboarding 페이지의 수정 모드 (?edit=1).
+    // (전체 프로필(이름·학교·링크 등) 편집은 /profile/edit. ProfilePost 의 본문은
+    // intro+skills 만이라 그것에 맞는 좁은 폼으로.)
     return [
-      { label: '프로필 수정', href: `/profile/edit` },
+      { label: '자기소개·기술 수정', href: `/portfolio/onboarding?edit=1` },
     ];
   }
   return [];
