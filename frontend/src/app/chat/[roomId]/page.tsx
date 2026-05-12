@@ -1740,10 +1740,13 @@ function MessageItem({
         )}
 
         {/* 텍스트 말풍선 — 텍스트 있거나, 답글만 있는 경우(첨부 없음). 첨부만 있는 케이스는
-            아래 mini-quote로 답글 표시하고 말풍선 미렌더. */}
+            아래 mini-quote로 답글 표시하고 말풍선 미렌더.
+            max-w-full 필수 — 부모 컬럼은 flex-col + items-end/items-start라서 자식을
+            stretch하지 않음. max-w-full이 없으면 말풍선이 자기 content 본연 폭(긴 코드 줄·
+            긴 heading 등)으로 자라 컬럼 max-w-[70%] cap을 시각적으로 뚫고 나간다. */}
         {hasTextBubble && (
           <div
-            className={`min-w-0 rounded-2xl px-4 py-2 ${
+            className={`min-w-0 max-w-full rounded-2xl px-4 py-2 ${
               isMine ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-900'
             } ${stateClass}`}
           >
@@ -1786,14 +1789,14 @@ function MessageItem({
           const key = `${a.type}-${a.target}-${i}`;
           if (a.type === 'image') {
             return (
-              <div key={key} className={`rounded-xl ${stateClass}`}>
+              <div key={key} className={`min-w-0 max-w-full rounded-xl ${stateClass}`}>
                 <ImageAttachment attachment={a} isMine={isMine} />
               </div>
             );
           }
           if (a.type === 'file') {
             return (
-              <div key={key} className={`rounded-xl ${stateClass}`}>
+              <div key={key} className={`min-w-0 max-w-full rounded-xl ${stateClass}`}>
                 <FileAttachmentCard attachment={a} isMine={isMine} />
               </div>
             );
