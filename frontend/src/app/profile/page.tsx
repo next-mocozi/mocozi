@@ -385,12 +385,6 @@ export default function MyProfilePage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Link
-              href="/portfolio"
-              className="text-xs text-gray-500 hover:text-blue-600"
-            >
-              포트폴리오 편집 →
-            </Link>
             <button
               type="button"
               onClick={openImport}
