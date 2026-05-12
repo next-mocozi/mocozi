@@ -413,15 +413,15 @@ export default function RoomList() {
                   </p>
                   <ul className="space-y-1.5 text-xs text-stone-600">
                     <li className="flex items-center gap-2">
-                      <span className="h-2.5 w-2.5 rounded-full bg-blue-500 ring-2 ring-white" />
+                      <span className="h-2 w-2 animate-neon-pulse rounded-full bg-blue-500 shadow-[0_0_4px_rgb(59_130_246/0.95),0_0_10px_rgb(59_130_246/0.55)]" />
                       구인 (recruit)
                     </li>
                     <li className="flex items-center gap-2">
-                      <span className="h-2.5 w-2.5 rounded-full bg-amber-500 ring-2 ring-white" />
+                      <span className="h-2 w-2 animate-neon-pulse rounded-full bg-amber-500 shadow-[0_0_4px_rgb(245_158_11/0.95),0_0_10px_rgb(245_158_11/0.55)]" />
                       팀 합류
                     </li>
                     <li className="flex items-center gap-2">
-                      <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
+                      <span className="h-2 w-2 animate-neon-pulse rounded-full bg-emerald-500 shadow-[0_0_4px_rgb(16_185_129/0.95),0_0_10px_rgb(16_185_129/0.55)]" />
                       포트폴리오
                     </li>
                   </ul>
@@ -552,14 +552,7 @@ export default function RoomList() {
                             <UsersIcon className="h-5 w-5" />
                           )}
                         </div>
-                        {/* §17 진입 컨텍스트 색 점 — 아바타 좌상단 */}
-                        {room.context && (
-                          <span
-                            className={`absolute -left-0.5 -top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-white ${contextColor(room.context)}`}
-                            title={contextLabel(room.context)}
-                            aria-label={`진입: ${contextLabel(room.context)}`}
-                          />
-                        )}
+                        {/* §17 진입 컨텍스트 점은 이름 옆으로 이동 (네온 글로우가 모서리에서 잘리던 문제 해소) */}
                         {/* §B-DM-8 응답 만료 — 아바타 우하단 ⏰ overlay */}
                         {room.responseExpired && (
                           <span
@@ -573,10 +566,18 @@ export default function RoomList() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
-                          <div className="flex min-w-0 items-center gap-1">
+                          <div className="flex min-w-0 items-center gap-1.5">
                             <h3 className="truncate text-sm font-medium">
                               {displayName}
                             </h3>
+                            {/* §17 진입 컨텍스트 네온 점 — 이름 옆 오른쪽, 미세 호흡 글로우 */}
+                            {room.context && (
+                              <span
+                                className={`h-2 w-2 shrink-0 rounded-full animate-neon-pulse ${contextNeonClasses(room.context)}`}
+                                title={contextLabel(room.context)}
+                                aria-label={`진입: ${contextLabel(room.context)}`}
+                              />
+                            )}
                             {mutedRoomIds.has(room.id) && (
                               <BellOffIcon
                                 className="h-3.5 w-3.5 shrink-0 text-stone-400"
@@ -891,20 +892,25 @@ function contextLabel(c: MessageContext): string {
   }
 }
 
-/** §17 진입 컨텍스트 색 — Tailwind 표준 색 단일 매핑 */
-function contextColor(c: MessageContext): string {
+/** §17 진입 컨텍스트 네온 점 — bg + glow shadow 한 묶음.
+ *  두 겹 shadow (close 4px + outer 10px) + 채도 색으로 발광체 느낌.
+ *  animate-neon-pulse (globals.css)와 함께 "on the record" 느낌의 미세 호흡. */
+function contextNeonClasses(c: MessageContext): string {
   switch (c) {
     case 'RECRUIT_INDIVIDUAL':
     case 'SCOUT_FROM_TEAM':
-      return 'bg-blue-500';
+      // blue-500 = rgb(59 130 246)
+      return 'bg-blue-500 shadow-[0_0_4px_rgb(59_130_246/0.95),0_0_10px_rgb(59_130_246/0.55)]';
     case 'RECRUIT_TEAM':
-      return 'bg-amber-500';
+      // amber-500 = rgb(245 158 11)
+      return 'bg-amber-500 shadow-[0_0_4px_rgb(245_158_11/0.95),0_0_10px_rgb(245_158_11/0.55)]';
     case 'PORTFOLIO_COFFEE_CHAT':
     case 'PORTFOLIO_FRIENDSHIP':
     case 'PORTFOLIO_INQUIRY':
     case 'PORTFOLIO_COLLAB':
     case 'PORTFOLIO_PRAISE':
-      return 'bg-emerald-500';
+      // emerald-500 = rgb(16 185 129)
+      return 'bg-emerald-500 shadow-[0_0_4px_rgb(16_185_129/0.95),0_0_10px_rgb(16_185_129/0.55)]';
     default:
       return 'bg-stone-400';
   }
