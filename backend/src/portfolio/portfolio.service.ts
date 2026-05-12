@@ -269,12 +269,13 @@ export class PortfolioService {
     });
   }
 
+  /** Idempotent — 이미 삭제된 행도 success 처리 (race condition / 중복 클릭). */
   async deleteWorkExperience(userId: string, id: string) {
     const row = await this.prisma.portfolioWorkExperience.findUnique({
       where: { id },
       include: { portfolio: true },
     });
-    if (!row) throw new NotFoundException('실무 경험을 찾을 수 없습니다.');
+    if (!row) return { id, deleted: true, alreadyMissing: true };
     if (row.portfolio.userId !== userId) {
       throw new ForbiddenException('본인의 항목만 삭제할 수 있습니다.');
     }
@@ -308,12 +309,13 @@ export class PortfolioService {
     });
   }
 
+  /** Idempotent — 이미 삭제된 행도 success 처리. */
   async deleteActivity(userId: string, id: string) {
     const row = await this.prisma.portfolioExternalActivity.findUnique({
       where: { id },
       include: { portfolio: true },
     });
-    if (!row) throw new NotFoundException('대외 활동을 찾을 수 없습니다.');
+    if (!row) return { id, deleted: true, alreadyMissing: true };
     if (row.portfolio.userId !== userId) {
       throw new ForbiddenException('본인의 항목만 삭제할 수 있습니다.');
     }
@@ -340,12 +342,13 @@ export class PortfolioService {
     return this.prisma.portfolioLink.update({ where: { id }, data: dto });
   }
 
+  /** Idempotent — 이미 삭제된 행도 success 처리. */
   async deleteLink(userId: string, id: string) {
     const row = await this.prisma.portfolioLink.findUnique({
       where: { id },
       include: { portfolio: true },
     });
-    if (!row) throw new NotFoundException('링크를 찾을 수 없습니다.');
+    if (!row) return { id, deleted: true, alreadyMissing: true };
     if (row.portfolio.userId !== userId) {
       throw new ForbiddenException('본인의 항목만 삭제할 수 있습니다.');
     }

@@ -183,6 +183,8 @@ export default function PortfolioDetailPage({
   const [expEditId, setExpEditId] = useState<number | null>(null);
   const [expForm, setExpForm] = useState<ExpFormState>(EMPTY_EXP_FORM);
   const [expError, setExpError] = useState('');
+  // 빠른 중복 클릭으로 N개 생성되던 문제 방지
+  const [isExpSubmitting, setIsExpSubmitting] = useState(false);
 
   // 경력 모달 (폼 + 리스트 통합)
   const [careerModalOpen, setCareerModalOpen] = useState(false);
@@ -190,6 +192,7 @@ export default function PortfolioDetailPage({
   const [careerForm, setCareerForm] =
     useState<Omit<CareerItem, 'id'>>(EMPTY_CAREER_FORM);
   const [careerError, setCareerError] = useState('');
+  const [isCareerSubmitting, setIsCareerSubmitting] = useState(false);
 
   // 포트폴리오 / 연구 / 스터디 관리 모달
   const [portfolioMgrOpen, setPortfolioMgrOpen] = useState(false);
@@ -510,6 +513,7 @@ export default function PortfolioDetailPage({
   };
 
   const saveExp = async () => {
+    if (isExpSubmitting) return; // 중복 클릭 가드
     if (!expForm.company.trim()) { setExpError('회사명을 입력해주세요.'); return; }
     if (!expForm.startDate) { setExpError('시작 월을 선택해주세요.'); return; }
     if (!expForm.current && !expForm.endDate) {
@@ -518,6 +522,7 @@ export default function PortfolioDetailPage({
     if (!expForm.current && expForm.endDate && expForm.endDate < expForm.startDate) {
       setExpError('종료 월은 시작 월 이후여야 합니다.'); return;
     }
+    setIsExpSubmitting(true);
     const period = formatPeriod(expForm.startDate, expForm.endDate, expForm.current);
     const payload = { company: expForm.company, team: expForm.team, role: expForm.role, period, current: expForm.current };
     try {
@@ -533,8 +538,10 @@ export default function PortfolioDetailPage({
       }
     } catch {
       setExpError('저장 중 오류가 발생했어요. 다시 시도해주세요.');
+      setIsExpSubmitting(false);
       return;
     }
+    setIsExpSubmitting(false);
     resetExpForm();
   };
 
@@ -574,6 +581,7 @@ export default function PortfolioDetailPage({
   };
 
   const saveCareer = async () => {
+    if (isCareerSubmitting) return; // 중복 클릭 가드
     const year = careerForm.year.trim();
     const month = (careerForm.month ?? '').trim();
     const content = careerForm.content.trim();
@@ -581,6 +589,7 @@ export default function PortfolioDetailPage({
     if (!/^\d{4}$/.test(year)) { setCareerError('연도는 4자리 숫자여야 합니다. (예: 2024)'); return; }
     if (!month) { setCareerError('월을 선택해주세요.'); return; }
     if (!content) { setCareerError('내용을 입력해주세요.'); return; }
+    setIsCareerSubmitting(true);
     const payload = { year, month, content };
     try {
       if (careerEditId !== null) {
@@ -595,8 +604,10 @@ export default function PortfolioDetailPage({
       }
     } catch {
       setCareerError('저장 중 오류가 발생했어요. 다시 시도해주세요.');
+      setIsCareerSubmitting(false);
       return;
     }
+    setIsCareerSubmitting(false);
     resetCareerForm();
   };
 
@@ -1424,9 +1435,14 @@ export default function PortfolioDetailPage({
                     <button
                       type="button"
                       onClick={saveExp}
-                      className="rounded-full bg-blue-600 px-5 py-1 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
+                      disabled={isExpSubmitting}
+                      className="rounded-full bg-blue-600 px-5 py-1 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      {expEditId === null ? '추가' : '수정 저장'}
+                      {isExpSubmitting
+                        ? '저장 중…'
+                        : expEditId === null
+                          ? '추가'
+                          : '수정 저장'}
                     </button>
                   </div>
                 </div>
@@ -1648,9 +1664,14 @@ export default function PortfolioDetailPage({
                     <button
                       type="button"
                       onClick={saveCareer}
-                      className="rounded-full bg-blue-600 px-5 py-1 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
+                      disabled={isCareerSubmitting}
+                      className="rounded-full bg-blue-600 px-5 py-1 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      {careerEditId === null ? '추가' : '수정 저장'}
+                      {isCareerSubmitting
+                        ? '저장 중…'
+                        : careerEditId === null
+                          ? '추가'
+                          : '수정 저장'}
                     </button>
                   </div>
                 </div>
