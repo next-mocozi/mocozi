@@ -190,10 +190,16 @@ export default function PortfolioDetailPage({
   const [researchMgrOpen, setResearchMgrOpen] = useState(false);
   const [studyMgrOpen, setStudyMgrOpen] = useState(false);
 
-  // 포트폴리오 공개/비공개 설정 — viewer 는 feedUser.isPublic (= 'public') 고정
-  const [visibility, setVisibility] = useState<PortfolioVisibility>(
-    viewerInitial?.visibility ?? 'private',
-  );
+  // 포트폴리오 공개/비공개 설정 — viewer 는 feedUser.isPublic (= 'public') 고정.
+  // owner 는 localStorage 캐시로 초기값 채워 flash 방지 (실제 값은 useEffect 에서 덮어씀).
+  const [visibility, setVisibility] = useState<PortfolioVisibility>(() => {
+    if (viewerInitial?.visibility) return viewerInitial.visibility;
+    try {
+      const stored = localStorage.getItem(VISIBILITY_STORAGE_KEY);
+      if (stored === 'public' || stored === 'private') return stored as PortfolioVisibility;
+    } catch { /* 무시 */ }
+    return 'private';
+  });
   const [settingsOpen, setSettingsOpen] = useState(false);
   // 타인 portfolio 조회 결과. backend 호출 결과에 따라 비공개/없음을 정확히
   // 분기하기 위해 별도 state 로 관리. (mock 시대엔 findMockFeedUser 결과로
