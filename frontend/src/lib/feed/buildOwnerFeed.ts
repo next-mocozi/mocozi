@@ -241,7 +241,8 @@ export function buildOwnerFeedPostsFromApi(
   }
 
   // ProfilePost (자기소개 + 기술스택)
-  const intro = (portfolio.intro ?? '').trim();
+  // portfolio.intro 우선, 없으면 user.bio fallback (onboarding 이전 가입자 대응)
+  const intro = (portfolio.intro ?? '').trim() || (user.bio ?? '').trim();
   const skills = user.skills ?? [];
   if (intro && skills.length > 0) {
     const createdAt = portfolio.firstPostAt

@@ -136,9 +136,9 @@ export function buildBackendFeedPosts(portfolios: FeedPortfolio[]): FeedPost[] {
       } satisfies FeedPostCareer);
     });
 
-    // 4) ProfilePost — bio + skills 만 있으면 무조건 노출.
-    // firstAt 은 위에서 user.createdAt fallback 까지 적용해 null 이 안 됨.
-    const intro = (p.user.bio ?? '').trim();
+    // 4) ProfilePost — intro + skills 만 있으면 무조건 노출.
+    // portfolio.intro 우선, 없으면 user.bio fallback (onboarding 이전 가입자 대응)
+    const intro = (p.intro ?? '').trim() || (p.user.bio ?? '').trim();
     const skills = p.user.skills ?? [];
     if (intro && skills.length > 0 && firstAt !== null) {
       posts.push({

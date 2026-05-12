@@ -59,14 +59,12 @@ function PortfolioEditPageContent() {
   }
   if (!user) return null;
 
-  // 프로젝트는 신규/수정 모두 대화형 인터뷰 UI 사용
-  // (수정 시 _interview.tsx 가 mock_portfolio_details 에서 답변을 불러와 미리보기로 표시)
-  if (initialType === 'project') return <ProjectInterview />;
-  // 연구는 정형화된 단일 페이지 폼 (mock_research_details 에 저장)
-  if (initialType === 'research') return <ResearchForm />;
-  // 스터디는 스터디 전용 정형화된 폼 (mock_study_details 에 저장)
-  if (initialType === 'study') return <StudyForm />;
-  return <SimpleForm />;
+  // key={editIdParam ?? 'new'} — URL의 id가 바뀔 때 컴포넌트를 완전 재마운트해서
+  // 이전 projectId 상태가 남아 loading effect 가드를 막는 문제 방지.
+  if (initialType === 'project') return <ProjectInterview key={editIdParam ?? 'new'} />;
+  if (initialType === 'research') return <ResearchForm key={editIdParam ?? 'new'} />;
+  if (initialType === 'study') return <StudyForm key={editIdParam ?? 'new'} />;
+  return <SimpleForm key={editIdParam ?? 'new'} />;
 }
 
 function SimpleForm() {

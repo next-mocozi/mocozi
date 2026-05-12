@@ -88,7 +88,7 @@ export default function StudyForm() {
     return e < s;
   })();
 
-  // 편집 모드: 백엔드에서 답변 로드
+  // 편집 모드: localStorage 캐시 우선, 없으면 백엔드에서 답변 로드
   useEffect(() => {
     if (!isEdit || editId === null) return;
     let cancelled = false;
@@ -101,6 +101,19 @@ export default function StudyForm() {
         );
         if (backendItem) {
           serverIdRef.current = backendItem.id;
+        }
+        // localStorage 캐시 우선 (mid-edit 상태 보존)
+        try {
+          const detailsRaw = localStorage.getItem(STUDY_DETAILS_STORAGE_KEY);
+          const map: Record<string, StudyDetail> = detailsRaw ? JSON.parse(detailsRaw) : {};
+          const cached = map[String(editId)];
+          if (cached) {
+            setD({ ...EMPTY_DETAIL, ...cached });
+            return;
+          }
+        } catch {}
+        // localStorage 없음 → 백엔드 details 사용
+        if (backendItem) {
           const det = backendItem.details as { kind?: string; data?: unknown } | null;
           if (det?.kind === 'study' && det.data) {
             setD({ ...EMPTY_DETAIL, ...(det.data as StudyDetail) });
