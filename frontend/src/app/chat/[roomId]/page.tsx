@@ -1726,9 +1726,12 @@ function MessageItem({
       {/* 콘텐츠 컬럼 — 발신자 이름 + 말풍선/첨부 + 반응.
           min-w-0 필수 — flex 기본 min-width:auto가 자식 intrinsic width(긴 코드 줄 등)에
           밀려 max-w-[70%]를 무력화시키는 것을 막음. min-w-0이 있어야 내부 pre의
-          overflow-x-auto가 정상 발동해 가로 스크롤바가 뜬다. */}
+          overflow-x-auto가 정상 발동해 가로 스크롤바가 뜬다.
+          max-w도 min(70%, 28rem) — 채팅 컨테이너가 max-w-[40rem]=640px라 70% 한도와
+          28rem(448px) 절대값이 거의 일치. 부동소수 percentage가 부모 width 미정의로
+          resolve 실패하는 edge case에서도 28rem 절대값이 안전망. */}
       <div
-        className={`flex min-w-0 max-w-[70%] flex-col gap-1 ${
+        className={`flex min-w-0 max-w-[min(70%,28rem)] flex-col gap-1 ${
           isMine ? 'items-end' : 'items-start'
         }`}
       >
