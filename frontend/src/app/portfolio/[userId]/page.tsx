@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { use, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { findMockFeedUser, type FeedUser } from '@/lib/mock/portfolioFeed';
@@ -194,6 +194,21 @@ export default function PortfolioDetailPage({
   const [portfolioMgrOpen, setPortfolioMgrOpen] = useState(false);
   const [researchMgrOpen, setResearchMgrOpen] = useState(false);
   const [studyMgrOpen, setStudyMgrOpen] = useState(false);
+
+  // ?manage=portfolio|research|study|experience|career 쿼리 파라미터로 본인
+  // portfolio 페이지 진입 시 해당 관리 모달을 자동 open. FeedDetailPanel 의
+  // "관리" 버튼이 이 query 로 라우팅한다. 모달 열고 나면 query 는 그대로 둠
+  // (쉽게 닫고 다시 열 수 있도록).
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    if (!isOwner) return;
+    const manage = searchParams.get('manage');
+    if (manage === 'portfolio') setPortfolioMgrOpen(true);
+    else if (manage === 'research') setResearchMgrOpen(true);
+    else if (manage === 'study') setStudyMgrOpen(true);
+    else if (manage === 'experience') setExpModalOpen(true);
+    else if (manage === 'career') setCareerModalOpen(true);
+  }, [isOwner, searchParams]);
 
   // 포트폴리오 공개/비공개 설정 — viewer 는 feedUser.isPublic (= 'public') 고정.
   // owner 는 localStorage 캐시로 초기값 채워 flash 방지 (실제 값은 useEffect 에서 덮어씀).

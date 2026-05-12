@@ -45,8 +45,52 @@ export type FeedDetailTarget =
   | { mode: 'post'; post: FeedPost }
   | { mode: 'author'; userId: string };
 
-const EDITABLE_TYPES = ['project', 'research', 'study'] as const;
-type EditableType = (typeof EDITABLE_TYPES)[number];
+const EDITABLE_ITEM_TYPES = ['project', 'research', 'study'] as const;
+type EditableItemType = (typeof EDITABLE_ITEM_TYPES)[number];
+
+/** 본인 게시물에 떠는 메뉴 항목들 — kind/type 별로 다름.
+ *  - 수정: 인라인 편집 페이지로 라우팅 (있을 때만)
+ *  - 관리: 본인 portfolio 의 해당 종류 관리 모달로 라우팅 (?manage=...) */
+type OwnerMenuLink = { label: string; href: string; danger?: boolean };
+
+function getOwnerMenuLinks(post: FeedPost, ownerId: string): OwnerMenuLink[] {
+  const portfolioBase = `/portfolio/${ownerId}`;
+  if (post.kind === 'item') {
+    const t = post.item.type;
+    const links: OwnerMenuLink[] = [];
+    if ((EDITABLE_ITEM_TYPES as readonly string[]).includes(t)) {
+      links.push({
+        label: '수정',
+        href: `/portfolio/edit?type=${t as EditableItemType}&id=${post.item.id}`,
+      });
+    }
+    // 관리 모달 — type 별 query
+    const manageKey =
+      t === 'research' ? 'research' : t === 'study' ? 'study' : 'portfolio';
+    links.push({
+      label: '관리·삭제',
+      href: `${portfolioBase}?manage=${manageKey}`,
+      danger: true,
+    });
+    return links;
+  }
+  if (post.kind === 'experience') {
+    return [
+      { label: '관리·삭제', href: `${portfolioBase}?manage=experience`, danger: true },
+    ];
+  }
+  if (post.kind === 'career') {
+    return [
+      { label: '관리·삭제', href: `${portfolioBase}?manage=career`, danger: true },
+    ];
+  }
+  if (post.kind === 'profile') {
+    return [
+      { label: '프로필 수정', href: `/profile/edit` },
+    ];
+  }
+  return [];
+}
 
 export default function FeedDetailPanel({
   target,
@@ -73,18 +117,14 @@ export default function FeedDetailPanel({
   }, [target]);
 
   // author 모드일 때 헤더 이름은 AuthorDetail 내부 fetch 로 채워지므로
-  // 헤더에선 일반적인 "프로필" 라벨만 노출. (이전엔 mock 에서 동기로 이름을
-  // 가져왔는데, mock 제거 후 항상 undefined 가 되어 의미가 없어짐.)
+  // 헤더에선 일반적인 "프로필" 라벨만 노출.
   const authorName: string | undefined = undefined;
 
-  // 본인 작성 + project/research/study 항목일 때만 수정·삭제 메뉴 노출
-  const editHref =
-    target.mode === 'post' &&
-    target.post.kind === 'item' &&
-    user?.id === target.post.author.userId &&
-    (EDITABLE_TYPES as readonly string[]).includes(target.post.item.type)
-      ? `/portfolio/edit?type=${target.post.item.type as EditableType}&id=${target.post.item.id}`
-      : null;
+  // 본인 작성 게시물에 메뉴 노출 — kind 별 적절한 수정/관리 링크
+  const ownerMenuLinks: OwnerMenuLink[] =
+    target.mode === 'post' && user?.id === target.post.author.userId
+      ? getOwnerMenuLinks(target.post, user.id)
+      : [];
 
   return (
     <aside className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-lg">
@@ -97,12 +137,12 @@ export default function FeedDetailPanel({
               : '프로필'}
         </p>
         <div className="flex items-center gap-1">
-          {editHref && (
+          {ownerMenuLinks.length > 0 && (
             <div className="relative">
               <button
                 type="button"
                 onClick={() => setMenuOpen((v) => !v)}
-                aria-label="수정·삭제 메뉴"
+                aria-label="수정·관리 메뉴"
                 aria-expanded={menuOpen}
                 aria-haspopup="menu"
                 className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition-all hover:bg-gray-100 hover:text-gray-700"
@@ -122,24 +162,23 @@ export default function FeedDetailPanel({
                   />
                   <div
                     role="menu"
-                    className="absolute right-0 top-full z-20 mt-1 w-32 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg"
+                    className="absolute right-0 top-full z-20 mt-1 w-40 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg"
                   >
-                    <Link
-                      href={editHref}
-                      role="menuitem"
-                      className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                      onClick={() => setMenuOpen(false)}
-                    >
-                      수정
-                    </Link>
-                    <Link
-                      href={editHref}
-                      role="menuitem"
-                      className="block px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-                      onClick={() => setMenuOpen(false)}
-                    >
-                      삭제
-                    </Link>
+                    {ownerMenuLinks.map((link) => (
+                      <Link
+                        key={link.label}
+                        href={link.href}
+                        role="menuitem"
+                        className={`block px-3 py-2 text-sm hover:bg-gray-50 ${
+                          link.danger
+                            ? 'text-red-600 hover:bg-red-50'
+                            : 'text-gray-700'
+                        }`}
+                        onClick={() => setMenuOpen(false)}
+                      >
+                        {link.label}
+                      </Link>
+                    ))}
                   </div>
                 </>
               )}
