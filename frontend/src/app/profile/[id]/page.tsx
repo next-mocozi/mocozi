@@ -12,6 +12,7 @@ import {
   getDisplayLabel,
   type ProfileLink,
 } from '../_platforms';
+import { getBannerGradientClass } from '../_banner';
 
 type PortfolioItemType = 'PROJECT' | 'RESEARCH' | 'STUDY' | 'ACTIVITY' | 'ETC';
 
@@ -71,6 +72,8 @@ interface UserProfile {
   skills: string[];
   roles?: string[];
   careerSummary: string | null;
+  /** 작성자가 본인 프로필에서 선택한 배너 색상. 타인 viewer 도 동일하게 보여야. */
+  bannerColor?: string | null;
   portfolio: { items: PortfolioItem[] } | null;
 }
 
@@ -141,8 +144,16 @@ export default function UserProfilePage({
   const research = items.filter((it) => it.type === 'RESEARCH');
   const studies = items.filter((it) => it.type === 'STUDY');
 
+  const bannerClass = getBannerGradientClass(profile.bannerColor);
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
+      {/* 프로필 배너 — 작성자가 본인 페이지에서 선택한 색상 그대로 노출 (read-only) */}
+      <div
+        className={`mb-6 h-32 w-full rounded-2xl bg-gradient-to-br ${bannerClass}`}
+        aria-hidden
+      />
+
       {/* 프로필 요약 */}
       <div className="mb-6 flex items-start gap-6">
         <div className="flex h-31 w-31 items-center justify-center rounded-full bg-primary-100 text-4xl font-bold text-primary-600">
