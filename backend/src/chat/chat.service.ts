@@ -25,6 +25,8 @@ interface CreateRoomInput {
   memberIds: string[];
   /** 진입 컨텍스트 — RoomList 색 점 표시용 (§17). */
   context?: Prisma.ChatRoomCreateInput['context'];
+  /** 방 생성과 동시에 보낼 첫 메시지 (옵션, e.g. SCOUT_FROM_TEAM modal 메시지). */
+  firstMessage?: string;
 }
 
 /**
@@ -226,7 +228,13 @@ export class ChatService {
 
       // 기존 양자 DIRECT 방 조회 (양쪽 모두 활성 멤버)
       const existing = await this.findDirectRoomBetween(creatorId, otherUserId);
-      if (existing) return this.getRoom(existing.id, creatorId);
+      if (existing) {
+        // 재사용 시도 firstMessage 있으면 첫 메시지 전송 (스카우트 등 새 진입 의미)
+        if (input.firstMessage && input.firstMessage.trim().length > 0) {
+          await this.saveMessage(existing.id, creatorId, input.firstMessage);
+        }
+        return this.getRoom(existing.id, creatorId);
+      }
     } else if (type === 'GROUP') {
       if (!name || name.trim().length === 0) {
         throw new BadRequestException('GROUP 채팅방은 이름이 필요합니다.');
@@ -253,6 +261,11 @@ export class ChatService {
       },
       include: this.roomInclude(),
     });
+
+    // 첫 메시지 전송 (옵션) — 새 방 + firstMessage 있으면 즉시 메시지 INSERT
+    if (input.firstMessage && input.firstMessage.trim().length > 0) {
+      await this.saveMessage(room.id, creatorId, input.firstMessage);
+    }
 
     return this.shapeRoom(room, creatorId, 0);
   }

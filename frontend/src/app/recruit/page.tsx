@@ -1,6 +1,7 @@
 'use client';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { usePagination } from '@/hooks/usePagination';
 import { Pagination } from '@/components/ui/Pagination';
 import { useAuth } from '@/hooks/useAuth';
@@ -57,6 +58,7 @@ interface ScoutModalState {
 
 export default function RecruitListPage() {
   const { user, isAuthenticated } = useAuth();
+  const router = useRouter();
 
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [fetchLoading, setFetchLoading] = useState(true);
@@ -162,6 +164,13 @@ export default function RecruitListPage() {
     setScoutSuccess(false);
     const res = await api.get('/api/teams/my');
     const teams: MyTeam[] = res.data?.data ?? res.data ?? [];
+    // 본인 소속 팀 없으면 modal 안 열고 안내 alert (B-DM-1 정책)
+    if (teams.length === 0) {
+      window.alert(
+        '스카우트 채팅을 시작하려면 먼저 본인의 팀을 만들어주세요.\n팀 메뉴에서 새 팀을 생성할 수 있습니다.',
+      );
+      return;
+    }
     setScoutModal({ targetUser: target, teams, selectedTeamId: teams[0]?.id ?? '', message: '', loading: false });
   };
 
@@ -173,14 +182,29 @@ export default function RecruitListPage() {
     setScoutModal((prev) => prev && { ...prev, loading: true });
     setScoutError(null);
     try {
-      await api.post(`/api/scout/${scoutModal.targetUser.id}`, {
-        teamId: scoutModal.selectedTeamId,
-        message: scoutModal.message,
+      // B-DM-1 정책 통합 — 별도 Scout 제안 대신 채팅방 시작 + 첫 메시지 전송.
+      // 본문 + 팀 link 마커 자동 첨부 → 받는 사람의 채팅창에서 팀 정보 인지 가능.
+      const team = scoutModal.teams.find((t) => t.id === scoutModal.selectedTeamId);
+      const teamMarker = team
+        ? `\n\n[[link:team:${team.id}|${team.name} 팀 보기]]`
+        : '';
+      const firstMessage = `${scoutModal.message.trim()}${teamMarker}`;
+
+      const res = await api.post<{ data: { id: string } }>('/api/chat/rooms', {
+        type: 'DIRECT',
+        memberIds: [scoutModal.targetUser.id],
+        context: 'SCOUT_FROM_TEAM',
+        firstMessage,
       });
+      const roomId = res.data.data.id;
       setScoutSuccess(true);
-      setTimeout(() => setScoutModal(null), 1500);
+      // 모달 닫고 채팅방으로 이동
+      setTimeout(() => {
+        setScoutModal(null);
+        router.push(`/chat/${roomId}?context=SCOUT_FROM_TEAM&teamId=${scoutModal.selectedTeamId}`);
+      }, 800);
     } catch (e: any) {
-      setScoutError(e?.response?.data?.message ?? '스카우트 제안에 실패했습니다.');
+      setScoutError(e?.response?.data?.message ?? '스카우트 채팅 시작에 실패했습니다.');
       setScoutModal((prev) => prev && { ...prev, loading: false });
     }
   };
@@ -602,7 +626,7 @@ export default function RecruitListPage() {
         <div onClick={() => setScoutModal(null)} className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm">
           <div onClick={(e) => e.stopPropagation()} className="w-full max-w-[440px] rounded-3xl bg-white p-7 shadow-2xl">
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-stone-900">스카우트 제안</h2>
+              <h2 className="text-lg font-bold text-stone-900">스카우트 채팅 시작</h2>
               <button onClick={() => setScoutModal(null)} className="rounded-full p-1 text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-600">
                 <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -640,7 +664,7 @@ export default function RecruitListPage() {
                 </div>
                 {scoutError && <p className="mb-3 text-xs text-red-500">{scoutError}</p>}
                 {scoutSuccess ? (
-                  <p className="text-center text-sm font-semibold text-emerald-600">스카우트 제안을 보냈습니다!</p>
+                  <p className="text-center text-sm font-semibold text-emerald-600">채팅을 시작했습니다! 잠시 후 이동합니다…</p>
                 ) : (
                   <button
                     onClick={submitScout}

@@ -421,8 +421,9 @@ model MessageReaction {
 
 enum MessageContext {
   // Phase A
-  RECRUIT_INDIVIDUAL          // 개인 → 개인 (recruit 페이지)
-  RECRUIT_TEAM                // 개인 → 팀 (team 상세)
+  RECRUIT_INDIVIDUAL          // 개인 → 개인 (recruit 페이지의 "프로필" 경유 채팅)
+  RECRUIT_TEAM                // 개인 → 팀 (team 상세에서 합류 의사)
+  SCOUT_FROM_TEAM             // 팀 → 개인 (recruit 페이지의 "스카우트" 채팅 통합)
 
   // Phase B
   PORTFOLIO_COFFEE_CHAT       // 포트폴리오 — 커피챗

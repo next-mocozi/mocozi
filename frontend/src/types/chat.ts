@@ -257,6 +257,7 @@ export interface ClientToServerEvents {
 export type MessageContext =
   | 'RECRUIT_INDIVIDUAL'
   | 'RECRUIT_TEAM'
+  | 'SCOUT_FROM_TEAM'
   | 'PORTFOLIO_COFFEE_CHAT'
   | 'PORTFOLIO_FRIENDSHIP'
   | 'PORTFOLIO_INQUIRY'

@@ -50,4 +50,15 @@ export class CreateRoomDto {
   @IsOptional()
   @IsEnum(MessageContext)
   context?: MessageContext;
+
+  /**
+   * 방 생성과 동시에 보낼 첫 메시지 (예: SCOUT_FROM_TEAM의 modal 메시지).
+   * - 본문 raw text. 마커(`[[link:team:teamId|팀명]]` 등)도 inline 가능
+   * - 비어있으면 메시지 전송 안 함 (옛 흐름과 동일)
+   * - DIRECT find-or-create로 기존 방 재사용 시도 첫 메시지 전송 (자유 대화 trigger)
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  firstMessage?: string;
 }

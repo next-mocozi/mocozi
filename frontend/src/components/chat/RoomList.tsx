@@ -741,6 +741,7 @@ function contextLabel(c: MessageContext): string {
     case 'RECRUIT_INDIVIDUAL':
       return '구인';
     case 'RECRUIT_TEAM':
+    case 'SCOUT_FROM_TEAM':
       return '팀';
     case 'PORTFOLIO_COFFEE_CHAT':
     case 'PORTFOLIO_FRIENDSHIP':
@@ -759,6 +760,7 @@ function contextColor(c: MessageContext): string {
     case 'RECRUIT_INDIVIDUAL':
       return 'bg-blue-500';
     case 'RECRUIT_TEAM':
+    case 'SCOUT_FROM_TEAM':
       return 'bg-amber-500';
     case 'PORTFOLIO_COFFEE_CHAT':
     case 'PORTFOLIO_FRIENDSHIP':
