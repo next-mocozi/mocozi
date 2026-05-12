@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { BadRequestException, ConflictException, UnauthorizedException } from '@nestjs/common';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -12,14 +12,32 @@ const VERIFICATION_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24시간
 
 @Injectable()
 export class AuthService {
-  private resend = new Resend(process.env.RESEND_API_KEY);
+  private readonly logger = new Logger(AuthService.name);
+  // RESEND_API_KEY 미설정이어도 backend 부팅은 가능해야 함 — Resend SDK는
+  // 빈 키에서 생성자 단계로 throw 하므로, 키가 있을 때만 인스턴스화.
+  // 실제 메일 발송 시점에 null 체크 후 graceful skip (StorageService와 동일 패턴).
+  private resend = process.env.RESEND_API_KEY
+    ? new Resend(process.env.RESEND_API_KEY)
+    : null;
 
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
-  ) {}
+  ) {
+    if (!this.resend) {
+      this.logger.warn(
+        '[AuthService] RESEND_API_KEY 미설정 — 인증 메일 발송 비활성.',
+      );
+    }
+  }
 
   private async sendVerificationEmail(to: string, name: string, token: string) {
+    if (!this.resend) {
+      this.logger.warn(
+        `[AuthService] Resend 미설정 — ${to} 에게 인증 메일 발송 스킵.`,
+      );
+      return;
+    }
     const verifyUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
     await this.resend.emails
       .send({
