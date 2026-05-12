@@ -144,7 +144,13 @@ export async function syncItemToBackend(
       ? { ...basePayload, details }
       : basePayload;
     if (item.serverId) {
-      return await apiUpdateItem(item.serverId, payload);
+      // update 시 clientCreatedAt 제외 — UpdatePortfolioDto 에 그 필드가 없어서
+      // ValidationPipe(whitelist) 가 거부, silent 실패하던 버그.
+      // (clientCreatedAt 은 createItem 시에만 의미 있음 — Prisma createdAt 을
+      //  frontend Date.now() 와 맞추기 위함. update 엔 무관.)
+      const { clientCreatedAt: _ignored, ...updatePayload } = payload;
+      void _ignored;
+      return await apiUpdateItem(item.serverId, updatePayload);
     }
     return await apiCreateItem(payload);
   } catch (err) {
