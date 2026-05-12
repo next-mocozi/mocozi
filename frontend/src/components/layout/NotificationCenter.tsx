@@ -1,27 +1,31 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { NotificationIcon } from '@/components/icons/NotificationIcon';
-import { useChatNotifications } from '@/providers/SocketProvider';
+import { useNotificationFeed } from '@/hooks/useNotificationFeed';
+import { useChatSocket } from '@/providers/SocketProvider';
+import type { Notification, NotificationType } from '@/types/notification';
 
 /**
- * §B-DM-8 알림 센터 — Phase B 자리 잡기.
+ * §B-DM-9 알림 센터.
  *
- * 현재 phase: 헤더 아이콘 + dropdown placeholder만. 실제 알림 데이터/모델은 후속 plan.
- * dropdown에는 채팅 unread 카운트만 노출 (`useChatNotifications.totalUnread`).
+ * - mount 시 GET /api/notifications fetch + socket `notification:new` listen
+ * - 우상단 빨간 점: 안 읽은 알림 1개+일 때
+ * - dropdown: 알림 목록 + 클릭 시 router.push + markRead
+ * - "모두 읽음" 버튼: 일괄 read 처리
  *
- * 향후 추가될 알림 카테고리 (Notification 모델·socket 이벤트 정착 시):
- *  1. 채팅 요청 받음 — recruit/scout/portfolio 채팅방 첫 메시지 수신
- *  2. 채팅 답장 받음 — 본인 메시지에 상대 답장
- *  3. 응답 만료 — 본인이 보낸 메시지가 3일 무응답
- *  4. 지원 접수 — 본인 팀에 지원자 들어옴
- *  5. 지원 처리 결과 — 본인 지원 수락/거절
- *  6. 팀 멤버 변경 — 본인 팀에 멤버 가입/탈퇴
- *  7. (후속) 포트폴리오 인터랙션 — 코멘트/좋아요
+ * 현재 등재된 카테고리 (backend NotificationType):
+ *   - CHAT_NEW_REQUEST      스카우트/구인 등 첫 메시지 수신
+ *   - APPLICATION_RECEIVED  본인 팀에 지원자 들어옴
+ *   - APPLICATION_PROCESSED 본인 지원 결과 (수락/거절) — 후속에서 활성
  */
 export default function NotificationCenter() {
-  const { totalUnread } = useChatNotifications();
+  const router = useRouter();
+  const { socket } = useChatSocket();
+  const { items, unreadCount, markRead, markAllRead } = useNotificationFeed(socket);
+
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -50,6 +54,12 @@ export default function NotificationCenter() {
     return () => window.removeEventListener('keydown', onKey);
   }, [open]);
 
+  const handleClickItem = (n: Notification) => {
+    if (!n.readAt) void markRead(n.id);
+    setOpen(false);
+    if (n.linkTo) router.push(n.linkTo);
+  };
+
   return (
     <div ref={containerRef} className="relative">
       <button
@@ -57,14 +67,13 @@ export default function NotificationCenter() {
         onClick={() => setOpen((v) => !v)}
         className="relative flex h-10 w-10 items-center justify-center rounded-full transition hover:bg-gray-100"
         aria-label={
-          totalUnread > 0 ? `알림 (안 읽은 메시지 ${totalUnread}개)` : '알림'
+          unreadCount > 0 ? `알림 (안 읽음 ${unreadCount}개)` : '알림'
         }
         aria-haspopup="menu"
         aria-expanded={open}
       >
-        {/* SVG로 자체 구현 — 외부 PNG 의존 제거. currentColor 상속으로 dark mode 등 향후 확장 용이 */}
         <NotificationIcon className="h-6 w-6 text-gray-700" />
-        {totalUnread > 0 && (
+        {unreadCount > 0 && (
           <span
             className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white"
             aria-hidden
@@ -75,34 +84,102 @@ export default function NotificationCenter() {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full z-50 mt-2 w-72 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg"
+          className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg"
         >
-          <div className="border-b border-gray-100 px-4 py-2.5">
+          <div className="flex items-center justify-between border-b border-gray-100 px-4 py-2.5">
             <p className="text-sm font-semibold text-gray-900">알림</p>
-          </div>
-          <div className="max-h-80 overflow-y-auto">
-            {totalUnread > 0 ? (
-              <Link
-                href="/chat"
-                onClick={() => setOpen(false)}
-                className="flex items-center justify-between px-4 py-3 text-sm text-gray-700 transition-colors hover:bg-gray-50"
+            {unreadCount > 0 && (
+              <button
+                type="button"
+                onClick={() => void markAllRead()}
+                className="text-xs text-indigo-600 hover:text-indigo-700"
               >
-                <span>안 읽은 채팅 메시지</span>
-                <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-700">
-                  {totalUnread}
-                </span>
-              </Link>
-            ) : (
-              <p className="px-4 py-6 text-center text-sm text-gray-400">
+                모두 읽음
+              </button>
+            )}
+          </div>
+          <div className="max-h-96 overflow-y-auto">
+            {items.length === 0 ? (
+              <p className="px-4 py-8 text-center text-sm text-gray-400">
                 아직 알림이 없어요
               </p>
+            ) : (
+              <ul>
+                {items.map((n) => (
+                  <li key={n.id}>
+                    <button
+                      type="button"
+                      onClick={() => handleClickItem(n)}
+                      className={`block w-full px-4 py-3 text-left text-sm transition-colors hover:bg-gray-50 ${
+                        n.readAt ? 'text-gray-500' : 'bg-indigo-50/40 text-gray-900'
+                      }`}
+                    >
+                      <div className="flex items-start gap-2">
+                        <NotificationTypeBadge type={n.type} />
+                        <div className="flex-1 min-w-0">
+                          <p className={`break-words ${n.readAt ? '' : 'font-medium'}`}>
+                            {n.title}
+                          </p>
+                          {n.body && (
+                            <p className="mt-0.5 text-xs text-gray-500 break-words">
+                              {n.body}
+                            </p>
+                          )}
+                          <p className="mt-1 text-[11px] text-gray-400">
+                            {formatTime(n.createdAt)}
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
             )}
-            <p className="border-t border-gray-100 px-4 py-2 text-[11px] text-gray-400">
-              스카우트·지원·팀 변동 등 추가 알림이 곧 도입돼요
-            </p>
           </div>
+          {items.length > 0 && (
+            <Link
+              href="/chat"
+              onClick={() => setOpen(false)}
+              className="block border-t border-gray-100 px-4 py-2 text-center text-xs text-gray-500 transition-colors hover:bg-gray-50"
+            >
+              채팅으로 이동
+            </Link>
+          )}
         </div>
       )}
     </div>
   );
+}
+
+/** 알림 type 별 색 점 — 시각적 카테고리 식별 */
+function NotificationTypeBadge({ type }: { type: NotificationType }) {
+  const map: Record<NotificationType, string> = {
+    // 채팅 요청 → blue (구인 컨텍스트와 동일 톤)
+    CHAT_NEW_REQUEST: 'bg-blue-500',
+    // 지원 접수 → amber (팀 합류 컨텍스트와 동일 톤)
+    APPLICATION_RECEIVED: 'bg-amber-500',
+    // 지원 결과 → emerald
+    APPLICATION_PROCESSED: 'bg-emerald-500',
+  };
+  return (
+    <span
+      className={`mt-1 h-2 w-2 shrink-0 rounded-full ${map[type] ?? 'bg-stone-400'}`}
+      aria-hidden
+    />
+  );
+}
+
+/** 간단 시간 포맷 — N분 전 / N시간 전 / 어제 / 날짜 */
+function formatTime(iso: string): string {
+  const d = new Date(iso);
+  const now = Date.now();
+  const diff = now - d.getTime();
+  const min = 60 * 1000;
+  const hour = 60 * min;
+  const day = 24 * hour;
+  if (diff < min) return '방금';
+  if (diff < hour) return `${Math.floor(diff / min)}분 전`;
+  if (diff < day) return `${Math.floor(diff / hour)}시간 전`;
+  if (diff < 2 * day) return '어제';
+  return `${d.getMonth() + 1}/${d.getDate()}`;
 }

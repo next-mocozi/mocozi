@@ -6,6 +6,7 @@ import { PortfolioModule } from './portfolio/portfolio.module';
 import { TeamModule } from './team/team.module';
 import { ApplyModule } from './apply/apply.module';
 import { ChatModule } from './chat/chat.module';
+import { NotificationModule } from './notification/notification.module';
 import { SearchModule } from './search/search.module';
 import { TemplateModule } from './template/template.module';
 
@@ -21,6 +22,7 @@ import { TemplateModule } from './template/template.module';
     TeamModule,
     ApplyModule,
     ChatModule,
+    NotificationModule,
     SearchModule,
     TemplateModule,
   ],

@@ -5,6 +5,7 @@ import { ChatGateway } from './chat.gateway';
 import { ChatService } from './chat.service';
 import { StorageService } from './storage.service';
 import { WsJwtGuard } from '../auth/guards/ws-jwt.guard';
+import { NotificationModule } from '../notification/notification.module';
 
 /**
  * 채팅 모듈 - Socket.IO 기반 실시간 채팅 + REST CRUD
@@ -18,6 +19,8 @@ import { WsJwtGuard } from '../auth/guards/ws-jwt.guard';
     JwtModule.register({
       secret: process.env.JWT_SECRET,
     }),
+    // §B-DM-9 — ChatService가 NotificationService를 주입받아 첫 메시지 알림 트리거
+    NotificationModule,
   ],
   controllers: [ChatController],
   providers: [ChatGateway, ChatService, StorageService, WsJwtGuard],

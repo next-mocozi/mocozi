@@ -49,6 +49,9 @@ model User {
   messageTemplates UserMessageTemplate[]
   contactedTeams   Team[]                @relation("TeamContact")
 
+  // §B-DM-9 알림 — 받는 사람 입장의 알림 역참조
+  notifications Notification[]
+
   @@map("users")
 }
 
@@ -436,4 +439,40 @@ model UserMessageTemplate {
   @@unique([userId, context])
   @@index([userId])
   @@map("user_message_templates")
+}
+
+// -----------------------------------------------------
+// 알림 — Phase B-DM-9 (§01-decisions.md §23 / 08-phase-b-policy.md B-DM-9)
+//
+// 사용자별 누적 알림 row. NotificationCenter dropdown이 fetch하고 socket
+// `notification:new`로 실시간 도착 시 prepend.
+//
+// linkTo: 클릭 시 router.push 대상 경로 (예: /chat/<roomId>, /team/<id>/applications)
+// readAt: null이면 안 읽음. 클릭 시 read 처리. "read-all" 일괄 처리도 지원.
+// -----------------------------------------------------
+enum NotificationType {
+  /** 스카우트/구인 등 응답 기대 채팅의 첫 메시지 수신 (context 방의 creator → 본인) */
+  CHAT_NEW_REQUEST
+  /** 본인 팀에 지원자 들어옴 (team leader 받음) */
+  APPLICATION_RECEIVED
+  /** 본인 지원이 ACCEPTED/REJECTED 처리됨 (applicant 받음) */
+  APPLICATION_PROCESSED
+  // 후속 카테고리 자리 — CHAT_REPLY, CHAT_EXPIRED, TEAM_MEMBER_CHANGED 등
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String           // 받는 사람
+  type      NotificationType
+  title     String           // "○○님이 스카우트 메시지를 보냈습니다"
+  body      String?          @db.Text  // 부가 설명 (옵션)
+  linkTo    String?          // 클릭 시 이동할 경로
+  readAt    DateTime?        // null=안 읽음
+  createdAt DateTime         @default(now())
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+  @@map("notifications")
 }

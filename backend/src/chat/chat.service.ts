@@ -12,11 +12,25 @@ import {
   getSizeLimitFor,
   StorageService,
 } from './storage.service';
+import { NotificationService } from '../notification/notification.service';
 
 const MESSAGE_PAGE_DEFAULT = 50;
 const MESSAGE_PAGE_MAX = 100;
 const ROOM_PAGE_DEFAULT = 20;
 const ROOM_PAGE_MAX = 50;
+
+/** §B-DM-8/§B-DM-9 — 응답 기대(=답장 받고 싶은) context. 만료 판정·신규 알림 양쪽 공용. */
+const RESPONSE_EXPECTING_CONTEXTS: MessageContext[] = [
+  'SCOUT_FROM_TEAM',
+  'RECRUIT_INDIVIDUAL',
+  'RECRUIT_TEAM',
+  'PORTFOLIO_COFFEE_CHAT',
+  'PORTFOLIO_FRIENDSHIP',
+  'PORTFOLIO_INQUIRY',
+  'PORTFOLIO_COLLAB',
+  'PORTFOLIO_PRAISE',
+  'COMMUNITY_PRIVATE_NOTE',
+];
 
 interface CreateRoomInput {
   type: 'DIRECT' | 'GROUP';
@@ -73,6 +87,7 @@ export class ChatService {
   constructor(
     private prisma: PrismaService,
     private storage: StorageService,
+    private notifications: NotificationService,
   ) {}
 
   // ---------------------------------------------------------
@@ -548,7 +563,81 @@ export class ChatService {
     // 실패 시 exponential backoff로 최대 3회 재시도 → 일관성 보장 강화
     this.updateLastMessageWithRetry(roomId, content, message.createdAt);
 
+    // §B-DM-9 — 응답 기대 context의 첫 메시지면 받는 사람에게 알림 push.
+    // fire-and-forget — critical path 영향 X, 실패 시 콘솔에 기록만.
+    void this.maybeNotifyChatNewRequest(roomId, senderId, message.id).catch(
+      // eslint-disable-next-line no-console
+      (e) => console.error('[notification] CHAT_NEW_REQUEST trigger failed', e),
+    );
+
     return message;
+  }
+
+  /**
+   * §B-DM-9 — context 방의 creator가 첫 메시지를 보내면 받는 사람에게 알림 생성.
+   * 조건:
+   *   - room.context가 응답 기대 컨텍스트
+   *   - senderId === room.creatorId
+   *   - 같은 sender의 이전 메시지가 없음 (이번이 첫 메시지)
+   * 결과: room.members 중 sender 제외 멤버 각자에게 CHAT_NEW_REQUEST 알림.
+   */
+  private async maybeNotifyChatNewRequest(
+    roomId: string,
+    senderId: string,
+    currentMessageId: string,
+  ): Promise<void> {
+    const room = await this.prisma.chatRoom.findUnique({
+      where: { id: roomId },
+      select: {
+        context: true,
+        creatorId: true,
+        members: {
+          where: { leftAt: null },
+          select: { userId: true },
+        },
+      },
+    });
+    if (!room || !room.context || !room.creatorId) return;
+    if (senderId !== room.creatorId) return;
+    if (!RESPONSE_EXPECTING_CONTEXTS.includes(room.context)) return;
+
+    // 첫 메시지 판정 — 본인의 이전 메시지가 하나도 없을 때만
+    const priorCount = await this.prisma.chatMessage.count({
+      where: {
+        roomId,
+        senderId,
+        id: { not: currentMessageId },
+      },
+    });
+    if (priorCount > 0) return;
+
+    const sender = await this.prisma.user.findUnique({
+      where: { id: senderId },
+      select: { name: true },
+    });
+    const senderName = sender?.name ?? '누군가';
+    const labelByContext: Partial<Record<MessageContext, string>> = {
+      SCOUT_FROM_TEAM: '스카우트 메시지',
+      RECRUIT_INDIVIDUAL: '구인 메시지',
+      RECRUIT_TEAM: '팀 합류 메시지',
+      PORTFOLIO_COFFEE_CHAT: '커피챗 제안',
+      PORTFOLIO_FRIENDSHIP: '친구 제안',
+      PORTFOLIO_INQUIRY: '문의 메시지',
+      PORTFOLIO_COLLAB: '협업 제안',
+      PORTFOLIO_PRAISE: '메시지',
+      COMMUNITY_PRIVATE_NOTE: '쪽지',
+    };
+    const label = labelByContext[room.context] ?? '메시지';
+
+    for (const member of room.members) {
+      if (member.userId === senderId) continue; // 본인 제외
+      await this.notifications.create({
+        userId: member.userId,
+        type: 'CHAT_NEW_REQUEST',
+        title: `${senderName}님이 ${label}를 보냈습니다`,
+        linkTo: `/chat/${roomId}`,
+      });
+    }
   }
 
   // ---------------------------------------------------------
