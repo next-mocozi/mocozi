@@ -14,8 +14,15 @@ import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import { summarizePreview } from '@/lib/messageTemplate';
 import { timeAgo } from '@/lib/utils';
-import { useChatNotifications, useChatSocket } from '@/providers/SocketProvider';
-import type { ChatRoomWithMembers, MessageContext, RoomsPageResponse } from '@/types/chat';
+import {
+  useChatNotifications,
+  useChatSocket,
+} from '@/providers/SocketProvider';
+import type {
+  ChatRoomWithMembers,
+  MessageContext,
+  RoomsPageResponse,
+} from '@/types/chat';
 
 /**
  * "+ 새 채팅" 버튼 노출 여부 — Phase A에서 hide.
@@ -125,12 +132,29 @@ export default function RoomList() {
             id: r.id,
             unreadCount: r.unreadCount,
             mutedAt: r.mutedAt,
+            hiddenAt: r.hiddenAt,
           })),
         );
       } catch (e: unknown) {
-        const msg =
-          (e as { response?: { data?: { message?: string } } })?.response?.data
-            ?.message ?? '채팅방 목록을 불러오지 못했습니다.';
+        // eslint-disable-next-line no-console
+        console.error('[chat] room list load failed:', e);
+        const err = e as {
+          response?: { status?: number; data?: { message?: string } };
+          code?: string;
+          message?: string;
+        };
+        let msg = '채팅방 목록을 불러오지 못했습니다.';
+        if (err.response) {
+          const status = err.response.status;
+          const serverMsg = err.response.data?.message;
+          msg = serverMsg
+            ? `${serverMsg}${status ? ` (HTTP ${status})` : ''}`
+            : `서버 오류 (HTTP ${status ?? '?'})`;
+        } else if (err.code === 'ECONNABORTED' || /timeout/i.test(err.message ?? '')) {
+          msg = '서버 응답 timeout (15s). 백엔드 상태 확인.';
+        } else if (err.message) {
+          msg = `요청 실패: ${err.message}`;
+        }
         setError(msg);
       } finally {
         setLoading(false);
@@ -206,7 +230,11 @@ export default function RoomList() {
       setRooms((prev) =>
         prev.map((r) =>
           r.id === n.roomId
-            ? { ...r, lastMessage: n.lastMessage, lastMessageAt: n.lastMessageAt }
+            ? {
+                ...r,
+                lastMessage: n.lastMessage,
+                lastMessageAt: n.lastMessageAt,
+              }
             : r,
         ),
       );
@@ -216,23 +244,26 @@ export default function RoomList() {
     return () => {
       socket.off('connect', onConnect);
       socket.off('notification:newMessage', onNewMessage);
-      socket.off('notification:roomLastMessageChanged', onRoomLastMessageChanged);
+      socket.off(
+        'notification:roomLastMessageChanged',
+        onRoomLastMessageChanged,
+      );
     };
   }, [socket, load, showingHidden]);
 
   // rooms 변경 시 module cache 동기화 — 모드별로 갈래.
   // socket onNewMessage / handleHide / handleLeave 등 모든 setRooms 호출을 자동 캐치.
   // 가드:
-  //  - hasLoaded*=false (아직 첫 fetch 전) — 빈 배열로 덮지 않음
-  //  - rooms.length === 0 — toggleHidden 시 의도적 비움 / 전환 중 — cache는 직전 데이터 유지
+  //  - loading=true — toggleHidden 전환 중 의도적으로 rooms를 비운 상태는 캐시에 반영하지 않음
+  //  - loading=false — 마지막 방 hide/leave 같은 실제 빈 목록은 캐시에 반영해 stale room 재노출 방지
   useEffect(() => {
-    if (rooms.length === 0) return;
+    if (loading) return;
     if (showingHidden && hasLoadedHiddenInSession) {
       cachedHiddenRooms = rooms;
     } else if (!showingHidden && hasLoadedActiveInSession) {
       cachedActiveRooms = rooms;
     }
-  }, [rooms, showingHidden]);
+  }, [rooms, showingHidden, loading]);
 
   /**
    * "숨긴 채팅 보기" ↔ "활성 채팅" 토글.
@@ -465,7 +496,9 @@ export default function RoomList() {
           if (room.lastMessageAt) return new Date(room.lastMessageAt).getTime();
           if (typeof window !== 'undefined') {
             try {
-              const entered = window.sessionStorage.getItem(`chat-entered-${room.id}`);
+              const entered = window.sessionStorage.getItem(
+                `chat-entered-${room.id}`,
+              );
               if (entered) return Number(entered);
             } catch {
               // 무시
@@ -473,177 +506,186 @@ export default function RoomList() {
           }
           return new Date(room.createdAt).getTime();
         };
-        const visibleRooms = filtered.slice().sort((a, b) => effectiveTs(b) - effectiveTs(a));
+        const visibleRooms = filtered
+          .slice()
+          .sort((a, b) => effectiveTs(b) - effectiveTs(a));
         return (
-      <div className="flex-1 divide-y divide-stone-200 overflow-y-auto">
-        {loading && (
-          <div className="p-6 text-center text-sm text-stone-500">불러오는 중…</div>
-        )}
+          <div className="flex-1 divide-y divide-stone-200 overflow-y-auto">
+            {loading && (
+              <div className="p-6 text-center text-sm text-stone-500">
+                불러오는 중…
+              </div>
+            )}
 
-        {!loading &&
-          visibleRooms.map((room) => {
-            const unread = unreadByRoom[room.id] ?? room.unreadCount;
-            const displayName = roomDisplayName(room, user?.id);
-            const time = room.lastMessageAt ? timeAgo(room.lastMessageAt) : '';
-            const isActive = pathname === `/chat/${room.id}`;
-            const menuOpen = openMenuRoomId === room.id;
+            {!loading &&
+              visibleRooms.map((room) => {
+                const unread = unreadByRoom[room.id] ?? room.unreadCount;
+                const displayName = roomDisplayName(room, user?.id);
+                const time = room.lastMessageAt
+                  ? timeAgo(room.lastMessageAt)
+                  : '';
+                const isActive = pathname === `/chat/${room.id}`;
+                const menuOpen = openMenuRoomId === room.id;
 
-            return (
-              <div
-                key={room.id}
-                className={`relative flex min-w-0 items-center gap-1 ${
-                  isActive ? 'bg-indigo-50' : 'hover:bg-stone-50'
-                }`}
-              >
-                <Link
-                  href={`/chat/${room.id}`}
-                  className="flex min-w-0 flex-1 items-center gap-3 p-3 transition-colors"
-                >
-                  <div className="relative shrink-0">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
-                      {room.type === 'DIRECT' ? (
-                        <UserIcon className="h-5 w-5" />
-                      ) : (
-                        <UsersIcon className="h-5 w-5" />
-                      )}
-                    </div>
-                    {/* §17 진입 컨텍스트 색 점 — 아바타 좌상단 */}
-                    {room.context && (
-                      <span
-                        className={`absolute -left-0.5 -top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-white ${contextColor(room.context)}`}
-                        title={contextLabel(room.context)}
-                        aria-label={`진입: ${contextLabel(room.context)}`}
-                      />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex min-w-0 items-center gap-1">
-                        <h3 className="truncate text-sm font-medium">{displayName}</h3>
-                        {mutedRoomIds.has(room.id) && (
-                          <BellOffIcon
-                            className="h-3.5 w-3.5 shrink-0 text-stone-400"
-                            aria-label="알림 꺼짐"
+                return (
+                  <div
+                    key={room.id}
+                    className={`relative flex min-w-0 items-center gap-1 ${
+                      isActive ? 'bg-indigo-50' : 'hover:bg-stone-50'
+                    }`}
+                  >
+                    <Link
+                      href={`/chat/${room.id}`}
+                      className="flex min-w-0 flex-1 items-center gap-3 p-3 transition-colors"
+                    >
+                      <div className="relative shrink-0">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
+                          {room.type === 'DIRECT' ? (
+                            <UserIcon className="h-5 w-5" />
+                          ) : (
+                            <UsersIcon className="h-5 w-5" />
+                          )}
+                        </div>
+                        {/* §17 진입 컨텍스트 색 점 — 아바타 좌상단 */}
+                        {room.context && (
+                          <span
+                            className={`absolute -left-0.5 -top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-white ${contextColor(room.context)}`}
+                            title={contextLabel(room.context)}
+                            aria-label={`진입: ${contextLabel(room.context)}`}
                           />
                         )}
                       </div>
-                      {time && (
-                        <span className="shrink-0 text-xs text-stone-500">{time}</span>
-                      )}
-                    </div>
-                    <p className="truncate text-xs text-stone-500">
-                      {/* 미리보기 — 첨부 마커는 "파일/이미지를 보냈습니다."로 요약, 일반 텍스트는 한 줄.
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex min-w-0 items-center gap-1">
+                            <h3 className="truncate text-sm font-medium">
+                              {displayName}
+                            </h3>
+                            {mutedRoomIds.has(room.id) && (
+                              <BellOffIcon
+                                className="h-3.5 w-3.5 shrink-0 text-stone-400"
+                                aria-label="알림 꺼짐"
+                              />
+                            )}
+                          </div>
+                          {time && (
+                            <span className="shrink-0 text-xs text-stone-500">
+                              {time}
+                            </span>
+                          )}
+                        </div>
+                        <p className="truncate text-xs text-stone-500">
+                          {/* 미리보기 — 첨부 마커는 "파일/이미지를 보냈습니다."로 요약, 일반 텍스트는 한 줄.
                           공통 util `summarizePreview` (lib/messageTemplate.ts) */}
-                      {summarizePreview(room.lastMessage)}
-                    </p>
-                  </div>
-                  {unread > 0 && (
-                    <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-indigo-600 px-1.5 text-xs text-white">
-                      {unread}
-                    </span>
-                  )}
-                </Link>
+                          {summarizePreview(room.lastMessage)}
+                        </p>
+                      </div>
+                      {unread > 0 && (
+                        <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-indigo-600 px-1.5 text-xs text-white">
+                          {unread}
+                        </span>
+                      )}
+                    </Link>
 
-                {/* ⋯ 메뉴 버튼 */}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setOpenMenuRoomId(menuOpen ? null : room.id);
-                  }}
-                  className="mr-2 rounded-full p-1 text-stone-400 hover:bg-stone-200 hover:text-stone-700"
-                  aria-label="채팅방 메뉴"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <circle cx="4" cy="10" r="1.5" />
-                    <circle cx="10" cy="10" r="1.5" />
-                    <circle cx="16" cy="10" r="1.5" />
-                  </svg>
-                </button>
-
-                {menuOpen && (
-                  <div
-                    className="absolute right-2 top-12 z-10 w-36 rounded-lg border border-stone-200 bg-white py-1 shadow-lg"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {/* 알림 끄기/켜기 — 가벼운 액션이라 다이얼로그 없이 즉시 적용 */}
-                    {!showingHidden && (
-                      mutedRoomIds.has(room.id) ? (
-                        <button
-                          type="button"
-                          className="block w-full px-3 py-1.5 text-left text-xs text-stone-800 hover:bg-stone-50"
-                          onClick={() => {
-                            void handleUnmute(room.id);
-                            setOpenMenuRoomId(null);
-                          }}
-                        >
-                          알림 켜기
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          className="block w-full px-3 py-1.5 text-left text-xs text-stone-800 hover:bg-stone-50"
-                          onClick={() => {
-                            void handleMute(room.id);
-                            setOpenMenuRoomId(null);
-                          }}
-                        >
-                          알림 끄기
-                        </button>
-                      )
-                    )}
-                    {showingHidden ? (
-                      <button
-                        type="button"
-                        className="block w-full px-3 py-1.5 text-left text-xs text-stone-800 hover:bg-stone-50"
-                        onClick={() => {
-                          void handleUnhide(room.id);
-                          setOpenMenuRoomId(null);
-                        }}
-                      >
-                        숨김 해제
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="block w-full px-3 py-1.5 text-left text-xs text-stone-800 hover:bg-stone-50"
-                        onClick={() => {
-                          setConfirmAction({ type: 'hide', room });
-                          setOpenMenuRoomId(null);
-                        }}
-                      >
-                        숨기기
-                      </button>
-                    )}
+                    {/* ⋯ 메뉴 버튼 */}
                     <button
                       type="button"
-                      className="block w-full px-3 py-1.5 text-left text-xs text-red-600 hover:bg-red-50"
-                      onClick={() => {
-                        setConfirmAction({ type: 'leave', room });
-                        setOpenMenuRoomId(null);
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenMenuRoomId(menuOpen ? null : room.id);
                       }}
+                      className="mr-2 rounded-full p-1 text-stone-400 hover:bg-stone-200 hover:text-stone-700"
+                      aria-label="채팅방 메뉴"
                     >
-                      나가기
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-4 w-4"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <circle cx="4" cy="10" r="1.5" />
+                        <circle cx="10" cy="10" r="1.5" />
+                        <circle cx="16" cy="10" r="1.5" />
+                      </svg>
                     </button>
-                  </div>
-                )}
-              </div>
-            );
-          })}
 
-        {!loading && !error && visibleRooms.length === 0 && (
-          <div className="p-6 text-center text-sm text-stone-500">
-            {showingHidden
-              ? '숨긴 채팅이 없습니다.'
-              : '아직 채팅 내역이 없습니다.'}
+                    {menuOpen && (
+                      <div
+                        className="absolute right-2 top-12 z-10 w-36 rounded-lg border border-stone-200 bg-white py-1 shadow-lg"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {/* 알림 끄기/켜기 — 가벼운 액션이라 다이얼로그 없이 즉시 적용 */}
+                        {!showingHidden &&
+                          (mutedRoomIds.has(room.id) ? (
+                            <button
+                              type="button"
+                              className="block w-full px-3 py-1.5 text-left text-xs text-stone-800 hover:bg-stone-50"
+                              onClick={() => {
+                                void handleUnmute(room.id);
+                                setOpenMenuRoomId(null);
+                              }}
+                            >
+                              알림 켜기
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="block w-full px-3 py-1.5 text-left text-xs text-stone-800 hover:bg-stone-50"
+                              onClick={() => {
+                                void handleMute(room.id);
+                                setOpenMenuRoomId(null);
+                              }}
+                            >
+                              알림 끄기
+                            </button>
+                          ))}
+                        {showingHidden ? (
+                          <button
+                            type="button"
+                            className="block w-full px-3 py-1.5 text-left text-xs text-stone-800 hover:bg-stone-50"
+                            onClick={() => {
+                              void handleUnhide(room.id);
+                              setOpenMenuRoomId(null);
+                            }}
+                          >
+                            숨김 해제
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="block w-full px-3 py-1.5 text-left text-xs text-stone-800 hover:bg-stone-50"
+                            onClick={() => {
+                              setConfirmAction({ type: 'hide', room });
+                              setOpenMenuRoomId(null);
+                            }}
+                          >
+                            숨기기
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="block w-full px-3 py-1.5 text-left text-xs text-red-600 hover:bg-red-50"
+                          onClick={() => {
+                            setConfirmAction({ type: 'leave', room });
+                            setOpenMenuRoomId(null);
+                          }}
+                        >
+                          나가기
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+            {!loading && !error && visibleRooms.length === 0 && (
+              <div className="p-6 text-center text-sm text-stone-500">
+                {showingHidden
+                  ? '숨긴 채팅이 없습니다.'
+                  : '아직 채팅 내역이 없습니다.'}
+              </div>
+            )}
           </div>
-        )}
-      </div>
         );
       })()}
 
@@ -669,7 +711,9 @@ export default function RoomList() {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-base font-semibold text-stone-900">
-              {confirmAction.type === 'hide' ? '채팅방 숨기기' : '채팅방 나가기'}
+              {confirmAction.type === 'hide'
+                ? '채팅방 숨기기'
+                : '채팅방 나가기'}
             </h3>
             <p className="mt-2 text-sm text-stone-600">
               {confirmAction.type === 'hide'

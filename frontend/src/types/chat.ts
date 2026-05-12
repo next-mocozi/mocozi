@@ -149,6 +149,7 @@ export interface NewMessageNotification {
   senderName: string;
   preview: string;
   unreadCount: number;
+  createdAt?: string;
 }
 
 export interface UnreadCountChangedNotification {
@@ -198,7 +199,9 @@ export interface ServerToClientEvents {
 
   // 사용자 글로벌 broadcast (인앱 알림)
   'notification:newMessage': (n: NewMessageNotification) => void;
-  'notification:unreadCountChanged': (n: UnreadCountChangedNotification) => void;
+  'notification:unreadCountChanged': (
+    n: UnreadCountChangedNotification,
+  ) => void;
   // 메시지 삭제 등으로 방의 lastMessage가 변경됐을 때 — 사이드바(RoomList) 동기화용
   'notification:roomLastMessageChanged': (n: {
     roomId: string;
@@ -207,7 +210,11 @@ export interface ServerToClientEvents {
   }) => void;
 
   // 에러
-  exception: (err: { code: string; message: string; payload?: unknown }) => void;
+  exception: (err: {
+    code: string;
+    message: string;
+    payload?: unknown;
+  }) => void;
 }
 
 // =====================================================

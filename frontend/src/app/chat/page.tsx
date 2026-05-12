@@ -29,9 +29,18 @@ import type {
 function ChatListPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const [newChatOpen, setNewChatOpen] = useState(false);
   const autoCreateAttempted = useRef(false);
+
+  // ---------------------------------------------------------
+  // 비로그인 게이트 — /portfolio와 동일한 패턴.
+  // 헤더 채팅 버튼 → /chat 진입 시 미인증이면 /login으로 리다이렉트.
+  // ---------------------------------------------------------
+  useEffect(() => {
+    if (loading) return;
+    if (!user) router.replace('/login');
+  }, [loading, user, router]);
 
   // ---------------------------------------------------------
   // Query 처리 — userId/teamId가 있으면 자동으로 방 생성/이동

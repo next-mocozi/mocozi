@@ -27,6 +27,34 @@ import type {
 
 export type ChatSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
+const ACK_TIMEOUT_MS = 8000;
+
+type TimeoutEmitter = {
+  timeout: (ms: number) => {
+    emit: (
+      event: string,
+      payload: unknown,
+      ack: (err: Error | null, response?: unknown) => void,
+    ) => void;
+  };
+};
+
+function emitWithAck<TResponse>(
+  socket: ChatSocket,
+  event: string,
+  payload: unknown,
+  fallback: TResponse,
+): Promise<TResponse> {
+  return new Promise((resolve) => {
+    (socket as unknown as TimeoutEmitter)
+      .timeout(ACK_TIMEOUT_MS)
+      .emit(event, payload, (err, response) => {
+        if (err) return resolve(fallback);
+        resolve((response as TResponse | undefined) ?? fallback);
+      });
+  });
+}
+
 interface UseSocketOptions {
   /**
    * 인증 토큰. 미지정 시 localStorage('accessToken')에서 자동 로드.
@@ -130,7 +158,10 @@ export function useSocket(options: UseSocketOptions = {}) {
     socket.on('connect_error', (err) => {
       setIsConnected(false);
       const message = err?.message ?? '';
-      if (message === 'Unauthorized' || message.toLowerCase().includes('unauthorized')) {
+      if (
+        message === 'Unauthorized' ||
+        message.toLowerCase().includes('unauthorized')
+      ) {
         // socket connect_error("Unauthorized") 발생 케이스:
         //   1) 토큰 만료/위조 → HTTP 인터셉터가 refresh 시도, 실패 시 로그아웃
         //   2) 백엔드 일시 장애 / DB 지연 / startup race → transient
@@ -168,10 +199,18 @@ export function useSocket(options: UseSocketOptions = {}) {
   const joinConversation = useCallback((roomId: string) => {
     return new Promise<{ ok: boolean; roomId: string; unreadCount: number }>(
       (resolve) => {
-        if (!socketRef.current) return resolve({ ok: false, roomId, unreadCount: 0 });
-        socketRef.current.emit('conversation:join', { roomId }, (res) => {
-          resolve(res ?? { ok: false, roomId, unreadCount: 0 });
-        });
+        const socket = socketRef.current;
+        if (!socket) return resolve({ ok: false, roomId, unreadCount: 0 });
+        void emitWithAck(
+          socket,
+          'conversation:join',
+          { roomId },
+          {
+            ok: false,
+            roomId,
+            unreadCount: 0,
+          },
+        ).then(resolve);
       },
     );
   }, []);
@@ -182,47 +221,59 @@ export function useSocket(options: UseSocketOptions = {}) {
 
   const sendMessage = useCallback((payload: SendMessagePayload) => {
     return new Promise<unknown>((resolve) => {
-      if (!socketRef.current) return resolve(null);
-      socketRef.current.emit('message:send', payload, (msg) => resolve(msg));
+      const socket = socketRef.current;
+      if (!socket) return resolve(null);
+      void emitWithAck(socket, 'message:send', payload, null).then(resolve);
     });
   }, []);
 
   const editMessage = useCallback((payload: EditMessagePayload) => {
     return new Promise<unknown>((resolve) => {
-      if (!socketRef.current) return resolve(null);
-      socketRef.current.emit('message:edit', payload, (msg) => resolve(msg));
+      const socket = socketRef.current;
+      if (!socket) return resolve(null);
+      void emitWithAck(socket, 'message:edit', payload, null).then(resolve);
     });
   }, []);
 
   const deleteMessage = useCallback((messageId: string) => {
     return new Promise<unknown>((resolve) => {
-      if (!socketRef.current) return resolve(null);
-      socketRef.current.emit('message:delete', { messageId }, (res) =>
-        resolve(res),
+      const socket = socketRef.current;
+      if (!socket) return resolve(null);
+      void emitWithAck(socket, 'message:delete', { messageId }, null).then(
+        resolve,
       );
     });
   }, []);
 
   const markAsRead = useCallback((roomId: string, messageId: string) => {
     return new Promise<{ ok: boolean; unreadCount: number }>((resolve) => {
-      if (!socketRef.current) return resolve({ ok: false, unreadCount: 0 });
-      socketRef.current.emit('message:read', { roomId, messageId }, (res) =>
-        resolve(res ?? { ok: false, unreadCount: 0 }),
-      );
+      const socket = socketRef.current;
+      if (!socket) return resolve({ ok: false, unreadCount: 0 });
+      void emitWithAck(
+        socket,
+        'message:read',
+        { roomId, messageId },
+        {
+          ok: false,
+          unreadCount: 0,
+        },
+      ).then(resolve);
     });
   }, []);
 
   const addReaction = useCallback((payload: ReactionPayload) => {
     return new Promise<unknown>((resolve) => {
-      if (!socketRef.current) return resolve(null);
-      socketRef.current.emit('reaction:add', payload, (r) => resolve(r));
+      const socket = socketRef.current;
+      if (!socket) return resolve(null);
+      void emitWithAck(socket, 'reaction:add', payload, null).then(resolve);
     });
   }, []);
 
   const removeReaction = useCallback((payload: ReactionPayload) => {
     return new Promise<unknown>((resolve) => {
-      if (!socketRef.current) return resolve(null);
-      socketRef.current.emit('reaction:remove', payload, (res) => resolve(res));
+      const socket = socketRef.current;
+      if (!socket) return resolve(null);
+      void emitWithAck(socket, 'reaction:remove', payload, null).then(resolve);
     });
   }, []);
 

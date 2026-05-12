@@ -2,8 +2,10 @@ import axios from 'axios';
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080',
-  // 백엔드 미연동/응답없음 상황에서 무한 로딩 방지 (8초)
-  timeout: 8000,
+  // 무한 로딩 방지 + Supabase pooler cold-start/concurrency 여유.
+  // 채팅방 진입 시 3 요청이 동시에 떨어지고(listRooms + getRoom + getMessages),
+  // dev 모드 React Strict Mode 더블 마운트까지 겹치면 8s로 부족. 15s buffer.
+  timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
   },

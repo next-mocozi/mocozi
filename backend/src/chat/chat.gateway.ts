@@ -190,9 +190,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // TTL: 5분. Phase B에서 강퇴/leftAt 도입 시 stale 안전망
     // 캐시 miss(에지: socket이 conversation:join 안 거치고 message:send) 시 fallback
     const CACHE_TTL_MS = 5 * 60 * 1000;
-    const cache = client.data.activeRoomIds as
-      | Map<string, number>
-      | undefined;
+    const cache = client.data.activeRoomIds as Map<string, number> | undefined;
     const cachedAt = cache?.get(dto.roomId);
     const isCacheFresh =
       cachedAt !== undefined && Date.now() - cachedAt < CACHE_TTL_MS;
@@ -220,6 +218,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       dto.roomId,
       message.sender.name,
       message.content,
+      message.createdAt,
     );
     for (const { userId, payload } of notifications) {
       this.server.to(`user:${userId}`).emit('notification:newMessage', payload);
@@ -272,13 +271,17 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     // 다른 방을 보고 있는 멤버들의 사이드바도 동기화 — user:<id> room으로 broadcast
     if (result.roomLastMessage) {
-      const memberIds = await this.chatService.getActiveMemberIds(result.roomId);
+      const memberIds = await this.chatService.getActiveMemberIds(
+        result.roomId,
+      );
       for (const memberId of memberIds) {
-        this.server.to(`user:${memberId}`).emit('notification:roomLastMessageChanged', {
-          roomId: result.roomId,
-          lastMessage: result.roomLastMessage.lastMessage,
-          lastMessageAt: result.roomLastMessage.lastMessageAt,
-        });
+        this.server
+          .to(`user:${memberId}`)
+          .emit('notification:roomLastMessageChanged', {
+            roomId: result.roomId,
+            lastMessage: result.roomLastMessage.lastMessage,
+            lastMessageAt: result.roomLastMessage.lastMessageAt,
+          });
       }
     }
 

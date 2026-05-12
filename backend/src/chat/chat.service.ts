@@ -57,6 +57,7 @@ export interface NewMessageNotificationPayload {
   senderName: string;
   preview: string;
   unreadCount: number;
+  createdAt: string;
 }
 
 /** Gateway가 멤버별로 emit할 수 있게 묶어 반환 */
@@ -94,7 +95,9 @@ export class ChatService {
     while ((m = re.exec(content)) !== null) {
       count += 1;
       if (count > 10) {
-        throw new BadRequestException('한 메시지에 최대 10개까지 첨부할 수 있습니다.');
+        throw new BadRequestException(
+          '한 메시지에 최대 10개까지 첨부할 수 있습니다.',
+        );
       }
       const [, , path, , sizeStr, mime] = m;
       if (!this.storage.isValidPath(path)) {
@@ -107,7 +110,9 @@ export class ChatService {
       const limit = getSizeLimitFor(mime);
       if (limit !== null && size > limit) {
         const mb = Math.round(limit / 1024 / 1024);
-        throw new BadRequestException(`첨부 파일이 한도(${mb}MB)를 초과합니다.`);
+        throw new BadRequestException(
+          `첨부 파일이 한도(${mb}MB)를 초과합니다.`,
+        );
       }
     }
   }
@@ -223,12 +228,20 @@ export class ChatService {
       }
       const otherUserId = memberIds[0];
       if (otherUserId === creatorId) {
-        throw new BadRequestException('자기 자신과는 DIRECT 방을 만들 수 없습니다.');
+        throw new BadRequestException(
+          '자기 자신과는 DIRECT 방을 만들 수 없습니다.',
+        );
       }
 
       // 기존 양자 DIRECT 방 조회 (양쪽 모두 활성 멤버)
       const existing = await this.findDirectRoomBetween(creatorId, otherUserId);
       if (existing) {
+        // 명시적으로 다시 채팅을 시작한 사용자의 숨김 상태는 해제한다.
+        // 상대가 숨긴 상태는 건드리지 않아 사용자별 의도를 보존한다.
+        await this.prisma.chatRoomMember.update({
+          where: { roomId_userId: { roomId: existing.id, userId: creatorId } },
+          data: { hiddenAt: null },
+        });
         // 재사용 시도 firstMessage 있으면 첫 메시지 전송 (스카우트 등 새 진입 의미)
         if (input.firstMessage && input.firstMessage.trim().length > 0) {
           await this.saveMessage(existing.id, creatorId, input.firstMessage);
@@ -356,11 +369,14 @@ export class ChatService {
       include: this.roomInclude(),
     });
 
-    const roomsWithUnread = await Promise.all(
-      rooms.map(async (room) => {
-        const unreadCount = await this.getUnreadCount(room.id, userId);
-        return this.shapeRoom(room, userId, unreadCount);
-      }),
+    // N+1 → 2쿼리 (membership findMany + chatMessage.groupBy) 배치.
+    // 방 N개 시 (2N+1) → 3 쿼리. 방 수 늘수록 효과 극대화 (활성 사용자에서 100+).
+    const unreadCounts = await this.getUnreadCountsBatch(
+      rooms.map((r) => r.id),
+      userId,
+    );
+    const roomsWithUnread = rooms.map((room) =>
+      this.shapeRoom(room, userId, unreadCounts.get(room.id) ?? 0),
     );
 
     const last = rooms[rooms.length - 1];
@@ -420,7 +436,10 @@ export class ChatService {
   ) {
     await this.assertMembership(roomId, userId);
 
-    const limit = Math.min(opts.limit ?? MESSAGE_PAGE_DEFAULT, MESSAGE_PAGE_MAX);
+    const limit = Math.min(
+      opts.limit ?? MESSAGE_PAGE_DEFAULT,
+      MESSAGE_PAGE_MAX,
+    );
     const decoded = opts.cursor
       ? this.decodeCursor<MessageCursor>(opts.cursor)
       : null;
@@ -442,10 +461,7 @@ export class ChatService {
             }
           : {}),
       },
-      orderBy: [
-        { createdAt: 'desc' },
-        { id: 'desc' },
-      ],
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: limit,
       include: this.messageInclude(),
     });
@@ -625,7 +641,10 @@ export class ChatService {
   private async recomputeRoomLastMessageIfNeeded(
     roomId: string,
     deletedMessageCreatedAt: Date,
-  ): Promise<{ lastMessage: string | null; lastMessageAt: Date | null } | null> {
+  ): Promise<{
+    lastMessage: string | null;
+    lastMessageAt: Date | null;
+  } | null> {
     try {
       const room = await this.prisma.chatRoom.findUnique({
         where: { id: roomId },
@@ -657,11 +676,7 @@ export class ChatService {
       return { lastMessage, lastMessageAt };
     } catch (err) {
       // 실패해도 핵심 동작(소프트 삭제) 정상. 다음 메시지 도착 시 자동 회복
-      // eslint-disable-next-line no-console
-      console.error(
-        `recomputeRoomLastMessage failed for room ${roomId}`,
-        err,
-      );
+      console.error(`recomputeRoomLastMessage failed for room ${roomId}`, err);
       return null;
     }
   }
@@ -842,6 +857,7 @@ export class ChatService {
     roomId: string,
     senderName: string,
     fullContent: string,
+    createdAt: Date,
   ): Promise<MemberNotification[]> {
     const room = await this.prisma.chatRoom.findUnique({
       where: { id: roomId },
@@ -866,6 +882,7 @@ export class ChatService {
           senderName,
           preview,
           unreadCount: await this.getUnreadCount(roomId, userId),
+          createdAt: createdAt.toISOString(),
         },
       })),
     );
@@ -972,10 +989,7 @@ export class ChatService {
    * 쿼리 2회: membership(+lastReadMessage include) → count.
    * 직전 구현은 membership / lastReadMessage / count 3회. include로 1회 절감.
    */
-  async getUnreadCount(
-    roomId: string,
-    userId: string,
-  ): Promise<number> {
+  async getUnreadCount(roomId: string, userId: string): Promise<number> {
     const member = await this.prisma.chatRoomMember.findUnique({
       where: { roomId_userId: { roomId, userId } },
       include: { lastReadMessage: { select: { createdAt: true } } },
@@ -995,6 +1009,61 @@ export class ChatService {
   }
 
   /**
+   * 다수 방의 unreadCount를 한 번에 계산 — listRooms 전용 (N+1 해소).
+   *
+   * 쿼리 2회 — 방 수 N과 무관:
+   *  1) chatRoomMember.findMany   — 본인의 각 방 cutoff(lastReadMessage.createdAt)
+   *  2) chatMessage.groupBy        — 각 방의 cutoff에 따라 OR clause로 묶어 한 번에 집계
+   *
+   * 본인 멤버십이 없는 방, 또는 unread 0인 방은 반환 Map에 0으로 채움 (호출자 정렬·렌더 안전).
+   *
+   * 의도적 비공개 — listRooms 내부 호출 전용. 단일 룸 케이스는 기존 getUnreadCount를 그대로 둠
+   * (단순함 + markAsRead 등 다른 호출자 호환 유지).
+   */
+  private async getUnreadCountsBatch(
+    roomIds: string[],
+    userId: string,
+  ): Promise<Map<string, number>> {
+    const result = new Map<string, number>();
+    if (roomIds.length === 0) return result;
+
+    // 모든 방을 0으로 미리 채움 — 멤버 row 없거나 unread 0인 방 모두 안전하게 0 보장
+    for (const id of roomIds) result.set(id, 0);
+
+    // 1) 본인 멤버십 + lastReadMessage.createdAt — cutoff 모음
+    const members = await this.prisma.chatRoomMember.findMany({
+      where: { userId, roomId: { in: roomIds } },
+      select: {
+        roomId: true,
+        lastReadMessage: { select: { createdAt: true } },
+      },
+    });
+    if (members.length === 0) return result;
+
+    // 2) 단일 groupBy — 각 방마다 (roomId = X AND createdAt > T_X)을 OR로 결합
+    //   lastReadMessage가 null인 방은 createdAt 조건 없음 → 그 방의 모든 메시지가 unread 후보
+    const counts = await this.prisma.chatMessage.groupBy({
+      by: ['roomId'],
+      where: {
+        deletedAt: null,
+        senderId: { not: userId },
+        OR: members.map((m) => ({
+          roomId: m.roomId,
+          ...(m.lastReadMessage
+            ? { createdAt: { gt: m.lastReadMessage.createdAt } }
+            : {}),
+        })),
+      },
+      _count: { _all: true },
+    });
+
+    for (const row of counts) {
+      result.set(row.roomId, row._count._all);
+    }
+    return result;
+  }
+
+  /**
    * 사이드바용 메시지 미리보기 — 길면 잘라서 저장.
    */
   private preview(content: string, max = 100) {
@@ -1003,7 +1072,9 @@ export class ChatService {
     // 텍스트 + 첨부 혼합 시 "텍스트 (이미지)" / "텍스트 (파일)" 형식.
     // 혼합 시 (이미지+파일 동시) → "(파일)"로 통합. frontend `summarizePreview`와 동일 로직.
     const hasFile = /\[\[file:[^|\]]+\|[^|\]]*\|\d+\|[^\]]+\]\]/.test(content);
-    const hasImage = /\[\[image:[^|\]]+\|[^|\]]*\|\d+\|[^\]]+\]\]/.test(content);
+    const hasImage = /\[\[image:[^|\]]+\|[^|\]]*\|\d+\|[^\]]+\]\]/.test(
+      content,
+    );
 
     let s = content
       .replace(/\[\[link:[^|\]]+\|([^\]]+)\]\]/g, '$1')
@@ -1060,7 +1131,6 @@ export class ChatService {
       .catch((err) => {
         if (attempt < MAX_ATTEMPTS - 1) {
           const delayMs = Math.pow(2, attempt) * 1000;
-          // eslint-disable-next-line no-console
           console.warn(
             `chatRoom.lastMessage update failed (attempt ${attempt + 1}/${MAX_ATTEMPTS}), retrying in ${delayMs}ms`,
             err,
@@ -1074,7 +1144,6 @@ export class ChatService {
             );
           }, delayMs);
         } else {
-          // eslint-disable-next-line no-console
           console.error(
             `chatRoom.lastMessage update final failure after ${MAX_ATTEMPTS} attempts. Room ${roomId} will recover on next message.`,
             err,
@@ -1096,9 +1165,7 @@ export class ChatService {
    */
   private decodeCursor<T>(token: string): T {
     try {
-      return JSON.parse(
-        Buffer.from(token, 'base64url').toString('utf-8'),
-      ) as T;
+      return JSON.parse(Buffer.from(token, 'base64url').toString('utf-8')) as T;
     } catch {
       throw new BadRequestException('잘못된 cursor 형식입니다.');
     }

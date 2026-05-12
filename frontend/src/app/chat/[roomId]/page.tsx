@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { use, useCallback, useEffect, useMemo, useRef, useState, Suspense } from 'react';
 import { AttachmentButton } from '@/components/chat/AttachmentButton';
 import {
@@ -117,7 +117,15 @@ const SCROLL_TO_BOTTOM_THRESHOLD = 200;
  */
 function ChatRoomPageContent({ params }: PageProps) {
   const { roomId } = use(params);
-  const { user } = useAuth();
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+
+  // 비로그인 게이트 — /portfolio와 동일한 패턴.
+  // 직접 URL로 진입했어도 미인증이면 /login으로 보낸다.
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) router.replace('/login');
+  }, [authLoading, user, router]);
 
   // §15 진입 시점 기록 — find-or-create로 재사용된 빈 방은 createdAt이 옛 시각이라
   // RoomList timeline에서 옛 자리에 박힘. 진입 시점을 sessionStorage에 기록해
@@ -469,9 +477,30 @@ function ChatRoomPageContent({ params }: PageProps) {
         lastMessageIdRef.current = null;
       } catch (e: unknown) {
         if (cancelled) return;
-        const msg =
-          (e as { response?: { data?: { message?: string } } })?.response?.data
-            ?.message ?? '채팅방 정보를 불러오지 못했습니다.';
+        // 진단 친화 에러 — 원인별 분기:
+        //  - response 있음(서버가 응답): 백엔드 message 그대로 (Forbidden/NotFound/Validation 등)
+        //  - response 없음 + code 'ECONNABORTED' or message 'timeout': 타임아웃
+        //  - response 없음 + 그 외: 네트워크/CORS 등 — 브라우저는 진짜 원인 가림
+        //  - 콘솔에 풀 에러 덤프 — 사용자가 직접 확인 가능하게
+        // eslint-disable-next-line no-console
+        console.error('[chat] room load failed:', e);
+        const err = e as {
+          response?: { status?: number; data?: { message?: string } };
+          code?: string;
+          message?: string;
+        };
+        let msg = '채팅방 정보를 불러오지 못했습니다.';
+        if (err.response) {
+          const status = err.response.status;
+          const serverMsg = err.response.data?.message;
+          msg = serverMsg
+            ? `${serverMsg}${status ? ` (HTTP ${status})` : ''}`
+            : `서버 오류 (HTTP ${status ?? '?'})`;
+        } else if (err.code === 'ECONNABORTED' || /timeout/i.test(err.message ?? '')) {
+          msg = '서버 응답이 너무 늦습니다 (15초 timeout). 백엔드/네트워크 상태를 확인해주세요.';
+        } else if (err.message) {
+          msg = `요청 실패: ${err.message}`;
+        }
         setError(msg);
       } finally {
         if (!cancelled) setLoading(false);
