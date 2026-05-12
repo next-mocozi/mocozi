@@ -455,15 +455,25 @@ export default function RoomList() {
               }
               return false;
             });
-        // 정렬 기준: lastMessageAt ?? createdAt — 빈 방은 자기 생성 시점.
-        // backend는 NULLS LAST로 빈 방 가장 아래에 두지만, §15 정책상 빈 방도
-        // "진입 시점(createdAt)" 기준으로 timeline에 끼워넣어야 자연스러움.
-        // socket으로 lastMessageAt 갱신되면 자동 재정렬됨 (sort 매 render 적용).
-        const visibleRooms = filtered.slice().sort((a, b) => {
-          const aTs = new Date(a.lastMessageAt ?? a.createdAt).getTime();
-          const bTs = new Date(b.lastMessageAt ?? b.createdAt).getTime();
-          return bTs - aTs;
-        });
+        // 정렬 기준: lastMessageAt > sessionStorage `chat-entered-${id}` > createdAt.
+        // - 메시지 있으면 lastMessageAt
+        // - 빈 방인데 사용자가 진입한 적 있으면 진입 시점 (find-or-create로 옛 방이
+        //   재사용되어 createdAt이 옛 시각이어도 진입 시점에 timeline 끼워짐)
+        // - 둘 다 없으면 createdAt fallback
+        // socket으로 lastMessageAt 갱신되면 sort가 매 render 재계산 → 자동 재정렬.
+        const effectiveTs = (room: ChatRoomWithMembers): number => {
+          if (room.lastMessageAt) return new Date(room.lastMessageAt).getTime();
+          if (typeof window !== 'undefined') {
+            try {
+              const entered = window.sessionStorage.getItem(`chat-entered-${room.id}`);
+              if (entered) return Number(entered);
+            } catch {
+              // 무시
+            }
+          }
+          return new Date(room.createdAt).getTime();
+        };
+        const visibleRooms = filtered.slice().sort((a, b) => effectiveTs(b) - effectiveTs(a));
         return (
       <div className="flex-1 divide-y divide-stone-200 overflow-y-auto">
         {loading && (

@@ -113,6 +113,20 @@ const SCROLL_TO_BOTTOM_THRESHOLD = 200;
 function ChatRoomPageContent({ params }: PageProps) {
   const { roomId } = use(params);
   const { user } = useAuth();
+
+  // §15 진입 시점 기록 — find-or-create로 재사용된 빈 방은 createdAt이 옛 시각이라
+  // RoomList timeline에서 옛 자리에 박힘. 진입 시점을 sessionStorage에 기록해
+  // 사용자가 "지금 진입한 방"이 timeline 적절 위치에 끼워지게.
+  // (메시지 있는 방은 lastMessageAt 우선이라 영향 없음 — 빈 방에만 작용)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !roomId) return;
+    try {
+      window.sessionStorage.setItem(`chat-entered-${roomId}`, String(Date.now()));
+    } catch {
+      // 무시 (private mode 등)
+    }
+  }, [roomId]);
+
   const {
     socket,
     isConnected,

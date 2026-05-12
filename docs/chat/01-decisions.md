@@ -355,10 +355,16 @@ if (message.deletedAt) {
 
 **예외**: "숨긴 채팅" 화면(`showingHidden=true`)에선 필터 우회. 명시 숨김한 방은 메시지 유무 무관 표시.
 
-**정렬 기준** (필터 통과 후 frontend client-side sort, useMemo 캐싱):
-`lastMessageAt ?? createdAt` DESC. 즉 빈 방은 자기 생성 시점(=진입 시점)으로 timeline에
-끼워넣음. 예: 10:01 진입한 빈 방은 9:55 메시지 받은 방보다 위, 10:02 메시지 받은 방보다
-아래. socket으로 lastMessageAt 갱신되면 sort가 매 render 재계산되어 자동 정렬.
+**정렬 기준** (필터 통과 후 frontend client-side sort):
+우선순위 `lastMessageAt > sessionStorage 'chat-entered-${roomId}' > createdAt` DESC.
+
+- 메시지 있는 방: `lastMessageAt`
+- 빈 방 + 본인 진입 이력 있음: **진입 시점** (chat/[roomId] mount 시 sessionStorage 기록)
+- 빈 방 + 진입 이력 없음: `createdAt` fallback
+
+**진입 시점이 별도 필요한 이유**: DIRECT find-or-create로 옛 빈 방이 재사용된 경우
+`createdAt`은 처음 만들 때 시각이라 옛 자리에 박힘. 사용자 의도("방금 진입한 방을 지금
+시점에 timeline 끼움")와 다름. sessionStorage 기반 진입 timestamp로 해결.
 
 backend `getUserRooms`는 `lastMessageAt DESC NULLS LAST`라 빈 방을 모두 가장 아래로
 밀지만, frontend 정렬 보정으로 진입 시점 기준 우선. (backend 변경 없음)
