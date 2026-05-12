@@ -872,10 +872,16 @@ export default function ProjectInterview() {
       setProjectId(editId);
       let cancelled = false;
       void (async () => {
+        // backend 호출은 별도 try — 실패해도 localStorage prefill 은 계속 진행.
+        // (이전엔 backend 가 일시적으로 실패하면 try 블록 전체가 catch 로 빠져
+        //  localStorage 도 못 읽고 빈 폼이 떴음. 임시저장 클릭 시 빈 페이지 버그.)
+        let backendItem:
+          | Awaited<ReturnType<typeof apiGetMyPortfolio>>['items'][number]
+          | undefined;
         try {
           const remote = await apiGetMyPortfolio();
           if (cancelled) return;
-          const backendItem = (remote?.items ?? []).find(
+          backendItem = (remote?.items ?? []).find(
             (b) => new Date(b.createdAt).getTime() === editId,
           );
           if (backendItem) {
@@ -888,6 +894,11 @@ export default function ProjectInterview() {
             }
             serverIdRef.current = backendItem.id;
           }
+        } catch {
+          // backend 미가동/네트워크 오류 — 임시저장은 localStorage 에만 있을 수
+          // 있으므로 계속 진행해서 prefill 시도한다.
+        }
+        try {
           // localStorage draft 우선 (mid-edit 상태 보존)
           const detailsRaw = localStorage.getItem(DETAILS_STORAGE_KEY);
           const map: Record<string, Draft> = detailsRaw ? JSON.parse(detailsRaw) : {};
