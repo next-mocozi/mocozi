@@ -503,6 +503,7 @@ schema/backend는 enum 그대로 동작, frontend도 색·라벨 매핑 이미 �
 | 2026-05-12 | Scout 흐름 B-DM-1 → **C 안** (§19) | 메시지 작성을 채팅방 인사양식 패널로 통일 — UX 일관성. 팝업은 팀 선택만 |
 | 2026-05-12 | Scout 모델·API **즉시 폐기** (§20) | B-DM-1 통합 후 `/api/scout/*` 호출 0건. dead code 비용 > 통계 보존 가치 |
 | 2026-05-13 | SCOUT_FROM_TEAM 색·라벨: `bg-amber-500/팀` → **`bg-blue-500/구인`** | 스카우트는 팀이 사람을 *영입(구인)*하는 활동. RECRUIT_TEAM(개인이 팀에 *합류*)와 방향 반대 — 같은 색 묶임은 의미 혼선. SCOUT_FROM_TEAM은 RECRUIT_INDIVIDUAL과 같은 "구인" 그룹이 정합 |
+| 2026-05-13 | RoomList 인라인 액션 — SCOUT_FROM_TEAM의 👤 프로필 제거 / RECRUIT_TEAM 📄 기획서 → 👤 프로필 | 각 context의 *주체*가 가리키는 정보만 노출하는 게 의미 일관. 스카우트=팀이 주체(기획서), 팀지원=지원자가 주체(프로필). 본인 자신이 타겟이면 자동 숨김 |
 
 ---
 
@@ -573,19 +574,22 @@ schema/backend는 enum 그대로 동작, frontend도 색·라벨 매핑 이미 �
 
 **배경**: 채팅방 진입 전에 상대/팀 정보를 빠르게 확인할 방법 부재. 본인이 메시지 받았을 때 "이게 누구지/어떤 팀이지" 파악에 시간 소요.
 
-**결정**: RoomList 카드 hover 시 우측에 작은 아이콘 버튼 노출 — context별 분기.
+**결정**: RoomList 카드 hover 시 우측에 작은 아이콘 버튼 노출 — context가 가리키는 *주체* 기준 분기. 동일 방을 양쪽이 봐도 같은 의미 신호가 일관성 유지.
 
-| context | 아이콘 |
-|---|---|
-| SCOUT_FROM_TEAM | 📄 기획서 + 👤 프로필 |
-| RECRUIT_TEAM | 📄 기획서 |
-| RECRUIT_INDIVIDUAL | 👤 프로필 |
-| PORTFOLIO_* | 👤 프로필 |
-| null / 옛 방 | 표시 안 함 |
+| context | 주체 | 아이콘 |
+|---|---|---|
+| SCOUT_FROM_TEAM | 팀이 사람을 영입 → **팀** | 📄 기획서 |
+| RECRUIT_TEAM | 사람이 팀에 지원 → **지원자(사람)** | 👤 프로필 |
+| RECRUIT_INDIVIDUAL | 옛 방 (개인↔개인) → 상대 멤버 | 👤 프로필 |
+| PORTFOLIO_* | 포트폴리오 주인 → 상대 멤버 | 👤 프로필 |
+| null / 옛 방 | — | 표시 안 함 |
 
 **타겟 ID 추출**:
-- 프로필: `room.members[].userId` 중 본인 아닌 사람 (DIRECT)
-- 팀: `room.contextTargetId` (신규 schema 컬럼). 옛 방은 null → 기획서 버튼 graceful 숨김
+- 팀(기획서): `room.contextTargetId` (Scout C 안에서 저장된 teamId)
+- 프로필 — context 별:
+  - `RECRUIT_TEAM`: `room.creatorId` (지원자)
+  - `RECRUIT_INDIVIDUAL`·`PORTFOLIO_*`: `members[].userId` 중 본인 아닌 사람
+- 타겟이 본인 myId면 버튼 숨김 — sender 본인 미리보기는 의미 없음 (자동 정리)
 
 **미리보기 컴포넌트**: `RoomPreviewPanel.tsx` 신규. 우측에서 슬라이드 인. `GET /api/teams/:id` 또는 `GET /api/users/:id` 호출. 하단 "자세히 보기"로 정식 페이지 이동.
 

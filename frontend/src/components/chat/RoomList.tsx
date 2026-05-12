@@ -609,38 +609,58 @@ export default function RoomList() {
                       )}
                     </Link>
 
-                    {/* §B-DM-8 인라인 액션 — 기획서 보기 / 프로필 보기 (context별 분기) */}
+                    {/* §B-DM-8 인라인 액션 — context가 가리키는 "주체"별 미리보기.
+                        - SCOUT_FROM_TEAM(팀이 사람 영입) → 📄 기획서 (주체=팀)
+                        - RECRUIT_TEAM(사람이 팀에 지원) → 👤 프로필 (주체=지원자=creator)
+                        - RECRUIT_INDIVIDUAL/PORTFOLIO_* → 👤 프로필 (주체=상대 멤버)
+                        타겟이 본인(myId)이면 자동 숨김 (본인 자신 미리보기 의미 X). */}
                     {(() => {
                       const ctx = room.context;
-                      const showTeam =
-                        !!room.contextTargetId &&
-                        (ctx === 'SCOUT_FROM_TEAM' || ctx === 'RECRUIT_TEAM');
                       const myUserId = user?.id;
-                      const otherMemberId =
-                        myUserId &&
-                        room.members.find(
-                          (m) => m.userId !== myUserId && !m.leftAt,
-                        )?.userId;
-                      const showProfile =
-                        !!otherMemberId &&
-                        (ctx === 'SCOUT_FROM_TEAM' ||
-                          ctx === 'RECRUIT_INDIVIDUAL' ||
-                          ctx === 'PORTFOLIO_COFFEE_CHAT' ||
-                          ctx === 'PORTFOLIO_FRIENDSHIP' ||
-                          ctx === 'PORTFOLIO_INQUIRY' ||
-                          ctx === 'PORTFOLIO_COLLAB' ||
-                          ctx === 'PORTFOLIO_PRAISE');
+
+                      // 기획서 버튼 — SCOUT_FROM_TEAM 전용. 타겟=teamId.
+                      // creator(=팀장)도 본인 팀이라 useless하지만 무해 — 굳이 가드 X.
+                      const teamTargetId =
+                        ctx === 'SCOUT_FROM_TEAM' ? room.contextTargetId : null;
+
+                      // 프로필 버튼 타겟 결정
+                      let profileTargetId: string | null = null;
+                      if (ctx === 'RECRUIT_TEAM') {
+                        // 지원 방의 주체 = 지원자 = room.creatorId
+                        profileTargetId = room.creatorId ?? null;
+                      } else if (
+                        ctx === 'RECRUIT_INDIVIDUAL' ||
+                        ctx === 'PORTFOLIO_COFFEE_CHAT' ||
+                        ctx === 'PORTFOLIO_FRIENDSHIP' ||
+                        ctx === 'PORTFOLIO_INQUIRY' ||
+                        ctx === 'PORTFOLIO_COLLAB' ||
+                        ctx === 'PORTFOLIO_PRAISE'
+                      ) {
+                        // 옛 방·포트폴리오 흐름은 DIRECT 상대 멤버를 주체로 간주
+                        const other =
+                          myUserId &&
+                          room.members.find(
+                            (m) => m.userId !== myUserId && !m.leftAt,
+                          )?.userId;
+                        profileTargetId = other ?? null;
+                      }
+
+                      // 본인 자신을 가리키면 의미 없으므로 숨김 (sender view에서 자동 정리)
+                      if (profileTargetId === myUserId) profileTargetId = null;
+
+                      const showTeam = !!teamTargetId;
+                      const showProfile = !!profileTargetId;
                       if (!showTeam && !showProfile) return null;
                       return (
                         <div className="hidden items-center group-hover:flex">
-                          {showTeam && room.contextTargetId && (
+                          {showTeam && teamTargetId && (
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setPreviewPanel({
                                   mode: 'team-proposal',
-                                  targetId: room.contextTargetId!,
+                                  targetId: teamTargetId,
                                 });
                               }}
                               className="rounded-full p-1 text-stone-400 hover:bg-stone-200 hover:text-indigo-600"
@@ -650,14 +670,14 @@ export default function RoomList() {
                               <span aria-hidden>📄</span>
                             </button>
                           )}
-                          {showProfile && otherMemberId && (
+                          {showProfile && profileTargetId && (
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setPreviewPanel({
                                   mode: 'user-profile',
-                                  targetId: otherMemberId,
+                                  targetId: profileTargetId,
                                 });
                               }}
                               className="rounded-full p-1 text-stone-400 hover:bg-stone-200 hover:text-indigo-600"
