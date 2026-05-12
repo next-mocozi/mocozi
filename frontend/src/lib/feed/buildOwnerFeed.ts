@@ -188,6 +188,8 @@ export function buildOwnerFeedPostsFromApi(
       thumbnail: b.thumbnail ?? undefined,
       createdAt: new Date(b.createdAt).getTime(),
     };
+    // rawDetails 는 owner 경로에서도 항상 채워야 함:
+    // FeedDetailPanel 이 localStorage 비어있을 때(새 기기/시크릿) rawDetails 로 fallback.
     posts.push({
       kind: 'item',
       postId: `${user.id}-item-${item.id}`,

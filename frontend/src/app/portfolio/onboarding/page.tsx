@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import { updateMyMeta } from '@/lib/portfolio-api';
 import { notifyPortfolioChanged } from '@/hooks/useMyPortfolioStatus';
+import { invalidateMyPortfolio } from '@/hooks/useMyPortfolio';
 import {
   FIRST_POST_STORAGE_KEY,
   INTRO_MAX,
@@ -173,6 +174,7 @@ export default function PortfolioOnboardingPage() {
         // 무시 — localStorage 만으로도 동작
       }
       notifyPortfolioChanged();
+      await invalidateMyPortfolio(); // stale 캐시 제거 — 피드 진입 시 ProfilePost 카드 즉시 표시
       router.replace(`/portfolio/${user.id}`);
     } catch {
       setError('설정 저장에 실패했습니다.');

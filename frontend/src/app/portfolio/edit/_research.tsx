@@ -9,6 +9,7 @@ import {
   deleteItemFromBackend,
 } from '@/lib/portfolio-mapper';
 import { getMyPortfolio as apiGetMyPortfolio } from '@/lib/portfolio-api';
+import { invalidateMyPortfolio } from '@/hooks/useMyPortfolio';
 
 // ─────── Storage keys ───────
 const RESEARCH_DETAILS_STORAGE_KEY = 'mock_research_details';
@@ -224,6 +225,7 @@ export default function ResearchForm() {
       localStorage.setItem(RESEARCH_DETAILS_STORAGE_KEY, JSON.stringify(map));
     } catch {}
     await syncItemToBackend(item, { kind: 'research', data: d });
+    await invalidateMyPortfolio();
     router.push(getMyPortfolioPath());
   };
 
@@ -242,6 +244,7 @@ export default function ResearchForm() {
     if (serverIdRef.current) {
       await deleteItemFromBackend(serverIdRef.current);
     }
+    await invalidateMyPortfolio();
     router.push(getMyPortfolioPath());
   };
 

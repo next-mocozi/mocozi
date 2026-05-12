@@ -15,6 +15,7 @@ import {
   updateItem as apiUpdateItem,
   deleteItem as apiDeleteItem,
 } from '@/lib/portfolio-api';
+import { invalidateMyPortfolio } from '@/hooks/useMyPortfolio';
 import { toCreatePayload, fromBackendItem } from '@/lib/portfolio-mapper';
 import ProjectInterview from './_interview';
 import ResearchForm from './_research';
@@ -161,6 +162,7 @@ function SimpleForm() {
     } catch {
       // 저장 실패해도 이동은 진행
     }
+    await invalidateMyPortfolio();
     router.push(getMyPortfolioPath());
   };
 
@@ -174,6 +176,7 @@ function SimpleForm() {
         // 삭제 실패해도 이동은 진행
       }
     }
+    await invalidateMyPortfolio();
     router.push(getMyPortfolioPath());
   };
 

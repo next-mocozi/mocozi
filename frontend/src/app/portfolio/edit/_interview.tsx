@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { DownSelect, getMyPortfolioPath, type PortfolioItem } from '../_lib';
 import { syncItemToBackend } from '@/lib/portfolio-mapper';
 import { getMyPortfolio as apiGetMyPortfolio } from '@/lib/portfolio-api';
+import { invalidateMyPortfolio } from '@/hooks/useMyPortfolio';
 
 // ─────── Storage keys ───────
 const ITEMS_STORAGE_KEY = 'mock_portfolio_items';
@@ -948,7 +949,13 @@ export default function ProjectInterview() {
     // 신규: 진입 시 1회 새 ID 발급
     setProjectId(Date.now());
     setPhase('form');
-  }, [isEdit, editId, router, projectId]);
+  // projectId 를 deps 에서 제외하는 이유:
+  // 이 effect 안에서 setProjectId(editId) 를 호출하면 React 가 re-render 를 스케줄하고,
+  // re-render 직전에 직전 effect 의 cleanup(cancelled = true)이 실행된다.
+  // 그 시점에 apiGetMyPortfolio() 가 아직 resolve 되지 않았으면 if (cancelled) return 으로
+  // setPhase('form') 를 놓쳐 phase 가 'loading' 에 영원히 멈추게 된다(무한 빈 화면).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEdit, editId, router]);
 
   // 자동 저장 — projectId 슬롯에 항상 ITEMS+DETAILS 동기 저장
   // (빈 draft 는 저장 안 함 — 빈 placeholder 항목 방지)
@@ -1008,7 +1015,7 @@ export default function ProjectInterview() {
     return e < s;
   })();
 
-  const handleClose = () => {
+  const handleClose = async () => {
     if (periodInvalid) {
       // 잘못된 기간으로 나가는 것 차단 — 기간 단계로 이동시켜 수정 유도
       showToast('종료 날짜는 시작 날짜 이후여야 합니다.');
@@ -1016,7 +1023,23 @@ export default function ProjectInterview() {
       if (idx >= 0) setDraft((d) => ({ ...d, stepIdx: idx }));
       return;
     }
-    // 자동 저장이 이미 ITEMS+DETAILS 를 갱신했으므로 그대로 나가면 됨
+    // 편집 모드: auto-save 가 localStorage 만 갱신 — 나가기 전에 백엔드에 실제 저장
+    if (isEdit && projectId !== null) {
+      try {
+        const itemsRaw = localStorage.getItem(ITEMS_STORAGE_KEY);
+        const list: PortfolioItem[] = itemsRaw ? JSON.parse(itemsRaw) : [];
+        const item = list.find((it) => it.id === projectId);
+        if (item) {
+          await syncItemToBackend(
+            { ...item, serverId: serverIdRef.current ?? undefined },
+            { kind: 'interview', data: draft },
+          );
+          await invalidateMyPortfolio();
+        }
+      } catch {
+        // 저장 실패해도 이동은 진행
+      }
+    }
     showToast(isEdit ? '수정 내용이 저장되었습니다.' : '저장되었습니다.');
     setTimeout(() => router.push(getMyPortfolioPath()), 700);
   };
@@ -1171,7 +1194,7 @@ export default function ProjectInterview() {
   }, [stepCfg.key, draft]);
 
   /** 미리보기의 "포트폴리오에 저장" / "수정 완료" — draft 플래그 해제 후 이동 */
-  const handleSaveProject = () => {
+  const handleSaveProject = async () => {
     if (periodInvalid) {
       showToast('종료 날짜는 시작 날짜 이후여야 합니다.');
       const idx = steps.findIndex((s) => s.key === 'period');
@@ -1189,13 +1212,15 @@ export default function ProjectInterview() {
         // 최종 저장 시점에만 백엔드 동기화 (auto-save 단계에선 호출 X).
         // 인터뷰 답변(draft) 도 같이 보내 타인 viewer 가 미리보기 풀세트로 볼 수 있게.
         const finalItem = nextList.find((it) => it.id === projectId);
-        if (finalItem)
-          void syncItemToBackend(
+        if (finalItem) {
+          await syncItemToBackend(
             { ...finalItem, serverId: serverIdRef.current ?? undefined },
             { kind: 'interview', data: draft },
           );
+          await invalidateMyPortfolio();
+        }
       } catch {
-        // 무시
+        // 저장 실패해도 이동은 진행
       }
     }
     router.push(getMyPortfolioPath());

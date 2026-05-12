@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useMyPortfolio } from '@/hooks/useMyPortfolio';
 import {
   INTRO_STORAGE_KEY,
   VISIBILITY_STORAGE_KEY,
@@ -27,6 +28,7 @@ export function useMyPortfolioStatus(): {
   refresh: () => void;
 } {
   const { user, loading } = useAuth();
+  const { portfolio } = useMyPortfolio();
   const [tick, setTick] = useState(0);
   const [snapshot, setSnapshot] = useState<{
     introFilled: boolean;
@@ -70,6 +72,19 @@ export function useMyPortfolioStatus(): {
       window.removeEventListener('mocozi:portfolio-changed', onStorage);
     };
   }, [tick, user?.id]);
+
+  // 새 기기/시크릿 창: localStorage 에 visibility 가 없을 때 백엔드 값으로 초기화
+  useEffect(() => {
+    if (!portfolio) return;
+    try {
+      const stored = localStorage.getItem(VISIBILITY_STORAGE_KEY);
+      if (!stored) {
+        const v: PortfolioVisibility = portfolio.isPublic ? 'public' : 'private';
+        localStorage.setItem(VISIBILITY_STORAGE_KEY, v);
+        setSnapshot((prev) => (prev ? { ...prev, visibility: v } : prev));
+      }
+    } catch {}
+  }, [portfolio]);
 
   if (loading) return { status: 'loading', visibility: null, refresh };
   if (!user) return { status: 'unauthenticated', visibility: null, refresh };

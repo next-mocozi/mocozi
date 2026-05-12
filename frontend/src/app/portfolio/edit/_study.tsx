@@ -9,6 +9,7 @@ import {
   deleteItemFromBackend,
 } from '@/lib/portfolio-mapper';
 import { getMyPortfolio as apiGetMyPortfolio } from '@/lib/portfolio-api';
+import { invalidateMyPortfolio } from '@/hooks/useMyPortfolio';
 
 // ─────── Storage keys ───────
 const STUDY_DETAILS_STORAGE_KEY = 'mock_study_details';
@@ -153,6 +154,7 @@ export default function StudyForm() {
       localStorage.setItem(STUDY_DETAILS_STORAGE_KEY, JSON.stringify(map));
     } catch {}
     await syncItemToBackend(item, { kind: 'study', data: d });
+    await invalidateMyPortfolio();
     router.push(getMyPortfolioPath());
   };
 
@@ -171,6 +173,7 @@ export default function StudyForm() {
     if (serverIdRef.current) {
       await deleteItemFromBackend(serverIdRef.current);
     }
+    await invalidateMyPortfolio();
     router.push(getMyPortfolioPath());
   };
 

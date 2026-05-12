@@ -7,9 +7,12 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // CORS 설정
+  // CORS 설정 — FRONTEND_URL 에 콤마로 여러 origin 지정 가능
+  // 예: FRONTEND_URL=https://mocozi.vercel.app,http://localhost:3000
+  const rawOrigins = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const allowedOrigins = rawOrigins.split(',').map((s) => s.trim()).filter(Boolean);
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: allowedOrigins.length === 1 ? allowedOrigins[0] : allowedOrigins,
     credentials: true,
   });
 

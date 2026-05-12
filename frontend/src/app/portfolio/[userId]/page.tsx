@@ -6,6 +6,7 @@ import { use, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { findMockFeedUser, type FeedUser } from '@/lib/mock/portfolioFeed';
 import { notifyPortfolioChanged } from '@/hooks/useMyPortfolioStatus';
+import { invalidateMyPortfolio } from '@/hooks/useMyPortfolio';
 import api from '@/lib/api';
 import {
   updateMyMeta,
@@ -43,6 +44,7 @@ import {
   FeaturedStar,
   INTRO_MAX,
   INTRO_STORAGE_KEY,
+  OWNER_STORAGE_KEY,
   ItemMgrModal,
   MAX_FEATURED,
   MAX_FEATURED_RESEARCH,
@@ -245,10 +247,12 @@ export default function PortfolioDetailPage({
         const userRoles = user?.roles ?? [];
         setMainRole(userRoles[0] ?? '');
         setSubRoles(userRoles.slice(1));
-        // useMyPortfolioStatus 훅(nav 상태)을 위해 두 값만 localStorage 에 기록
+        // useMyPortfolioStatus 훅(nav 상태)을 위해 두 값만 localStorage 에 기록.
+        // OWNER_STORAGE_KEY 도 갱신 — 새 기기/onboarding 미진행자의 getMyPortfolioPath() 보정.
         try {
           localStorage.setItem(INTRO_STORAGE_KEY, introVal);
           localStorage.setItem(VISIBILITY_STORAGE_KEY, vis);
+          if (user?.id) localStorage.setItem(OWNER_STORAGE_KEY, user.id);
         } catch { /* 무시 */ }
         notifyPortfolioChanged();
       } catch {
@@ -602,6 +606,7 @@ export default function PortfolioDetailPage({
     if (target?.serverId) {
       try {
         await apiDeleteItem(target.serverId);
+        await invalidateMyPortfolio();
       } catch {
         setItems((prev) => [...prev, target]);
         alert('삭제 중 오류가 발생했어요.');
