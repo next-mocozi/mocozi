@@ -3373,11 +3373,11 @@ function BlockEditor({
         <div
           key={b.id}
           data-block-row
-          className={`group flex items-start gap-2 rounded-md px-1 py-0.5 transition-colors ${
+          className={`group flex items-start gap-2 rounded-md px-1 py-0.5 transition-all ${
             dragId === b.id
-              ? 'opacity-50'
+              ? 'bg-gray-100 opacity-90 shadow-md ring-1 ring-gray-300'
               : dropIdx === i && dragId !== null
-                ? 'bg-blue-50 ring-1 ring-blue-300'
+                ? 'ring-1 ring-gray-300 bg-gray-50'
                 : 'hover:bg-gray-50'
           }`}
         >
@@ -3564,11 +3564,11 @@ function BodySection({
   return (
     <section
       data-section-row
-      className={`group/sec rounded-lg p-1 transition-colors ${
+      className={`group/sec rounded-lg p-1 transition-all ${
         isDragging
-          ? 'opacity-50'
+          ? 'bg-gray-100 opacity-90 shadow-lg ring-1 ring-gray-300'
           : isDropTarget
-            ? 'bg-blue-50 ring-2 ring-blue-300'
+            ? 'ring-1 ring-gray-300 bg-gray-50'
             : ''
       }`}
     >
@@ -3851,11 +3851,11 @@ function DomainSubsectionsList({
           <section
             key={k}
             data-domain-sub-row
-            className={`group/sec rounded-lg p-1 transition-colors ${
+            className={`group/sec rounded-lg p-1 transition-all ${
               draggingKey === k
-                ? 'opacity-50'
+                ? 'bg-gray-100 opacity-90 shadow-lg ring-1 ring-gray-300'
                 : draggingKey !== null && draggingKey !== k && dropIdx === i
-                  ? 'bg-blue-50 ring-2 ring-blue-300'
+                  ? 'ring-1 ring-gray-300 bg-gray-50'
                   : ''
             }`}
           >
