@@ -89,6 +89,8 @@ function SimpleForm() {
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [titleError, setTitleError] = useState('');
+  // 저장/삭제 중 버튼 비활성화 — 빠른 중복 클릭으로 N개 생성/이중 호출 방지
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 편집 모드: 백엔드에서 기존 항목 로드
   useEffect(() => {
@@ -135,10 +137,12 @@ function SimpleForm() {
   };
 
   const handleSave = async () => {
+    if (isSubmitting) return; // 중복 클릭 가드
     if (!title.trim()) {
       setTitleError('제목을 입력해주세요.');
       return;
     }
+    setIsSubmitting(true);
     const localId = isEdit && editId !== null ? editId : Date.now();
     const payload = toCreatePayload({
       id: localId,
@@ -155,23 +159,29 @@ function SimpleForm() {
       if (serverIdRef.current) {
         await apiUpdateItem(serverIdRef.current, payload);
       } else {
-        await apiCreateItem(payload);
+        const created = await apiCreateItem(payload);
+        // 신규 저장 직후 serverIdRef 갱신 — 같은 폼에서 다시 누르면 update 로 분기되어 중복 생성 방지
+        serverIdRef.current = created.id;
       }
     } catch {
-      // 저장 실패해도 이동은 진행
+      // 저장 실패 시 isSubmitting 만 해제하고 페이지 유지 (사용자가 재시도 가능)
+      setIsSubmitting(false);
+      return;
     }
     await invalidateMyPortfolio();
     router.push(getMyPortfolioPath());
   };
 
   const handleDelete = async () => {
+    if (isSubmitting) return;
     if (!isEdit || editId === null) return;
     if (!confirm('이 포트폴리오 항목을 삭제하시겠어요?')) return;
+    setIsSubmitting(true);
     if (serverIdRef.current) {
       try {
         await apiDeleteItem(serverIdRef.current);
       } catch {
-        // 삭제 실패해도 이동은 진행
+        // 404 = 이미 삭제됨, 그 외도 무시 — 캐시 invalidate 후 화면 갱신만
       }
     }
     await invalidateMyPortfolio();
@@ -339,7 +349,8 @@ function SimpleForm() {
         {isEdit ? (
           <button
             onClick={handleDelete}
-            className="rounded-full border border-red-200 px-6 py-2.5 text-sm text-red-500 hover:bg-red-50"
+            disabled={isSubmitting}
+            className="rounded-full border border-red-200 px-6 py-2.5 text-sm text-red-500 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
             삭제
           </button>
@@ -355,9 +366,10 @@ function SimpleForm() {
           </Link>
           <button
             onClick={handleSave}
-            className="rounded-full bg-blue-600 px-6 py-2.5 text-sm text-white shadow-md hover:bg-blue-700"
+            disabled={isSubmitting}
+            className="rounded-full bg-blue-600 px-6 py-2.5 text-sm text-white shadow-md hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            저장
+            {isSubmitting ? '저장 중…' : '저장'}
           </button>
         </div>
       </div>

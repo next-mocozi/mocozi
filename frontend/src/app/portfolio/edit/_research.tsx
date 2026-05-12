@@ -106,6 +106,8 @@ export default function ResearchForm() {
   const [topicError, setTopicError] = useState('');
   const [periodError, setPeriodError] = useState('');
   const [summaryError, setSummaryError] = useState('');
+  // 저장/삭제 중 버튼 비활성화 — 빠른 중복 클릭으로 N개 생성/이중 호출 방지
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 시작 > 종료 인지 (년·월 기준) — 둘 다 입력되었고 진행중이 아닐 때만 검사
@@ -203,6 +205,7 @@ export default function ResearchForm() {
   };
 
   const handleSave = async () => {
+    if (isSubmitting) return; // 중복 클릭 가드
     if (!d.topic.trim()) {
       setTopicError('연구 주제를 입력해주세요.');
       return;
@@ -215,6 +218,7 @@ export default function ResearchForm() {
       setSummaryError('피드에 노출될 한 줄 요약을 입력해주세요.');
       return;
     }
+    setIsSubmitting(true);
     const targetId = isEdit && editId !== null ? editId : Date.now();
     const period = formatPeriod(d);
     const item: PortfolioItem = {
@@ -237,14 +241,20 @@ export default function ResearchForm() {
       map[String(targetId)] = d;
       localStorage.setItem(RESEARCH_DETAILS_STORAGE_KEY, JSON.stringify(map));
     } catch {}
-    await syncItemToBackend(item, { kind: 'research', data: d });
+    const synced = await syncItemToBackend(item, { kind: 'research', data: d });
+    // 신규 저장 직후 serverIdRef 갱신 — 같은 폼에서 다시 누르면 update 로 분기 (중복 생성 방지)
+    if (synced && !serverIdRef.current) {
+      serverIdRef.current = synced.id;
+    }
     await invalidateMyPortfolio();
     router.push(getMyPortfolioPath());
   };
 
   const handleDelete = async () => {
+    if (isSubmitting) return;
     if (!isEdit || editId === null) return;
     if (!confirm('이 연구 항목을 삭제하시겠어요?')) return;
+    setIsSubmitting(true);
     // details 캐시 정리
     try {
       const detailsRaw = localStorage.getItem(RESEARCH_DETAILS_STORAGE_KEY);
@@ -680,7 +690,8 @@ export default function ResearchForm() {
         {isEdit ? (
           <button
             onClick={handleDelete}
-            className="rounded-full border border-red-200 px-6 py-2.5 text-sm text-red-500 hover:bg-red-50"
+            disabled={isSubmitting}
+            className="rounded-full border border-red-200 px-6 py-2.5 text-sm text-red-500 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
             삭제
           </button>
@@ -696,9 +707,10 @@ export default function ResearchForm() {
           </Link>
           <button
             onClick={handleSave}
-            className="rounded-full bg-blue-600 px-6 py-2.5 text-sm text-white shadow-md hover:bg-blue-700"
+            disabled={isSubmitting}
+            className="rounded-full bg-blue-600 px-6 py-2.5 text-sm text-white shadow-md hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isEdit ? '수정 완료' : '저장'}
+            {isSubmitting ? '저장 중…' : isEdit ? '수정 완료' : '저장'}
           </button>
         </div>
       </div>

@@ -851,6 +851,8 @@ export default function ProjectInterview() {
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   const [phase, setPhase] = useState<'loading' | 'form'>('loading');
   const [toast, setToast] = useState<string | null>(null);
+  /** 저장/닫기 중 버튼 비활성화 — 빠른 중복 클릭으로 N개 생성/이중 호출 방지 */
+  const [isSubmitting, setIsSubmitting] = useState(false);
   /** 신규/수정 양쪽에서 단일 ID로 ITEMS·DETAILS 저장. 신규는 진입 시 1회 발급. */
   const [projectId, setProjectId] = useState<number | null>(null);
   /** 진입 시점의 초기 스냅샷 — "저장하지 않고 나가기" 시 복원에 사용.
@@ -1066,6 +1068,7 @@ export default function ProjectInterview() {
   })();
 
   const handleClose = async () => {
+    if (isSubmitting) return; // 중복 클릭 가드
     if (periodInvalid) {
       // 잘못된 기간으로 나가는 것 차단 — 기간 단계로 이동시켜 수정 유도
       showToast('종료 날짜는 시작 날짜 이후여야 합니다.');
@@ -1073,6 +1076,7 @@ export default function ProjectInterview() {
       if (idx >= 0) setDraft((d) => ({ ...d, stepIdx: idx }));
       return;
     }
+    setIsSubmitting(true);
     // 편집 모드: auto-save 가 localStorage 만 갱신 — 나가기 전에 백엔드에 실제 저장.
     // initialDetailRef.current 가 null 이면 details 가 없던 항목 → 빈 폼을 저장하면
     // 기존 기본 정보까지 덮어쓰므로 저장 건너뜀.
@@ -1082,10 +1086,14 @@ export default function ProjectInterview() {
         const list: PortfolioItem[] = itemsRaw ? JSON.parse(itemsRaw) : [];
         const item = list.find((it) => it.id === projectId);
         if (item) {
-          await syncItemToBackend(
+          const synced = await syncItemToBackend(
             { ...item, serverId: serverIdRef.current ?? undefined },
             { kind: 'interview', data: draft },
           );
+          // 신규 저장 직후 serverIdRef 갱신 — 중복 생성 방지
+          if (synced && !serverIdRef.current) {
+            serverIdRef.current = synced.id;
+          }
           await invalidateMyPortfolio();
         }
       } catch {
@@ -1247,12 +1255,14 @@ export default function ProjectInterview() {
 
   /** 미리보기의 "포트폴리오에 저장" / "수정 완료" — draft 플래그 해제 후 이동 */
   const handleSaveProject = async () => {
+    if (isSubmitting) return; // 중복 클릭 가드 — 빠른 더블클릭으로 N개 생성되던 버그 fix
     if (periodInvalid) {
       showToast('종료 날짜는 시작 날짜 이후여야 합니다.');
       const idx = steps.findIndex((s) => s.key === 'period');
       if (idx >= 0) setDraft((d) => ({ ...d, stepIdx: idx }));
       return;
     }
+    setIsSubmitting(true);
     if (projectId !== null) {
       try {
         const itemsRaw = localStorage.getItem(ITEMS_STORAGE_KEY);
@@ -1266,10 +1276,14 @@ export default function ProjectInterview() {
         // ITEMS_STORAGE_KEY 에 없을 때(새 기기 등 auto-save 미완료)는 직접 생성.
         const finalItem =
           nextList.find((it) => it.id === projectId) ?? buildItem(projectId, draft);
-        await syncItemToBackend(
+        const synced = await syncItemToBackend(
           { ...finalItem, serverId: serverIdRef.current ?? undefined },
           { kind: 'interview', data: draft },
         );
+        // 신규 저장 직후 serverIdRef 갱신 — 같은 폼에서 다시 누르면 update 로 분기
+        if (synced && !serverIdRef.current) {
+          serverIdRef.current = synced.id;
+        }
         await invalidateMyPortfolio();
       } catch {
         // 저장 실패해도 이동은 진행
@@ -1357,10 +1371,11 @@ export default function ProjectInterview() {
           <button
             type="button"
             onClick={handleClose}
+            disabled={isSubmitting}
             aria-label={isEdit ? '편집 완료' : '여기까지 저장하고 나가기'}
             title={isEdit ? '편집 완료' : '여기까지 저장하고 나가기'}
             style={{ paddingLeft: '1.25rem', paddingRight: '1.25rem' }}
-            className="ml-2 inline-flex items-center gap-2 rounded-full bg-white py-2 text-xs leading-relaxed text-gray-600 shadow-sm hover:bg-gray-100 hover:text-gray-800"
+            className="ml-2 inline-flex items-center gap-2 rounded-full bg-white py-2 text-xs leading-relaxed text-gray-600 shadow-sm hover:bg-gray-100 hover:text-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <span aria-hidden>{isEdit ? '✓' : '✕'}</span>
             <span className="whitespace-nowrap font-medium">
@@ -1478,9 +1493,14 @@ export default function ProjectInterview() {
             <button
               type="button"
               onClick={handleSaveProject}
-              className="rounded-full bg-blue-600 px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
+              disabled={isSubmitting}
+              className="rounded-full bg-blue-600 px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isEdit ? '수정 완료' : '포트폴리오에 저장'}
+              {isSubmitting
+                ? '저장 중…'
+                : isEdit
+                  ? '수정 완료'
+                  : '포트폴리오에 저장'}
             </button>
           </div>
         )}

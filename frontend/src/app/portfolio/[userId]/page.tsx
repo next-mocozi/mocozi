@@ -616,18 +616,36 @@ export default function PortfolioDetailPage({
   };
 
   // ───────── 포트폴리오/스터디 항목 (편집은 /portfolio/edit 페이지) ─────────
+  // 같은 createdAt(=localId) 을 공유하는 중복 아이템(과거 N-fold 저장 버그의 잔재)이
+  // 있을 경우, localId 만으로 filter 하면 모든 중복이 한 번에 사라져 UX 가 혼란스러움.
+  // → serverId 가 있으면 그것을 1차 키로 사용해 "정확히 한 개" 만 제거.
   const deleteItem = async (id: number) => {
     if (!confirm('이 항목을 삭제하시겠어요?')) return;
     const target = items.find((it) => it.id === id);
-    setItems((prev) => prev.filter((it) => it.id !== id));
-    if (target?.serverId) {
+    if (!target) return;
+    if (target.serverId) {
+      // 동일 localId 다중 매칭 시 첫 번째(=target) 만 제거
+      let removed = false;
+      setItems((prev) =>
+        prev.filter((it) => {
+          if (!removed && it.serverId === target.serverId) {
+            removed = true;
+            return false;
+          }
+          return true;
+        }),
+      );
       try {
         await apiDeleteItem(target.serverId);
         await invalidateMyPortfolio();
       } catch {
+        // 백엔드가 이제 idempotent (404 도 success) 이므로 여기 도달은 5xx/네트워크.
         setItems((prev) => [...prev, target]);
         alert('삭제 중 오류가 발생했어요.');
       }
+    } else {
+      // 로컬 전용 항목 (serverId 없음) — 그대로 한 개 제거
+      setItems((prev) => prev.filter((it) => it.id !== id));
     }
   };
 

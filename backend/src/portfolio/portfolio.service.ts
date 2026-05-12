@@ -200,7 +200,9 @@ export class PortfolioService {
     });
   }
 
-  /** 포트폴리오 아이템 삭제 */
+  /** 포트폴리오 아이템 삭제.
+   *  Idempotent — 이미 삭제된 itemId(race condition / 중복 클릭) 도 success 처리해
+   *  프론트엔드에서 "오류" alert 가 뜨던 문제 fix. 단, 타인 소유 아이템은 403. */
   async deleteItem(userId: string, itemId: string) {
     const item = await this.prisma.portfolioItem.findUnique({
       where: { id: itemId },
@@ -208,7 +210,8 @@ export class PortfolioService {
     });
 
     if (!item) {
-      throw new NotFoundException('포트폴리오 아이템을 찾을 수 없습니다.');
+      // 이미 삭제됨 — idempotent 성공 처리
+      return { id: itemId, deleted: true, alreadyMissing: true };
     }
 
     if (item.portfolio.userId !== userId) {
