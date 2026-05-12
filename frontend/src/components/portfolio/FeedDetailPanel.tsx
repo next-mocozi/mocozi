@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { useAuth } from '@/hooks/useAuth';
 import { TYPE_META, type PortfolioItem, type PortfolioItemType } from '@/app/portfolio/_lib';
@@ -45,6 +45,9 @@ export type FeedDetailTarget =
   | { mode: 'post'; post: FeedPost }
   | { mode: 'author'; userId: string };
 
+const EDITABLE_TYPES = ['project', 'research', 'study'] as const;
+type EditableType = (typeof EDITABLE_TYPES)[number];
+
 export default function FeedDetailPanel({
   target,
   onClose,
@@ -52,6 +55,9 @@ export default function FeedDetailPanel({
   target: FeedDetailTarget;
   onClose: () => void;
 }) {
+  const { user } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
+
   // Esc 키로 닫기
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -61,10 +67,24 @@ export default function FeedDetailPanel({
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
+  // target 이 바뀌면 메뉴 닫기
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [target]);
+
   // author 모드일 때 헤더 이름은 AuthorDetail 내부 fetch 로 채워지므로
   // 헤더에선 일반적인 "프로필" 라벨만 노출. (이전엔 mock 에서 동기로 이름을
   // 가져왔는데, mock 제거 후 항상 undefined 가 되어 의미가 없어짐.)
   const authorName: string | undefined = undefined;
+
+  // 본인 작성 + project/research/study 항목일 때만 수정·삭제 메뉴 노출
+  const editHref =
+    target.mode === 'post' &&
+    target.post.kind === 'item' &&
+    user?.id === target.post.author.userId &&
+    (EDITABLE_TYPES as readonly string[]).includes(target.post.item.type)
+      ? `/portfolio/edit?type=${target.post.item.type as EditableType}&id=${target.post.item.id}`
+      : null;
 
   return (
     <aside className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-lg">
@@ -76,14 +96,64 @@ export default function FeedDetailPanel({
               ? `${authorName}님의 프로필`
               : '프로필'}
         </p>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="패널 닫기"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition-all hover:bg-gray-100 hover:text-gray-700"
-        >
-          ✕
-        </button>
+        <div className="flex items-center gap-1">
+          {editHref && (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setMenuOpen((v) => !v)}
+                aria-label="수정·삭제 메뉴"
+                aria-expanded={menuOpen}
+                aria-haspopup="menu"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition-all hover:bg-gray-100 hover:text-gray-700"
+              >
+                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                  <circle cx="5" cy="12" r="2" />
+                  <circle cx="12" cy="12" r="2" />
+                  <circle cx="19" cy="12" r="2" />
+                </svg>
+              </button>
+              {menuOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setMenuOpen(false)}
+                    aria-hidden="true"
+                  />
+                  <div
+                    role="menu"
+                    className="absolute right-0 top-full z-20 mt-1 w-32 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg"
+                  >
+                    <Link
+                      href={editHref}
+                      role="menuitem"
+                      className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      수정
+                    </Link>
+                    <Link
+                      href={editHref}
+                      role="menuitem"
+                      className="block px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      삭제
+                    </Link>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="패널 닫기"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition-all hover:bg-gray-100 hover:text-gray-700"
+          >
+            ✕
+          </button>
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto px-5 py-4 sm:px-6 sm:py-5">
         {target.mode === 'post' ? (
