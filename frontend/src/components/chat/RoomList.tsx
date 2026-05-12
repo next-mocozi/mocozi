@@ -411,17 +411,17 @@ export default function RoomList() {
                   <p className="mb-2 text-[11px] font-semibold text-stone-700">
                     진입 컨텍스트
                   </p>
-                  <ul className="space-y-1.5 text-xs text-stone-600">
-                    <li className="flex items-center gap-2">
-                      <span className="h-2 w-2 animate-neon-pulse rounded-full bg-blue-500 shadow-[0_0_4px_rgb(59_130_246/0.95),0_0_10px_rgb(59_130_246/0.55)]" />
+                  <ul className="space-y-2 text-xs text-stone-600">
+                    <li className="flex items-center gap-3">
+                      <span className="h-1 w-1 animate-neon-pulse rounded-full bg-blue-500 shadow-[0_0_4px_rgb(59_130_246/0.95),0_0_10px_rgb(59_130_246/0.55)]" />
                       구인 (recruit)
                     </li>
-                    <li className="flex items-center gap-2">
-                      <span className="h-2 w-2 animate-neon-pulse rounded-full bg-amber-500 shadow-[0_0_4px_rgb(245_158_11/0.95),0_0_10px_rgb(245_158_11/0.55)]" />
+                    <li className="flex items-center gap-3">
+                      <span className="h-1 w-1 animate-neon-pulse rounded-full bg-amber-500 shadow-[0_0_4px_rgb(245_158_11/0.95),0_0_10px_rgb(245_158_11/0.55)]" />
                       팀 합류
                     </li>
-                    <li className="flex items-center gap-2">
-                      <span className="h-2 w-2 animate-neon-pulse rounded-full bg-emerald-500 shadow-[0_0_4px_rgb(16_185_129/0.95),0_0_10px_rgb(16_185_129/0.55)]" />
+                    <li className="flex items-center gap-3">
+                      <span className="h-1 w-1 animate-neon-pulse rounded-full bg-emerald-500 shadow-[0_0_4px_rgb(16_185_129/0.95),0_0_10px_rgb(16_185_129/0.55)]" />
                       포트폴리오
                     </li>
                   </ul>
@@ -570,10 +570,12 @@ export default function RoomList() {
                             <h3 className="truncate text-sm font-medium">
                               {displayName}
                             </h3>
-                            {/* §17 진입 컨텍스트 네온 점 — 이름 옆 오른쪽, 미세 호흡 글로우 */}
+                            {/* §17 진입 컨텍스트 네온 점 — 이름 옆 오른쪽, 미세 호흡 글로우.
+                                내부 발광체는 작게(h-1 w-1=4px), 외부 글로우 반경(10px)은 유지 →
+                                핀포인트 LED 같은 네온 비율. */}
                             {room.context && (
                               <span
-                                className={`h-2 w-2 shrink-0 rounded-full animate-neon-pulse ${contextNeonClasses(room.context)}`}
+                                className={`h-1 w-1 shrink-0 rounded-full animate-neon-pulse ${contextNeonClasses(room.context)}`}
                                 title={contextLabel(room.context)}
                                 aria-label={`진입: ${contextLabel(room.context)}`}
                               />
