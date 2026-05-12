@@ -226,6 +226,15 @@ export function useSocket(options: UseSocketOptions = {}) {
     });
   }, []);
 
+  /**
+   * 타이핑 인디케이터 emit — fire-and-forget. ack 불필요 (휘발성).
+   * 호출자는 textarea onChange에서 debounce + idle timeout으로 false 자동 호출.
+   */
+  const emitTyping = useCallback((roomId: string, isTyping: boolean) => {
+    if (!socketRef.current) return;
+    socketRef.current.emit('typing:update', { roomId, isTyping });
+  }, []);
+
   return {
     /** 현재 socket 인스턴스 (이벤트 listen에 직접 활용 가능) */
     socket: socketRef.current,
@@ -242,5 +251,6 @@ export function useSocket(options: UseSocketOptions = {}) {
     markAsRead,
     addReaction,
     removeReaction,
+    emitTyping,
   };
 }

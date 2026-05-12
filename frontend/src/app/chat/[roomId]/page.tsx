@@ -143,6 +143,7 @@ function ChatRoomPageContent({ params }: PageProps) {
     markAsRead,
     addReaction,
     removeReaction,
+    emitTyping,
   } = useChatSocket();
   const { setRoomUnread } = useChatNotifications();
 
@@ -280,6 +281,22 @@ function ChatRoomPageContent({ params }: PageProps) {
       clearEmptyRoomGuard();
     };
   }, []);
+
+  /**
+   * 타이핑 인디케이터 — 다른 멤버가 입력 중인지 추적.
+   * Map<userId, fallback timer> — typing:true 받으면 5초 fallback timer (stop 못 받았을 때).
+   * `stop` 받으면 즉시 제거.
+   */
+  const [typingUserIds, setTypingUserIds] = useState<Set<string>>(new Set());
+  const typingTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
+    new Map(),
+  );
+
+  /** 본인 타이핑 emit debounce — 첫 입력에 true, 2초 idle에 false */
+  const ownTypingEmittedRef = useRef(false);
+  const ownTypingIdleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   /** 무한 스크롤 — 위쪽으로 이전 메시지 페이징 */
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -576,11 +593,75 @@ function ChatRoomPageContent({ params }: PageProps) {
       );
     };
 
+    // 타이핑 인디케이터 — 본인 제외 isTyping=true/false 토글, fallback 5초 timer
+    const onTypingUpdate = (data: {
+      roomId: string;
+      userId: string;
+      isTyping: boolean;
+    }) => {
+      if (data.roomId !== roomId) return;
+      if (data.userId === user?.id) return; // backend가 본인 제외 broadcast하지만 안전망
+      const timers = typingTimersRef.current;
+      const existing = timers.get(data.userId);
+      if (existing) clearTimeout(existing);
+
+      if (data.isTyping) {
+        setTypingUserIds((prev) => {
+          if (prev.has(data.userId)) return prev;
+          const next = new Set(prev);
+          next.add(data.userId);
+          return next;
+        });
+        // 5초 안에 새 update 안 오면 자동 제거 (stop 못 받았을 때 안전망)
+        const timer = setTimeout(() => {
+          setTypingUserIds((prev) => {
+            if (!prev.has(data.userId)) return prev;
+            const next = new Set(prev);
+            next.delete(data.userId);
+            return next;
+          });
+          timers.delete(data.userId);
+        }, 5000);
+        timers.set(data.userId, timer);
+      } else {
+        setTypingUserIds((prev) => {
+          if (!prev.has(data.userId)) return prev;
+          const next = new Set(prev);
+          next.delete(data.userId);
+          return next;
+        });
+        timers.delete(data.userId);
+      }
+    };
+
+    // 다른 멤버 읽음 갱신 broadcast — room.members[].lastReadMessageId 갱신해
+    // per-message unread badge 즉시 재계산
+    const onRoomReadUpdated = (data: {
+      roomId: string;
+      userId: string;
+      lastReadMessageId: string;
+    }) => {
+      if (data.roomId !== roomId) return;
+      setRoom((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          members: prev.members.map((m) =>
+            m.userId === data.userId
+              ? { ...m, lastReadMessageId: data.lastReadMessageId }
+              : m,
+          ),
+        };
+      });
+    };
+
     socket.on('message:new', onMessageNew);
     socket.on('message:edited', onMessageEdited);
     socket.on('message:deleted', onMessageDeleted);
     socket.on('reaction:added', onReactionAdded);
     socket.on('reaction:removed', onReactionRemoved);
+    socket.on('typing:update', onTypingUpdate);
+    socket.on('room:readUpdated', onRoomReadUpdated);
 
     return () => {
       socket.off('message:new', onMessageNew);
@@ -588,6 +669,21 @@ function ChatRoomPageContent({ params }: PageProps) {
       socket.off('message:deleted', onMessageDeleted);
       socket.off('reaction:added', onReactionAdded);
       socket.off('reaction:removed', onReactionRemoved);
+      socket.off('typing:update', onTypingUpdate);
+      socket.off('room:readUpdated', onRoomReadUpdated);
+      // 방 떠날 때 자기 typing stop emit (잔여 타이머 cleanup)
+      if (ownTypingEmittedRef.current) {
+        emitTyping(roomId, false);
+        ownTypingEmittedRef.current = false;
+      }
+      if (ownTypingIdleTimerRef.current) {
+        clearTimeout(ownTypingIdleTimerRef.current);
+        ownTypingIdleTimerRef.current = null;
+      }
+      // 받은 typing fallback 타이머 정리
+      typingTimersRef.current.forEach((t) => clearTimeout(t));
+      typingTimersRef.current.clear();
+      setTypingUserIds(new Set());
       leaveConversation(roomId);
     };
   }, [
@@ -598,6 +694,8 @@ function ChatRoomPageContent({ params }: PageProps) {
     leaveConversation,
     setRoomUnread,
     markAsRead,
+    emitTyping,
+    user?.id,
   ]);
 
   // ---------------------------------------------------------
@@ -808,6 +906,15 @@ function ChatRoomPageContent({ params }: PageProps) {
       }
     }
     setReplyTo(null); // 전송 즉시 답글 모드 해제
+    // 전송 즉시 타이핑 stop emit (idle timer 대기 안 함)
+    if (ownTypingEmittedRef.current) {
+      emitTyping(roomId, false);
+      ownTypingEmittedRef.current = false;
+    }
+    if (ownTypingIdleTimerRef.current) {
+      clearTimeout(ownTypingIdleTimerRef.current);
+      ownTypingIdleTimerRef.current = null;
+    }
 
     try {
       const ack = (await sendMessage({
@@ -1038,6 +1145,7 @@ function ChatRoomPageContent({ params }: PageProps) {
                 onDelete={() => handleDelete(msg)}
                 onReply={() => startReply(msg)}
                 onToggleReaction={(emoji) => toggleReaction(msg, emoji)}
+                unreadBy={computeUnreadBy(msg, room, user?.id, messages)}
               />
             ))}
 
@@ -1075,6 +1183,30 @@ function ChatRoomPageContent({ params }: PageProps) {
           </svg>
         </button>
       </div>
+
+      {/* 타이핑 인디케이터 — 다른 멤버가 입력 중일 때만 노출. 입력창 바로 위 얇은 줄. */}
+      {typingUserIds.size > 0 && room && (
+        <div className="flex items-center gap-1 border-t border-gray-200 bg-gray-50 px-4 py-1 text-xs text-gray-500">
+          <span className="inline-flex items-center gap-0.5">
+            <span className="h-1 w-1 animate-pulse rounded-full bg-gray-400" />
+            <span className="h-1 w-1 animate-pulse rounded-full bg-gray-400 [animation-delay:150ms]" />
+            <span className="h-1 w-1 animate-pulse rounded-full bg-gray-400 [animation-delay:300ms]" />
+          </span>
+          <span>
+            {(() => {
+              const names = Array.from(typingUserIds)
+                .map(
+                  (uid) =>
+                    room.members.find((m) => m.userId === uid)?.user?.name ?? '상대방',
+                )
+                .filter(Boolean);
+              if (names.length === 1) return `${names[0]}님이 입력 중...`;
+              if (names.length === 2) return `${names[0]}, ${names[1]}님이 입력 중...`;
+              return `${names[0]} 외 ${names.length - 1}명이 입력 중...`;
+            })()}
+          </span>
+        </div>
+      )}
 
       {/* 답글 미리보기 — replyTo가 있으면 입력창 위에 표시 */}
       {replyTo && (
@@ -1139,7 +1271,34 @@ function ChatRoomPageContent({ params }: PageProps) {
         <textarea
           ref={inputRef}
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => {
+            const next = e.target.value;
+            setDraft(next);
+            // 타이핑 인디케이터 — 빈 입력은 stop, 내용 있으면 첫 입력에 start + 2초 idle에 stop
+            if (!isConnected) return;
+            if (!next.trim()) {
+              if (ownTypingEmittedRef.current) {
+                emitTyping(roomId, false);
+                ownTypingEmittedRef.current = false;
+              }
+              if (ownTypingIdleTimerRef.current) {
+                clearTimeout(ownTypingIdleTimerRef.current);
+                ownTypingIdleTimerRef.current = null;
+              }
+              return;
+            }
+            if (!ownTypingEmittedRef.current) {
+              emitTyping(roomId, true);
+              ownTypingEmittedRef.current = true;
+            }
+            if (ownTypingIdleTimerRef.current) {
+              clearTimeout(ownTypingIdleTimerRef.current);
+            }
+            ownTypingIdleTimerRef.current = setTimeout(() => {
+              emitTyping(roomId, false);
+              ownTypingEmittedRef.current = false;
+            }, 2000);
+          }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
@@ -1288,6 +1447,7 @@ function MessageItem({
   onDelete,
   onReply,
   onToggleReaction,
+  unreadBy,
 }: {
   message: LocalMessage;
   myId: string | undefined;
@@ -1300,6 +1460,8 @@ function MessageItem({
   onDelete: () => void;
   onReply: () => void;
   onToggleReaction: (emoji: string) => void;
+  /** 본인 메시지일 때, 아직 읽지 않은 다른 멤버 수 (카톡 "1" 패턴). 0이면 숨김. */
+  unreadBy: number;
 }) {
   const isMine = message.senderId === myId;
   const time = formatTime(message.createdAt);
@@ -1550,10 +1712,20 @@ function MessageItem({
         )}
 
         <p
-          className={`mt-1 text-right text-xs ${
+          className={`mt-1 flex items-center justify-end gap-1 text-xs ${
             isMine ? 'text-primary-200' : 'text-gray-400'
           }`}
         >
+          {/* 본인 메시지 한정 — 안 읽은 사람 수 (카톡 "1" 패턴, DIRECT는 1/0, GROUP은 N/0) */}
+          {isMine && !stateLabel && !message.deletedAt && unreadBy > 0 && (
+            <span
+              className="rounded-full bg-primary-300/40 px-1.5 py-0.5 text-[0.6rem] font-semibold leading-none text-primary-100"
+              aria-label={`안 읽은 사람 ${unreadBy}명`}
+              title={`${unreadBy}명 안 읽음`}
+            >
+              {unreadBy}
+            </span>
+          )}
           {stateLabel ? (
             <span className={message.__failed ? 'font-semibold text-red-200' : ''}>
               {stateLabel}
@@ -1692,4 +1864,53 @@ function formatTime(iso: string): string {
   const ampm = h < 12 ? '오전' : '오후';
   const hour12 = h % 12 === 0 ? 12 : h % 12;
   return `${ampm} ${hour12}:${m}`;
+}
+
+/**
+ * 카톡 "1" 패턴 — 본인 메시지가 아직 읽지 않은 다른 멤버 수 계산.
+ *
+ * 모델 C (lastReadMessageId만 저장) 기반 client-side 계산:
+ *  - 본인 메시지가 아니면 0 (다른 사람 메시지엔 표시 안 함)
+ *  - 다른 멤버의 lastReadMessageId가 이 메시지보다 더 최신(이후)이면 그 멤버는 읽었음
+ *  - 그렇지 않으면 안 읽음 — 그 멤버 수 카운트
+ *
+ * DIRECT: 결과 0 또는 1. GROUP: 0..(멤버 수 - 1).
+ *
+ * messages 배열을 같이 받아 id → index map으로 비교 (createdAt 비교 대신 array index — 더 안정적).
+ * pending/failed 메시지 (서버 미저장)는 unread 계산에서 제외.
+ */
+function computeUnreadBy(
+  message: LocalMessage,
+  room: ChatRoomWithMembers | null,
+  myId: string | undefined,
+  messages: LocalMessage[],
+): number {
+  if (!room || !myId) return 0;
+  if (message.senderId !== myId) return 0;
+  if (message.__pending || message.__failed) return 0;
+
+  // 메시지 id → createdAt 비교용 timestamp
+  const thisMsgTime = new Date(message.createdAt).getTime();
+
+  // 다른 멤버들 중, lastReadMessageId가 이 메시지보다 옛 것이거나 null인 사람 수
+  const others = room.members.filter((m) => m.userId !== myId);
+  let unreadCount = 0;
+  for (const other of others) {
+    if (!other.lastReadMessageId) {
+      // 한 번도 안 읽음
+      unreadCount += 1;
+      continue;
+    }
+    const lastReadMsg = messages.find((m) => m.id === other.lastReadMessageId);
+    if (!lastReadMsg) {
+      // 그 메시지를 모름 (페이징 등으로 fetch 안 됨) — 안 읽은 걸로 보수적 처리
+      unreadCount += 1;
+      continue;
+    }
+    if (new Date(lastReadMsg.createdAt).getTime() < thisMsgTime) {
+      // 그 멤버의 마지막 읽은 메시지가 이 메시지보다 이전 — 안 읽음
+      unreadCount += 1;
+    }
+  }
+  return unreadCount;
 }

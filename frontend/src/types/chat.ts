@@ -186,6 +186,15 @@ export interface ServerToClientEvents {
     userId: string;
     isTyping: boolean;
   }) => void;
+  /**
+   * 방 멤버가 메시지 읽음 갱신 — per-message unread badge 재계산용.
+   * `client.to('room:...').emit('room:readUpdated', ...)` 패턴. 본인 제외.
+   */
+  'room:readUpdated': (data: {
+    roomId: string;
+    userId: string;
+    lastReadMessageId: string;
+  }) => void;
 
   // 사용자 글로벌 broadcast (인앱 알림)
   'notification:newMessage': (n: NewMessageNotification) => void;
@@ -246,6 +255,14 @@ export interface ClientToServerEvents {
       emoji: string;
       roomId: string;
     }) => void,
+  ) => void;
+  /**
+   * 타이핑 인디케이터 — 본인 textarea onChange debounce + idle(2s) timeout으로 false 자동 발송.
+   * 본인 제외 같은 방 멤버에게 broadcast.
+   */
+  'typing:update': (
+    data: { roomId: string; isTyping: boolean },
+    ack?: (res: { ok: boolean }) => void,
   ) => void;
 }
 

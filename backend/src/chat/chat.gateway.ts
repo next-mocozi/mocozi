@@ -363,7 +363,41 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       unreadCount,
     });
 
+    // 같은 방의 다른 멤버에게 broadcast — 사용자 X가 메시지 Y까지 읽었음.
+    // 받는 측은 client-side로 본인 메시지 옆 "안 읽은 사람 수" badge 재계산.
+    // (per-message readByCount를 backend에서 계산하지 않고 lastReadMessageId만 전파)
+    this.server.to(`room:${data.roomId}`).emit('room:readUpdated', {
+      roomId: data.roomId,
+      userId,
+      lastReadMessageId: data.messageId,
+    });
+
     return { ok: true, unreadCount };
+  }
+
+  // ---------------------------------------------------------
+  // 타이핑 인디케이터 — in-memory broadcast (DB 저장 X).
+  // 클라이언트 측 onChange debounce + idle timeout으로 stop 자동 호출 권장.
+  // ---------------------------------------------------------
+  @SubscribeMessage('typing:update')
+  async onTypingUpdate(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { roomId: string; isTyping: boolean },
+  ) {
+    if (!data?.roomId || typeof data.isTyping !== 'boolean') {
+      throw new WsException('roomId와 isTyping이 필요합니다.');
+    }
+    const userId = this.requireUserId(client);
+    // 멤버 검증 — 비멤버가 spam 못 하게 (캐시 hit이면 DB query 절감)
+    await this.chatService.assertMembership(data.roomId, userId);
+
+    // 본인 제외 같은 방 멤버에게만 broadcast. `client.to(...)`가 sender exclude.
+    client.to(`room:${data.roomId}`).emit('typing:update', {
+      roomId: data.roomId,
+      userId,
+      isTyping: data.isTyping,
+    });
+    return { ok: true };
   }
 
   // ---------------------------------------------------------
