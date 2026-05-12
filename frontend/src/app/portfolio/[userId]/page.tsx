@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { getBannerGradientClass } from '@/app/profile/_banner';
 import { use, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { findMockFeedUser, type FeedUser } from '@/lib/mock/portfolioFeed';
@@ -242,6 +243,7 @@ export default function PortfolioDetailPage({
     bio: string | null;
     skills: string[];
     roles: string[];
+    bannerColor: string | null;
   } | null>(null);
 
   // owner: useMyPortfolio() SWR 캐시에서 데이터 반영.
@@ -352,6 +354,7 @@ export default function PortfolioDetailPage({
             bio?: string | null;
             skills?: string[];
             roles?: string[];
+            bannerColor?: string | null;
           } | null;
           if (u) {
             setViewerUser({
@@ -362,6 +365,7 @@ export default function PortfolioDetailPage({
               bio: u.bio ?? null,
               skills: u.skills ?? [],
               roles: u.roles ?? [],
+              bannerColor: u.bannerColor ?? null,
             });
             if (u.bio) {
               setIntroSaved(u.bio);
@@ -707,6 +711,7 @@ export default function PortfolioDetailPage({
         grade: user.grade ?? '',
         bio: user.bio ?? '',
         skills: user.skills ?? [],
+        bannerColor: user.bannerColor ?? null,
       }
     : viewerUser
       ? {
@@ -716,6 +721,7 @@ export default function PortfolioDetailPage({
           grade: viewerUser.grade ?? '',
           bio: viewerUser.bio ?? '',
           skills: viewerUser.skills,
+          bannerColor: viewerUser.bannerColor,
         }
       : {
           name: '',
@@ -724,6 +730,7 @@ export default function PortfolioDetailPage({
           grade: '',
           bio: '',
           skills: [],
+          bannerColor: null as string | null,
         };
 
   return (
@@ -736,6 +743,12 @@ export default function PortfolioDetailPage({
       )}
       {/* 본문 카드들은 기존 폭(max-w-4xl) 유지해 가독성 보존 */}
       <div className="mx-auto max-w-4xl">
+      {/* 프로필 배너 — 작성자가 /profile 에서 선택한 색상.
+          본인·타인 모두 동일하게 노출 (read-only). /profile/[id] 와 동일 디자인. */}
+      <div
+        className={`mb-6 h-32 w-full rounded-2xl bg-gradient-to-br ${getBannerGradientClass(displayUser.bannerColor)}`}
+        aria-hidden
+      />
       {/* ─────── 기본 정보 — /profile 페이지와 동일 (수정 버튼 없음) ─────── */}
       <div className="card relative mb-6">
         {/* 공개/비공개 상태 + 설정 버튼 — owner 전용 */}
