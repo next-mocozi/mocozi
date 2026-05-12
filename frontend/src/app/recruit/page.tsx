@@ -49,7 +49,8 @@ interface ScoutModalState {
   targetUser: UserProfile;
   teams: MyTeam[];
   selectedTeamId: string;
-  message: string;
+  // Phase B-DM-8 Scout C 안 — message 작성은 채팅방 인사양식 패널로 이관.
+  // 팝업은 팀 선택만 받고 빈 채팅방을 생성해 양식 패널이 자동 열리도록 함.
   loading: boolean;
 }
 
@@ -168,38 +169,32 @@ export default function RecruitListPage() {
       );
       return;
     }
-    setScoutModal({ targetUser: target, teams, selectedTeamId: teams[0]?.id ?? '', message: '', loading: false });
+    setScoutModal({ targetUser: target, teams, selectedTeamId: teams[0]?.id ?? '', loading: false });
   };
 
   const submitScout = async () => {
     if (!scoutModal) return;
     if (!scoutModal.selectedTeamId) { setScoutError('팀을 선택해주세요.'); return; }
-    if (!scoutModal.message.trim()) { setScoutError('메시지를 입력해주세요.'); return; }
 
     setScoutModal((prev) => prev && { ...prev, loading: true });
     setScoutError(null);
     try {
-      // B-DM-1 정책 통합 — 별도 Scout 제안 대신 채팅방 시작 + 첫 메시지 전송.
-      // 본문 + 팀 link 마커 자동 첨부 → 받는 사람의 채팅창에서 팀 정보 인지 가능.
-      const team = scoutModal.teams.find((t) => t.id === scoutModal.selectedTeamId);
-      const teamMarker = team
-        ? `\n\n[[link:team:${team.id}|${team.name} 팀 보기]]`
-        : '';
-      const firstMessage = `${scoutModal.message.trim()}${teamMarker}`;
-
+      // Phase B-DM-8 Scout C 안 — 팝업은 팀 선택만, 메시지는 채팅방 인사양식 패널에서.
+      // 빈 채팅방을 SCOUT_FROM_TEAM context + contextTargetId(teamId)와 함께 생성하면
+      // 채팅방 진입 시 shouldShowTemplateTrigger가 true → 양식 패널 자동 열림 (auto-open useEffect).
       const res = await api.post<{ data: { id: string } }>('/api/chat/rooms', {
         type: 'DIRECT',
         memberIds: [scoutModal.targetUser.id],
         context: 'SCOUT_FROM_TEAM',
-        firstMessage,
+        contextTargetId: scoutModal.selectedTeamId,
       });
       const roomId = res.data.data.id;
       setScoutSuccess(true);
-      // 모달 닫고 채팅방으로 이동
+      // 모달 닫고 채팅방으로 이동 — teamId query param은 양식 변수 치환에 활용
       setTimeout(() => {
         setScoutModal(null);
         router.push(`/chat/${roomId}?context=SCOUT_FROM_TEAM&teamId=${scoutModal.selectedTeamId}`);
-      }, 800);
+      }, 600);
     } catch (e: any) {
       setScoutError(e?.response?.data?.message ?? '스카우트 채팅 시작에 실패했습니다.');
       setScoutModal((prev) => prev && { ...prev, loading: false });
@@ -637,7 +632,7 @@ export default function RecruitListPage() {
               <p className="text-sm text-stone-400">팀장으로 등록된 팀이 없습니다. 먼저 팀을 만들어주세요.</p>
             ) : (
               <>
-                <div className="mb-3">
+                <div className="mb-4">
                   <label className="mb-1.5 block text-sm font-semibold text-stone-700">팀 선택</label>
                   <select
                     value={scoutModal.selectedTeamId}
@@ -649,26 +644,21 @@ export default function RecruitListPage() {
                     ))}
                   </select>
                 </div>
-                <div className="mb-4">
-                  <label className="mb-1.5 block text-sm font-semibold text-stone-700">메시지</label>
-                  <textarea
-                    value={scoutModal.message}
-                    onChange={(e) => setScoutModal((prev) => prev && { ...prev, message: e.target.value })}
-                    placeholder="합류 제안 메시지를 작성해주세요."
-                    rows={4}
-                    className="input-field resize-none"
-                  />
-                </div>
+                {/* Phase B-DM-8 Scout C 안 — 메시지 작성은 채팅방 인사양식 패널에서 통일.
+                    이 모달은 팀 선택만 받고 빈 채팅방을 생성 → 채팅방 진입 시 양식 패널 자동 열림. */}
+                <p className="mb-4 rounded-lg bg-indigo-50 px-3 py-2 text-xs text-indigo-700">
+                  팀 선택 후 채팅방으로 이동하면 인사양식 패널이 자동으로 열려요. 거기서 메시지를 편집해 보내세요.
+                </p>
                 {scoutError && <p className="mb-3 text-xs text-red-500">{scoutError}</p>}
                 {scoutSuccess ? (
-                  <p className="text-center text-sm font-semibold text-emerald-600">채팅을 시작했습니다! 잠시 후 이동합니다…</p>
+                  <p className="text-center text-sm font-semibold text-emerald-600">채팅방을 만들었습니다! 잠시 후 이동합니다…</p>
                 ) : (
                   <button
                     onClick={submitScout}
                     disabled={scoutModal.loading}
                     className="w-full rounded-xl bg-gradient-to-r from-primary-600 to-primary-700 py-3 text-sm font-semibold text-white shadow-md shadow-primary-200 transition-all hover:shadow-lg disabled:opacity-60"
                   >
-                    {scoutModal.loading ? '전송 중...' : '제안 보내기'}
+                    {scoutModal.loading ? '채팅방 생성 중...' : '채팅방 시작'}
                   </button>
                 )}
               </>

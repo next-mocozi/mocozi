@@ -140,10 +140,21 @@
 | 항목 | 내용 |
 |---|---|
 | **배경** | Phase A에서 recruit 카드의 "스카우트" modal flow를 채팅 시작으로 통합(SCOUT_FROM_TEAM). 받는 사람이 응답을 쉽게 표현할 수 있는 UX 필요. 사용자 의도: "거절은 무응답으로, 수락만 명시 액션". |
-| **현재 상태** | 받는 사람이 채팅창 진입 후 자유 텍스트로만 응답 가능. 보내는 사람이 결과 추적할 방법 없음 (이전 `Scout.status` PENDING/ACCEPTED/DECLINED는 폐기 가능성). |
-| **착수 시 작업** | 1) **RoomList 미리보기**: 채팅방 카드에 "기획서 보기" / "프로필 보기" 인라인 액션. 받는 사람이 채팅 진입 없이 핵심 정보 확인. 2) **빠른 응답 칩**: 채팅 첫 메시지 수신 시 입력창 위에 `[수락]` 버튼 한 개만. 거절은 별도 액션 없이 무응답 = 거절 (사용자 의도 정합). 3) **자동 응답**: 수락 클릭 시 "수락했습니다!" 정형 메시지 + Scout 트래킹 row(존재 시) ACCEPTED. 4) **무응답 만료**: 7일 무응답이면 보내는 사람 RoomList에 "응답 대기 중 (D+N)" / "응답 시간 만료" 시각 신호. 5) **Scout 모델 처리 결정**: 채팅으로 통합 후 Scout 모델은 (a) 폐기 / (b) 받은 스카우트 통계용 유지 / (c) trackingOnly로 ACCEPTED만 기록. |
-| **고려사항** | 수신자가 "수락" 칩이 부담돼서 누르지 않고 무응답으로 두고 싶을 수도 — 채팅 자유 응답이 항상 가능해 칩은 보조 수단. 보내는 사람의 "응답 시간 만료" 표시는 약한 신호 — 강한 표시(채팅방 자동 hide 등)는 사용자 거부 의향을 정확히 안 알아 위험. |
-| **연관** | `docs/chat/01-decisions.md` §17 진입 컨텍스트 색 점 (SCOUT_FROM_TEAM 분류), B-DM-1 컨텍스트 의미 재설계 (Phase A에서 통합 완료) |
+| **상태 (2026-05-12 갱신)** | **부분 구현 완료**. 아래 ✅/⏸/⏳ 마킹 참고. |
+| **착수 시 작업** | ✅ **(1) RoomList 미리보기**: 카드 hover 시 📄 기획서 / 👤 프로필 아이콘 버튼. `RoomPreviewPanel` 컴포넌트 SlidingPanel로 우측 슬라이드. context별 분기 (SCOUT_FROM_TEAM=둘 다, RECRUIT_TEAM=📄, RECRUIT_INDIVIDUAL/PORTFOLIO_*=👤). `room.contextTargetId` 신규 schema 컬럼으로 팀 ID 추적, 옛 방은 graceful 숨김.<br/>⏳ **(2) 빠른 응답 칩**: 알림 모델·socket 이벤트 정착 후 별도 plan. 알림센터(현 placeholder)가 선순위.<br/>⏳ **(3) 자동 응답**: (2)와 함께 진행 예정.<br/>✅ **(4) 무응답 만료**: **3일 임계** 채택 (활성 플랫폼 기준). `ChatService.computeResponseExpiredBatch`로 배치 판정 (creator 첫 메시지 후 3일+ recipient 답장 0건). RoomList ⏰ overlay + opacity-60 + 채팅창 헤더 amber banner.<br/>✅ **(5) Scout 모델 처리**: **즉시 폐기** (`docs/chat/01-decisions.md` §20). B-DM-1 통합 후 `/api/scout/*` 호출 0건이라 dead code. prisma db push로 `scouts` 테이블 drop.<br/>✅ **(추가) Scout 흐름 C 안**: 팝업=팀 선택만, 메시지 작성은 채팅방 인사양식 패널에서 (auto-open). 메시지 편집 위치 UX 일관성. (§19) |
+| **고려사항** | 수신자가 "수락" 칩이 부담돼서 누르지 않고 무응답으로 두고 싶을 수도 — 채팅 자유 응답이 항상 가능해 칩은 보조 수단. 응답 만료 표시는 약한 신호 (RoomList opacity + ⏰만) — 채팅방 자동 hide는 사용자 거부 의향을 정확히 안 알아 위험. |
+| **연관** | `docs/chat/01-decisions.md` §19 (Scout C), §20 (Scout 폐기), §21 (응답 만료), §22 (인라인 액션), §23 (알림센터 placeholder) |
+
+---
+
+### B-DM-9. 알림센터 실제 알림 데이터 (후속 plan)
+
+| 항목 | 내용 |
+|---|---|
+| **현재 상태** | 헤더 자리만 잡힘 (`NotificationCenter.tsx` placeholder, `useChatNotifications.totalUnread`만 노출). 실제 알림 데이터 없음. |
+| **착수 시 작업** | 1) `Notification` Prisma 모델 추가 (userId, type, title, body, linkTo, readAt, createdAt). 2) `NotificationType` enum: CHAT_NEW_REQUEST, CHAT_REPLY, CHAT_EXPIRED, APPLICATION_RECEIVED, APPLICATION_PROCESSED, TEAM_MEMBER_CHANGED, PORTFOLIO_INTERACTION. 3) 각 트리거 지점에서 `prisma.notification.create` 호출 (chat.service의 saveMessage, apply.service, team.service 등). 4) socket 이벤트 `notification:new` emit (user:<id> 채널). 5) NotificationCenter에서 socket listen + REST `GET /api/notifications` fetch. 6) 읽음 처리 `PATCH /api/notifications/:id/read` + 일괄 `PATCH /api/notifications/read-all`. |
+| **고려사항** | 알림 수 증가 시 페이징 필요. 알림 N일 후 자동 archive. 운영 비용 (DB row 증가) 고려. 모바일 push notification은 별개 (FCM/APNs 통합은 운영 단계 이후). |
+| **연관** | §B-DM-8 (4) 응답 만료를 알림으로 푸시할 자리, 빠른 응답 칩의 트리거 지점 |
 
 ---
 

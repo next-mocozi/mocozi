@@ -401,6 +401,17 @@ function ChatRoomPageContent({ params }: PageProps) {
   const shouldShowTemplateTrigger =
     !!context && !!user && myAliveMessageCount === 0 && !loading;
 
+  // §B-DM-8 Scout C 안 — context 방 첫 진입 + 메시지 0개일 때 양식 패널 자동 열림.
+  // useRef로 "한 번만 자동" 가드 — 사용자가 닫은 뒤 fetch 재발화에도 재오픈 안 함.
+  const autoOpenedRef = useRef(false);
+  useEffect(() => {
+    if (autoOpenedRef.current) return;
+    if (shouldShowTemplateTrigger) {
+      setPanelOpen(true);
+      autoOpenedRef.current = true;
+    }
+  }, [shouldShowTemplateTrigger]);
+
   /** 받는 사람 이름 — DIRECT면 상대 멤버, GROUP이면 방 이름 또는 첫 멤버 */
   const recipientName = useMemo(() => {
     if (!room || !user) return '';
@@ -1133,6 +1144,14 @@ function ChatRoomPageContent({ params }: PageProps) {
           <span>{isConnected ? '연결됨' : '연결 끊김'}</span>
         </span>
       </div>
+
+      {/* §B-DM-8 응답 만료 banner — 3일 무응답일 때 헤더 아래에 amber 안내.
+          답장이 들어오면 다음 mount 때 서버 컴퓨트 결과 변경 → 자연 사라짐. */}
+      {room?.responseExpired && (
+        <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800">
+          ⏰ 3일 동안 응답이 없는 상태입니다. 추가 메시지를 보내거나 다른 채널을 시도해보세요.
+        </div>
+      )}
 
       {/* 메시지 영역 — relative 래퍼: 스크롤 컨테이너 + "맨 아래로" 떠있는 버튼 anchor */}
       <div className="relative flex-1 overflow-hidden">

@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ChatRoomType, Prisma } from '@prisma/client';
+import { ChatRoomType, MessageContext, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   ATTACHMENT_MIME_WHITELIST,
@@ -25,7 +25,9 @@ interface CreateRoomInput {
   memberIds: string[];
   /** 진입 컨텍스트 — RoomList 색 점 표시용 (§17). */
   context?: Prisma.ChatRoomCreateInput['context'];
-  /** 방 생성과 동시에 보낼 첫 메시지 (옵션, e.g. SCOUT_FROM_TEAM modal 메시지). */
+  /** §B-DM-8 인라인 액션 fetch 타겟 (teamId 등). 옛 호출은 미지정. */
+  contextTargetId?: string;
+  /** 방 생성과 동시에 보낼 첫 메시지 (옵션). Scout C 안 이후로 firstMessage 안 보내는 게 표준. */
   firstMessage?: string;
 }
 
@@ -217,7 +219,7 @@ export class ChatService {
    * creator는 자동으로 멤버에 포함된다.
    */
   async createRoom(creatorId: string, input: CreateRoomInput) {
-    const { type, name, description, memberIds, context } = input;
+    const { type, name, description, memberIds, context, contextTargetId } = input;
     const allMemberIds = Array.from(new Set([creatorId, ...memberIds]));
 
     if (type === 'DIRECT') {
@@ -268,6 +270,8 @@ export class ChatService {
         // §17 진입 컨텍스트 — DIRECT find-or-create 시는 이미 위에서 return됐으므로
         // 여기 도달하면 새 방이고, 첫 컨텍스트 값이 영구 저장됨.
         context: context ?? null,
+        // §B-DM-8 — 인라인 액션 fetch 타겟 (teamId 등). 옛 클라이언트는 안 보냄 → null.
+        contextTargetId: contextTargetId ?? null,
         members: {
           create: allMemberIds.map((userId) => ({ userId })),
         },
@@ -280,7 +284,8 @@ export class ChatService {
       await this.saveMessage(room.id, creatorId, input.firstMessage);
     }
 
-    return this.shapeRoom(room, creatorId, 0);
+    // 새로 만든 방이라 메시지 0개 → 만료 불가능. responseExpired=false 고정.
+    return this.shapeRoom(room, creatorId, 0, false);
   }
 
   /**
@@ -375,8 +380,15 @@ export class ChatService {
       rooms.map((r) => r.id),
       userId,
     );
+    // §B-DM-8 — 3일 무응답 만료 배치 판정.
+    const expiredMap = await this.computeResponseExpiredBatch(rooms);
     const roomsWithUnread = rooms.map((room) =>
-      this.shapeRoom(room, userId, unreadCounts.get(room.id) ?? 0),
+      this.shapeRoom(
+        room,
+        userId,
+        unreadCounts.get(room.id) ?? 0,
+        expiredMap.get(room.id) ?? false,
+      ),
     );
 
     const last = rooms[rooms.length - 1];
@@ -409,7 +421,13 @@ export class ChatService {
     }
 
     const unreadCount = await this.getUnreadCount(roomId, userId);
-    return this.shapeRoom(room, userId, unreadCount);
+    const expiredMap = await this.computeResponseExpiredBatch([room]);
+    return this.shapeRoom(
+      room,
+      userId,
+      unreadCount,
+      expiredMap.get(room.id) ?? false,
+    );
   }
 
   // ---------------------------------------------------------
@@ -1064,6 +1082,92 @@ export class ChatService {
   }
 
   /**
+   * §B-DM-8 — 3일 무응답 만료 판정 배치.
+   *
+   * 응답 기대 context + creator 첫 메시지 발신 후 3일+ 경과 + recipient(non-creator) 답장 0건일 때
+   * responseExpired = true.
+   *
+   * Scout C 안 고려: creator가 첫 메시지를 안 보낸 빈 방(방 생성 직후 사용자가 나간 케이스)은
+   * scout 의도 자체가 없었던 것으로 보고 만료 X.
+   *
+   * 쿼리 2회 (creator 첫 메시지 시각 + recipient 답장 존재) — N+1 회피.
+   * 응답 기대 context 후보가 0개면 즉시 리턴 (대부분의 트래픽에서 비용 0).
+   */
+  private async computeResponseExpiredBatch(
+    rooms: Array<{
+      id: string;
+      creatorId: string | null;
+      context: MessageContext | null;
+    }>,
+  ): Promise<Map<string, boolean>> {
+    const result = new Map<string, boolean>();
+    for (const r of rooms) result.set(r.id, false);
+
+    const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+    const threeDaysAgo = new Date(Date.now() - THREE_DAYS_MS);
+    const RESPONSE_EXPECTING: MessageContext[] = [
+      'SCOUT_FROM_TEAM',
+      'RECRUIT_INDIVIDUAL',
+      'RECRUIT_TEAM',
+      'PORTFOLIO_COFFEE_CHAT',
+      'PORTFOLIO_FRIENDSHIP',
+      'PORTFOLIO_INQUIRY',
+      'PORTFOLIO_COLLAB',
+      'PORTFOLIO_PRAISE',
+      'COMMUNITY_PRIVATE_NOTE',
+    ];
+
+    const candidates = rooms.filter(
+      (r) => !!r.context && RESPONSE_EXPECTING.includes(r.context) && !!r.creatorId,
+    );
+    if (candidates.length === 0) return result;
+    const candidateIds = candidates.map((r) => r.id);
+
+    // 쿼리 1 — 각 방의 creator 첫 메시지 시각.
+    // PostgreSQL DISTINCT ON으로 방별 1행만 (가장 오래된 createdAt). Prisma raw query 사용.
+    const orClauses = candidates.map(
+      (r) => Prisma.sql`("roomId" = ${r.id} AND "senderId" = ${r.creatorId!})`,
+    );
+    const creatorFirstRows = await this.prisma.$queryRaw<
+      Array<{ roomId: string; createdAt: Date }>
+    >`
+      SELECT DISTINCT ON ("roomId") "roomId", "createdAt"
+      FROM "chat_messages"
+      WHERE "roomId" IN (${Prisma.join(candidateIds)})
+        AND "deletedAt" IS NULL
+        AND (${Prisma.join(orClauses, ' OR ')})
+      ORDER BY "roomId", "createdAt" ASC
+    `;
+    const firstMap = new Map(
+      creatorFirstRows.map((m) => [m.roomId, m.createdAt]),
+    );
+
+    // 쿼리 2 — recipient(non-creator)가 답장한 방 ID 집합.
+    const repliedRows = await this.prisma.chatMessage.findMany({
+      where: {
+        roomId: { in: candidateIds },
+        deletedAt: null,
+        OR: candidates.map((r) => ({
+          roomId: r.id,
+          senderId: { not: r.creatorId! },
+        })),
+      },
+      select: { roomId: true },
+      distinct: ['roomId'],
+    });
+    const repliedSet = new Set(repliedRows.map((m) => m.roomId));
+
+    for (const r of candidates) {
+      const first = firstMap.get(r.id);
+      if (!first) continue; // creator 첫 메시지 아직 없음 → 만료 X
+      if (first > threeDaysAgo) continue; // 3일 안 지남
+      if (repliedSet.has(r.id)) continue; // 답장 받음
+      result.set(r.id, true);
+    }
+    return result;
+  }
+
+  /**
    * 사이드바용 메시지 미리보기 — 길면 잘라서 저장.
    */
   private preview(content: string, max = 100) {
@@ -1217,10 +1321,12 @@ export class ChatService {
     room: T,
     userId: string,
     unreadCount: number,
+    responseExpired: boolean,
   ): T & {
     unreadCount: number;
     mutedAt: Date | null;
     hiddenAt: Date | null;
+    responseExpired: boolean;
   } {
     const my = room.members.find((m) => m.userId === userId);
     return {
@@ -1228,6 +1334,7 @@ export class ChatService {
       unreadCount,
       mutedAt: my?.mutedAt ?? null,
       hiddenAt: my?.hiddenAt ?? null,
+      responseExpired,
     };
   }
 }

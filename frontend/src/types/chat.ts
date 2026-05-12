@@ -28,6 +28,11 @@ export interface ChatRoom {
    * 옛 방은 null. DIRECT find-or-create 시 첫 값 유지.
    */
   context: MessageContext | null;
+  /**
+   * §B-DM-8 — 컨텍스트가 가리키는 대상 ID (teamId 등). 인라인 액션 fetch 타겟.
+   * SCOUT_FROM_TEAM/RECRUIT_TEAM: 팀 ID. 옛 방은 null — 기획서 버튼 graceful 숨김.
+   */
+  contextTargetId: string | null;
   lastMessage: string | null;
   lastMessageAt: string | null; // JSON 직렬화 시 ISO string
   createdAt: string;
@@ -80,6 +85,8 @@ export interface ChatRoomWithMembers extends ChatRoom {
   /** 본인 멤버십 메타 — shapeRoom이 자동 합성 */
   mutedAt: string | null;
   hiddenAt: string | null;
+  /** §B-DM-8 — creator 첫 메시지 후 3일+ recipient 답장 0일 때 true. */
+  responseExpired: boolean;
 }
 
 export interface ChatMessageWithSender extends ChatMessage {

@@ -7,6 +7,7 @@ import {
   IsIn,
   IsOptional,
   IsString,
+  IsUUID,
   MaxLength,
 } from 'class-validator';
 
@@ -50,6 +51,16 @@ export class CreateRoomDto {
   @IsOptional()
   @IsEnum(MessageContext)
   context?: MessageContext;
+
+  /**
+   * 컨텍스트가 가리키는 대상 ID — §B-DM-8 인라인 액션(기획서/프로필 보기) fetch 타겟.
+   * SCOUT_FROM_TEAM / RECRUIT_TEAM: 팀 ID.
+   * RECRUIT_INDIVIDUAL / PORTFOLIO_*: 대상 user ID (생략 가능 — DIRECT 상대는 members로 추출).
+   * 옛 클라이언트는 안 보내도 됨 — 기획서 버튼 graceful 숨김.
+   */
+  @IsOptional()
+  @IsUUID()
+  contextTargetId?: string;
 
   /**
    * 방 생성과 동시에 보낼 첫 메시지 (예: SCOUT_FROM_TEAM의 modal 메시지).

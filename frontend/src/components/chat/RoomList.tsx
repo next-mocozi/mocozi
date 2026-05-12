@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { NewChatModal } from '@/components/chat/NewChatModal';
+import { RoomPreviewPanel } from '@/components/chat/RoomPreviewPanel';
 import {
   ArrowLeftIcon,
   BellOffIcon,
@@ -104,6 +105,11 @@ export default function RoomList() {
   const [confirmAction, setConfirmAction] = useState<{
     type: 'hide' | 'leave';
     room: ChatRoomWithMembers;
+  } | null>(null);
+  /** §B-DM-8 인라인 액션 — 기획서/프로필 미리보기 패널 (한 번에 하나만 열림) */
+  const [previewPanel, setPreviewPanel] = useState<{
+    mode: 'team-proposal' | 'user-profile';
+    targetId: string;
   } | null>(null);
 
   const load = useCallback(
@@ -530,9 +536,9 @@ export default function RoomList() {
                 return (
                   <div
                     key={room.id}
-                    className={`relative flex min-w-0 items-center gap-1 ${
+                    className={`group relative flex min-w-0 items-center gap-1 ${
                       isActive ? 'bg-indigo-50' : 'hover:bg-stone-50'
-                    }`}
+                    } ${room.responseExpired ? 'opacity-60' : ''}`}
                   >
                     <Link
                       href={`/chat/${room.id}`}
@@ -553,6 +559,16 @@ export default function RoomList() {
                             title={contextLabel(room.context)}
                             aria-label={`진입: ${contextLabel(room.context)}`}
                           />
+                        )}
+                        {/* §B-DM-8 응답 만료 — 아바타 우하단 ⏰ overlay */}
+                        {room.responseExpired && (
+                          <span
+                            className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-100 text-[10px] leading-none ring-2 ring-white"
+                            title="3일 동안 응답 없음"
+                            aria-label="응답 시간 만료"
+                          >
+                            ⏰
+                          </span>
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
@@ -578,6 +594,9 @@ export default function RoomList() {
                           {/* 미리보기 — 첨부 마커는 "파일/이미지를 보냈습니다."로 요약, 일반 텍스트는 한 줄.
                           공통 util `summarizePreview` (lib/messageTemplate.ts) */}
                           {summarizePreview(room.lastMessage)}
+                          {room.responseExpired && (
+                            <span className="ml-1 text-amber-700">· 응답 만료</span>
+                          )}
                         </p>
                       </div>
                       {unread > 0 && (
@@ -586,6 +605,68 @@ export default function RoomList() {
                         </span>
                       )}
                     </Link>
+
+                    {/* §B-DM-8 인라인 액션 — 기획서 보기 / 프로필 보기 (context별 분기) */}
+                    {(() => {
+                      const ctx = room.context;
+                      const showTeam =
+                        !!room.contextTargetId &&
+                        (ctx === 'SCOUT_FROM_TEAM' || ctx === 'RECRUIT_TEAM');
+                      const myUserId = user?.id;
+                      const otherMemberId =
+                        myUserId &&
+                        room.members.find(
+                          (m) => m.userId !== myUserId && !m.leftAt,
+                        )?.userId;
+                      const showProfile =
+                        !!otherMemberId &&
+                        (ctx === 'SCOUT_FROM_TEAM' ||
+                          ctx === 'RECRUIT_INDIVIDUAL' ||
+                          ctx === 'PORTFOLIO_COFFEE_CHAT' ||
+                          ctx === 'PORTFOLIO_FRIENDSHIP' ||
+                          ctx === 'PORTFOLIO_INQUIRY' ||
+                          ctx === 'PORTFOLIO_COLLAB' ||
+                          ctx === 'PORTFOLIO_PRAISE');
+                      if (!showTeam && !showProfile) return null;
+                      return (
+                        <div className="hidden items-center group-hover:flex">
+                          {showTeam && room.contextTargetId && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPreviewPanel({
+                                  mode: 'team-proposal',
+                                  targetId: room.contextTargetId!,
+                                });
+                              }}
+                              className="rounded-full p-1 text-stone-400 hover:bg-stone-200 hover:text-indigo-600"
+                              aria-label="기획서 보기"
+                              title="기획서 보기"
+                            >
+                              <span aria-hidden>📄</span>
+                            </button>
+                          )}
+                          {showProfile && otherMemberId && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPreviewPanel({
+                                  mode: 'user-profile',
+                                  targetId: otherMemberId,
+                                });
+                              }}
+                              className="rounded-full p-1 text-stone-400 hover:bg-stone-200 hover:text-indigo-600"
+                              aria-label="프로필 보기"
+                              title="프로필 보기"
+                            >
+                              <span aria-hidden>👤</span>
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {/* ⋯ 메뉴 버튼 */}
                     <button
@@ -747,6 +828,14 @@ export default function RoomList() {
           </div>
         </div>
       )}
+
+      {/* §B-DM-8 인라인 액션 — 기획서/프로필 미리보기 패널 (한 번에 하나만) */}
+      <RoomPreviewPanel
+        open={!!previewPanel}
+        mode={previewPanel?.mode ?? 'team-proposal'}
+        targetId={previewPanel?.targetId ?? ''}
+        onClose={() => setPreviewPanel(null)}
+      />
     </div>
   );
 }

@@ -496,3 +496,112 @@ schema/backend는 enum 그대로 동작, frontend도 색·라벨 매핑 이미 �
 | 2026-05-03 | 인앱 알림: Phase B 이연 → **Phase A 포함** | 알림 없이 채팅만 있으면 사용자가 메시지 방치. 채팅 모듈 통합으로 추가 비용 작음 |
 | 2026-05-03 | 읽음 처리 시점 정책 추가 (§11) — 후보 ①+② 채택 | 후보 ① 단독은 머무는 동안 새 메시지 unread 누적 / 후보 ② 단독은 진입 시 catch-up 누락. 결합으로 양쪽 시나리오 모두 커버 |
 | 2026-05-03 | Cursor 페이징을 단순 `createdAt` → **`(createdAt, id)` 복합 + base64url opaque** | JS Date의 ms 정밀도와 Postgres microsecond 정밀도 격차로 같은 ms INSERT 시 페이지 경계에서 메시지 영구 누락. tie-breaking으로 방어 |
+| 2026-05-12 | 응답 만료 임계: 7일 → **3일** (§B-DM-8) | 활성 플랫폼 기준 3일이 합리적. 사용자 피드백 빠른 회수 |
+| 2026-05-12 | Scout 흐름 B-DM-1 → **C 안** (§19) | 메시지 작성을 채팅방 인사양식 패널로 통일 — UX 일관성. 팝업은 팀 선택만 |
+| 2026-05-12 | Scout 모델·API **즉시 폐기** (§20) | B-DM-1 통합 후 `/api/scout/*` 호출 0건. dead code 비용 > 통계 보존 가치 |
+
+---
+
+## 19. Scout 흐름 C 안 (Phase B-DM-8)
+
+**배경**: B-DM-1 통합 단계에서 recruit 카드 → 스카우트 modal이 "팀 선택 + 메시지 입력"으로 받아 첫 메시지를 즉시 보냈음. 인사양식 미리보기 패널은 별도 진입.
+
+**문제**: 메시지를 두 곳(modal textarea / 양식 패널)에서 쓸 수 있어 UX 분산.
+
+**결정**: **C 안 채택** — 모달은 팀 선택만 받고, 메시지 작성은 채팅방 인사양식 패널에서 통일.
+
+**흐름**:
+1. recruit 카드 "스카우트" → modal (팀 picker만)
+2. 확인 → `POST /api/chat/rooms` (context=SCOUT_FROM_TEAM, contextTargetId=teamId, **firstMessage 없음**)
+3. 빈 채팅방 진입 → `shouldShowTemplateTrigger` 조건 만족 → 인사양식 패널 자동 열림 (`autoOpenedRef`로 한 번만)
+4. 사용자가 양식 보면서 편집 → 보내기 → 첫 메시지 발송
+
+**Empty room guard 상호작용**: 빈 방이 의도적이라, 사용자가 양식 없이 나가면 guard의 confirm dialog가 발화 — "메시지를 안 보냈는데 정말 나가시겠습니까?" → 스카우트 의지 재확인 UX.
+
+**대체 안 (검토했으나 거부)**:
+- A안 (modal에 양식 미리주입): 메시지 편집 위치가 modal/패널 양쪽으로 분산 — 일관성 약화
+- B안 (modal=확인만, 양식에서 팀+메시지 모두): 빈 방 context 잡힐 때 teamId 없음 — convoluted
+
+---
+
+## 20. Scout 모델·API 폐기 (Phase B-DM-8)
+
+**배경**: B-DM-1 통합 전엔 `POST /api/scout/:targetUserId`로 스카우트 row를 만들고 후속 수락/거절 흐름을 가졌음. 통합 후 모든 진입이 `POST /api/chat/rooms`로 전환.
+
+**조사 결과** (2026-05-12 grep):
+- frontend grep으로 `/api/scout` fetch 0건
+- backend `src/scout/` 폴더의 controller/service/dto 모두 호출 없음
+- production DB의 `scouts` 테이블: 1 row (테스트 데이터로 추정)
+
+**결정**: **즉시 폐기**
+- `backend/src/scout/` 통째 삭제 (git rm)
+- `prisma/schema.prisma`에서 `model Scout`, `enum ScoutStatus`, `User.SentScouts/ReceivedScouts`, `Team.scouts` relation 제거
+- `pnpm prisma db push --accept-data-loss` → `scouts` 테이블 drop
+- `app.module.ts`에서 ScoutModule import 제거
+
+**향후 통계 필요 시**: `chat_rooms.context` (SCOUT_FROM_TEAM)로 충분히 추적 가능.
+
+---
+
+## 21. 응답 만료 시각 신호 (Phase B-DM-8)
+
+**배경**: B-DM-1 흐름에서 보낸 사람이 답장을 못 받은 채 방치되는 채팅방이 누적 가능. 어느 시점부터 "응답 만료"로 시각화해 사용자가 다른 채널을 시도하도록 유도.
+
+**임계**: **3일** (§18 변경 이력 참고).
+
+**판정 조건** (모두 만족 시 `responseExpired = true`):
+- `room.context`가 응답 기대 컨텍스트 — SCOUT_FROM_TEAM, RECRUIT_*, PORTFOLIO_*, COMMUNITY_PRIVATE_NOTE
+- creator 첫 메시지가 보내진 적 있음 (Scout C 안에서 빈 방 상태로 3일은 만료 X)
+- 그 첫 메시지가 3일 이전
+- 받는 사람(non-creator)이 한 번도 답장 안 함
+
+**Backend**: `ChatService.computeResponseExpiredBatch` 배치 판정 (PostgreSQL DISTINCT ON으로 방별 첫 메시지 + Prisma distinct로 답장 존재 확인, 쿼리 2회). `shapeRoom`이 `responseExpired: boolean` 반환.
+
+**Frontend**:
+- RoomList: 카드 `opacity-60` + 아바타 우하단 ⏰ overlay + preview 옆 `· 응답 만료` 라벨
+- 채팅창 헤더 아래: amber-50 banner "⏰ 3일 동안 응답이 없는 상태입니다..."
+
+받는 사람이 답장하면 다음 mount 때 서버 컴퓨트 결과 변경 → 자연 사라짐.
+
+---
+
+## 22. RoomList 인라인 액션 (기획서/프로필 보기, Phase B-DM-8)
+
+**배경**: 채팅방 진입 전에 상대/팀 정보를 빠르게 확인할 방법 부재. 본인이 메시지 받았을 때 "이게 누구지/어떤 팀이지" 파악에 시간 소요.
+
+**결정**: RoomList 카드 hover 시 우측에 작은 아이콘 버튼 노출 — context별 분기.
+
+| context | 아이콘 |
+|---|---|
+| SCOUT_FROM_TEAM | 📄 기획서 + 👤 프로필 |
+| RECRUIT_TEAM | 📄 기획서 |
+| RECRUIT_INDIVIDUAL | 👤 프로필 |
+| PORTFOLIO_* | 👤 프로필 |
+| null / 옛 방 | 표시 안 함 |
+
+**타겟 ID 추출**:
+- 프로필: `room.members[].userId` 중 본인 아닌 사람 (DIRECT)
+- 팀: `room.contextTargetId` (신규 schema 컬럼). 옛 방은 null → 기획서 버튼 graceful 숨김
+
+**미리보기 컴포넌트**: `RoomPreviewPanel.tsx` 신규. 우측에서 슬라이드 인. `GET /api/teams/:id` 또는 `GET /api/users/:id` 호출. 하단 "자세히 보기"로 정식 페이지 이동.
+
+---
+
+## 23. 알림센터 — 헤더 자리 잡기 (Phase B-DM-8 placeholder)
+
+**배경**: 채팅 외 알림(스카우트/지원/팀 변동 등)을 한 곳에 모을 진입점 필요. 실제 알림 모델·socket 이벤트 wiring은 별도 plan이지만, 헤더 자리는 미리 확보.
+
+**결정**: `NotificationCenter` 컴포넌트 신규 (`frontend/src/components/layout/`)
+- 헤더 데스크톱: 프로필 아바타 왼쪽
+- 헤더 모바일: 사이드바에 "알림" 항목
+- 임시 아이콘: `https://img.icons8.com/windows/32/12B886/notification-center--v2.png` (사용자 지정. 추후 SVG 교체)
+- dropdown 콘텐츠 (현 phase 한정): `totalUnread > 0`이면 "안 읽은 채팅 메시지 N개" link, 아니면 "아직 알림이 없어요"
+
+**향후 추가될 알림 카테고리** (Notification 모델·socket 이벤트 wiring 시):
+1. 채팅 요청 받음 (recruit/scout/portfolio 첫 메시지)
+2. 채팅 답장 받음
+3. 응답 만료
+4. 지원 접수
+5. 지원 처리 결과
+6. 팀 멤버 변경
+7. (후속) 포트폴리오 인터랙션

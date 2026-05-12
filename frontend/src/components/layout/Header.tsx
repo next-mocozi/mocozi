@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+import NotificationCenter from '@/components/layout/NotificationCenter';
 import { useAuth } from '@/hooks/useAuth';
 import { useChatNotifications } from '@/providers/SocketProvider';
 
@@ -108,6 +109,12 @@ export default function Header() {
 
         {/* 인증 버튼 — loading 끝난 뒤에만 렌더 (서버/클라 mismatch 방지) */}
         <div className="flex items-center gap-3">
+          {/* §B-DM-8 알림 센터 — 로그인 상태에서 프로필 아바타 왼쪽 (데스크톱). placeholder 단계. */}
+          {!loading && isAuthenticated && (
+            <div className="hidden md:flex">
+              <NotificationCenter />
+            </div>
+          )}
           {!loading && isAuthenticated && (
             // 로그인 상태: 프로필 아바타 드롭다운은 데스크톱에만 (모바일은 사이드바에 있음)
             <div
@@ -282,6 +289,21 @@ export default function Header() {
           >
             채팅
           </Link>
+          {/* §B-DM-8 알림센터 자리 — 모바일 사이드바 (현 phase는 /chat link로 placeholder). */}
+          {!loading && isAuthenticated && (
+            <Link
+              href="/chat"
+              onClick={() => setIsSidebarOpen(false)}
+              className="flex items-center justify-between rounded-md px-3 py-3 text-gray-700 transition-colors hover:bg-gray-100 hover:text-primary-600"
+            >
+              <span>알림</span>
+              {totalUnread > 0 && (
+                <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-700">
+                  {totalUnread}
+                </span>
+              )}
+            </Link>
+          )}
 
           {/* 인증 영역 — 로그인/비로그인 상태에 따라 다른 항목 표시 */}
           {!loading && (

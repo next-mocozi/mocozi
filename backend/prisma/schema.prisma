@@ -37,8 +37,6 @@ model User {
   ledTeams       Team[]        @relation("TeamLeader")
   teamMembers    TeamMember[]
   applications   Application[]
-  receivedScouts Scout[]       @relation("ReceivedScouts")
-  sentScouts     Scout[]       @relation("SentScouts")
   portfolio      Portfolio?
 
   // 채팅 역참조 (모델 C: ChatRoomMember 도입 + 답글/반응/생성자 관계)
@@ -89,7 +87,6 @@ model Team {
   members           TeamMember[]
   proposal          TeamProposal?
   applications      Application[]
-  scouts            Scout[]
 
   @@map("teams")
 }
@@ -152,29 +149,9 @@ enum ApplicationStatus {
   REJECTED
 }
 
-// 스카우트 모델 (팀 → 유저)
-model Scout {
-  id           String      @id @default(uuid())
-  teamId       String
-  targetUserId String
-  leaderId     String
-  status       ScoutStatus @default(PENDING)
-  message      String
-  createdAt    DateTime    @default(now())
-
-  team       Team @relation(fields: [teamId], references: [id])
-  targetUser User @relation("ReceivedScouts", fields: [targetUserId], references: [id])
-  leader     User @relation("SentScouts", fields: [leaderId], references: [id])
-
-  @@unique([teamId, targetUserId])
-  @@map("scouts")
-}
-
-enum ScoutStatus {
-  PENDING
-  ACCEPTED
-  REJECTED
-}
+// 스카우트 모델 — Phase B-DM-8에서 폐기.
+// B-DM-1 통합 후 /api/scout/* 호출 0건이라 모델·enum·relation 통째 제거.
+// 통계 필요 시 chat_rooms.context (SCOUT_FROM_TEAM)로 추적 가능. §19 폐기 결정 참고.
 
 // 포트폴리오 모델
 model Portfolio {
@@ -319,6 +296,11 @@ model ChatRoom {
   // 진입 컨텍스트 — 어떤 페이지/맥락에서 시작된 방인지 (RoomList 색 점 표시용).
   // §17 정책: nullable (옛 방 호환), DIRECT find-or-create 시 첫 값 유지.
   context       MessageContext?
+
+  // 컨텍스트가 가리키는 대상 ID — §B-DM-8 인라인 액션(기획서/프로필 보기)의 fetch 타겟.
+  // SCOUT_FROM_TEAM/RECRUIT_TEAM: 팀 ID. RECRUIT_INDIVIDUAL/PORTFOLIO_*: 대상 user ID (DIRECT
+  // 상대는 members로 추출되므로 보통 null이어도 됨). 옛 방은 null — 인라인 액션 graceful 숨김.
+  contextTargetId String?
 
   // 마지막 메시지 미리보기 (사이드바 표시용)
   lastMessage   String?
