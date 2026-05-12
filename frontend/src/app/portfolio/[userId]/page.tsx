@@ -143,6 +143,8 @@ export default function PortfolioDetailPage({
   const [items, setItems] = useState<PortfolioItem[]>(
     viewerInitial?.items ?? [],
   );
+  // owner 는 백엔드 fetch 완료 전까지 true — 빈 상태("+") 대신 로딩 표시
+  const [itemsLoading, setItemsLoading] = useState(true);
   const [experiences, setExperiences] = useState<Experience[]>(
     viewerInitial?.experiences ?? [],
   );
@@ -257,6 +259,8 @@ export default function PortfolioDetailPage({
         notifyPortfolioChanged();
       } catch {
         // 백엔드 호출 실패 시 빈 화면 — localStorage fallback 없음
+      } finally {
+        if (!cancelled) setItemsLoading(false);
       }
     })();
     return () => { cancelled = true; };
@@ -1045,7 +1049,9 @@ export default function PortfolioDetailPage({
           )}
         </div>
 
-        {portfolioItems.length === 0 ? (
+        {isOwner && itemsLoading ? (
+          <p className="card text-center text-sm text-gray-400">로딩 중…</p>
+        ) : portfolioItems.length === 0 ? (
           isOwner ? (
             <button
               type="button"
@@ -1166,7 +1172,9 @@ export default function PortfolioDetailPage({
             </button>
           )}
         </div>
-        {researchItems.length === 0 ? (
+        {isOwner && itemsLoading ? (
+          <p className="card text-center text-sm text-gray-400">로딩 중…</p>
+        ) : researchItems.length === 0 ? (
           isOwner ? (
             <button
               type="button"
@@ -1270,7 +1278,9 @@ export default function PortfolioDetailPage({
           )}
         </div>
 
-        {studyItems.length === 0 ? (
+        {isOwner && itemsLoading ? (
+          <p className="card text-center text-sm text-gray-400">로딩 중…</p>
+        ) : studyItems.length === 0 ? (
           isOwner ? (
             <button
               type="button"
