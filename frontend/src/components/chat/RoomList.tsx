@@ -411,17 +411,17 @@ export default function RoomList() {
                   <p className="mb-2 text-[11px] font-semibold text-stone-700">
                     진입 컨텍스트
                   </p>
-                  <ul className="space-y-2 text-xs text-stone-600">
+                  <ul className="space-y-3 text-xs text-stone-600">
                     <li className="flex items-center gap-3">
-                      <span className="h-1 w-1 animate-neon-pulse rounded-full bg-blue-500 shadow-[0_0_4px_rgb(59_130_246/0.95),0_0_10px_rgb(59_130_246/0.55)]" />
+                      <span className="h-1 w-1 animate-neon-pulse rounded-full bg-blue-500 shadow-[0_0_4px_rgb(59_130_246/0.95),0_0_12px_rgb(59_130_246/0.6),0_0_24px_rgb(59_130_246/0.3)]" />
                       구인 (recruit)
                     </li>
                     <li className="flex items-center gap-3">
-                      <span className="h-1 w-1 animate-neon-pulse rounded-full bg-amber-500 shadow-[0_0_4px_rgb(245_158_11/0.95),0_0_10px_rgb(245_158_11/0.55)]" />
+                      <span className="h-1 w-1 animate-neon-pulse rounded-full bg-amber-500 shadow-[0_0_4px_rgb(245_158_11/0.95),0_0_12px_rgb(245_158_11/0.6),0_0_24px_rgb(245_158_11/0.3)]" />
                       팀 합류
                     </li>
                     <li className="flex items-center gap-3">
-                      <span className="h-1 w-1 animate-neon-pulse rounded-full bg-emerald-500 shadow-[0_0_4px_rgb(16_185_129/0.95),0_0_10px_rgb(16_185_129/0.55)]" />
+                      <span className="h-1 w-1 animate-neon-pulse rounded-full bg-emerald-500 shadow-[0_0_4px_rgb(16_185_129/0.95),0_0_12px_rgb(16_185_129/0.6),0_0_24px_rgb(16_185_129/0.3)]" />
                       포트폴리오
                     </li>
                   </ul>
@@ -894,25 +894,26 @@ function contextLabel(c: MessageContext): string {
   }
 }
 
-/** §17 진입 컨텍스트 네온 점 — bg + glow shadow 한 묶음.
- *  두 겹 shadow (close 4px + outer 10px) + 채도 색으로 발광체 느낌.
- *  animate-neon-pulse (globals.css)와 함께 "on the record" 느낌의 미세 호흡. */
+/** §17 진입 컨텍스트 네온 점 — bg + 3중 glow shadow.
+ *  4px 근접 코어 → 12px 중간 → 24px 외곽 산란으로 부드러운 페이드.
+ *  발광체(h-1 w-1=4px) 대비 후광이 6배 펴져 LED 후광 인상.
+ *  animate-neon-pulse (globals.css)와 함께 "on the record" 미세 호흡. */
 function contextNeonClasses(c: MessageContext): string {
   switch (c) {
     case 'RECRUIT_INDIVIDUAL':
     case 'SCOUT_FROM_TEAM':
       // blue-500 = rgb(59 130 246)
-      return 'bg-blue-500 shadow-[0_0_4px_rgb(59_130_246/0.95),0_0_10px_rgb(59_130_246/0.55)]';
+      return 'bg-blue-500 shadow-[0_0_4px_rgb(59_130_246/0.95),0_0_12px_rgb(59_130_246/0.6),0_0_24px_rgb(59_130_246/0.3)]';
     case 'RECRUIT_TEAM':
       // amber-500 = rgb(245 158 11)
-      return 'bg-amber-500 shadow-[0_0_4px_rgb(245_158_11/0.95),0_0_10px_rgb(245_158_11/0.55)]';
+      return 'bg-amber-500 shadow-[0_0_4px_rgb(245_158_11/0.95),0_0_12px_rgb(245_158_11/0.6),0_0_24px_rgb(245_158_11/0.3)]';
     case 'PORTFOLIO_COFFEE_CHAT':
     case 'PORTFOLIO_FRIENDSHIP':
     case 'PORTFOLIO_INQUIRY':
     case 'PORTFOLIO_COLLAB':
     case 'PORTFOLIO_PRAISE':
       // emerald-500 = rgb(16 185 129)
-      return 'bg-emerald-500 shadow-[0_0_4px_rgb(16_185_129/0.95),0_0_10px_rgb(16_185_129/0.55)]';
+      return 'bg-emerald-500 shadow-[0_0_4px_rgb(16_185_129/0.95),0_0_12px_rgb(16_185_129/0.6),0_0_24px_rgb(16_185_129/0.3)]';
     default:
       return 'bg-stone-400';
   }
