@@ -35,7 +35,8 @@ export function FileAttachmentCard({ attachment, isMine }: FileAttachmentCardPro
     };
   }, [attachment.target]);
 
-  const baseClasses = `mt-2 flex w-full max-w-sm items-center gap-3 rounded-xl border px-3 py-2 text-xs transition-colors ${
+  // 말풍선 밖 단독 렌더 (mt-* 제거 — 부모 flex gap이 spacing 담당)
+  const baseClasses = `flex w-full max-w-sm items-center gap-3 rounded-xl border px-3 py-2 text-xs transition-colors ${
     isMine
       ? 'border-primary-300 bg-white/95 text-primary-900 hover:bg-white'
       : 'border-stone-300 bg-white text-stone-800 hover:bg-stone-50'

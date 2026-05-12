@@ -50,7 +50,7 @@ export function ImageAttachment({ attachment, isMine }: ImageAttachmentProps) {
   if (loading) {
     return (
       <div
-        className={`mt-2 flex h-32 w-64 items-center justify-center rounded-xl border ${
+        className={`flex h-32 w-64 items-center justify-center rounded-xl border ${
           isMine
             ? 'border-primary-300 bg-white/95 text-primary-300'
             : 'border-stone-300 bg-white text-stone-300'
@@ -64,7 +64,7 @@ export function ImageAttachment({ attachment, isMine }: ImageAttachmentProps) {
   if (!url) {
     return (
       <div
-        className={`mt-2 flex h-32 w-64 flex-col items-center justify-center rounded-xl border ${
+        className={`flex h-32 w-64 flex-col items-center justify-center rounded-xl border ${
           isMine ? 'border-primary-300 bg-white/95' : 'border-stone-300 bg-white'
         } text-stone-500`}
         role="img"
@@ -78,11 +78,11 @@ export function ImageAttachment({ attachment, isMine }: ImageAttachmentProps) {
 
   return (
     <>
-      {/* inline preview */}
+      {/* inline preview — 말풍선 밖 단독 렌더 (mt-* 제거, 부모 gap이 spacing 담당) */}
       <button
         type="button"
         onClick={() => setZoomed(true)}
-        className="mt-2 block max-w-64 overflow-hidden rounded-xl border border-stone-300 transition-shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary-400"
+        className="block max-w-64 overflow-hidden rounded-xl border border-stone-300 transition-shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary-400"
         aria-label={`${attachment.label} 확대 보기`}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}

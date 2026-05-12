@@ -1168,23 +1168,30 @@ function ChatRoomPageContent({ params }: PageProps) {
           )}
 
           {!loading &&
-            messages.map((msg) => (
-              <MessageItem
-                key={msg.id}
-                message={msg}
-                myId={user?.id}
-                isEditing={editingId === msg.id}
-                editDraft={editDraft}
-                onEditDraftChange={setEditDraft}
-                onStartEdit={() => startEdit(msg)}
-                onSubmitEdit={submitEdit}
-                onCancelEdit={cancelEdit}
-                onDelete={() => handleDelete(msg)}
-                onReply={() => startReply(msg)}
-                onToggleReaction={(emoji) => toggleReaction(msg, emoji)}
-                unreadBy={computeUnreadBy(msg, room, user?.id, messages)}
-              />
-            ))}
+            (() => {
+              // 카톡식 그룹 메타 — 같은 발신자 + 같은 분 burst의 진입점/마지막 위치 식별.
+              // 매 render마다 O(N) 재계산되지만 N이 작아 비용 무시. useMemo로 묶지 않음.
+              const groups = computeMessageGroups(messages);
+              return messages.map((msg, i) => (
+                <MessageItem
+                  key={msg.id}
+                  message={msg}
+                  myId={user?.id}
+                  showName={groups[i].showName}
+                  showTime={groups[i].showTime}
+                  isEditing={editingId === msg.id}
+                  editDraft={editDraft}
+                  onEditDraftChange={setEditDraft}
+                  onStartEdit={() => startEdit(msg)}
+                  onSubmitEdit={submitEdit}
+                  onCancelEdit={cancelEdit}
+                  onDelete={() => handleDelete(msg)}
+                  onReply={() => startReply(msg)}
+                  onToggleReaction={(emoji) => toggleReaction(msg, emoji)}
+                  unreadBy={computeUnreadBy(msg, room, user?.id, messages)}
+                />
+              ));
+            })()}
 
           <div ref={messagesEndRef} />
         </div>
@@ -1475,6 +1482,8 @@ const QUICK_EMOJIS = ['👍', '❤️', '😂', '😮', '😢'];
 function MessageItem({
   message,
   myId,
+  showName,
+  showTime,
   isEditing,
   editDraft,
   onEditDraftChange,
@@ -1488,6 +1497,10 @@ function MessageItem({
 }: {
   message: LocalMessage;
   myId: string | undefined;
+  /** 그룹의 첫 메시지 — 발신자 이름 노출 여부 (타인 메시지에만 의미 있음) */
+  showName: boolean;
+  /** 그룹의 마지막 메시지 — 타임스탬프 노출 여부 (같은 분 연속 발화의 끝에서만 true) */
+  showTime: boolean;
   isEditing: boolean;
   editDraft: string;
   onEditDraftChange: (v: string) => void;
@@ -1503,29 +1516,24 @@ function MessageItem({
   const isMine = message.senderId === myId;
   const time = formatTime(message.createdAt);
 
-  // 원문(raw 마크다운) 클립보드 복사 — 드래그 복사하면 prose 변환되어 ##·$·--- 등 마커가 빠지는데,
-  // 마크다운 그대로 다른 곳에 붙여넣고 싶을 때 (Slack/Notion으로 옮기거나 원본 보존) 명시 버튼으로 제공.
-  // 본인/타인 메시지 모두에 노출 — 받은 메시지의 마크다운을 다시 활용할 수 있어야 하기 때문.
-  // attachment 마커([[link:...]])는 본문에서 분리 — 사용자가 보는 그대로의 본문만 복사
+  // 원문(raw 마크다운) 클립보드 복사. attachment 마커는 빼고 사용자가 보는 본문만 복사.
   const [copied, setCopied] = useState(false);
   const handleCopyRaw = useCallback(() => {
     if (typeof navigator === 'undefined' || !navigator.clipboard) return;
-    const parsed = parseAttachmentMarker(message.content);
+    const parsedForCopy = parseAttachmentMarker(message.content);
     navigator.clipboard
-      .writeText(parsed.cleanContent)
+      .writeText(parsedForCopy.cleanContent)
       .then(() => {
         setCopied(true);
         setTimeout(() => setCopied(false), 1200);
       })
       .catch(() => {
-        // 권한 거부/non-secure context — silent fail. 사용자가 다시 시도하거나 드래그 복사 사용.
+        // 권한 거부/non-secure context — silent fail.
       });
   }, [message.content]);
 
   if (message.deletedAt) {
-    // 삭제된 메시지는 채팅 흐름 가운데 시스템 메시지 형태로 표시 — 누가 삭제했는지
-    // 위치/이름으로 노출되지 않도록 익명화 (카카오톡 스타일).
-    // 단체방에서 삭제 시 사회적 부담(추측·추궁) 감소가 주 목적.
+    // 삭제된 메시지 — 시스템 라인 (그룹/이름 무관, 가운데 정렬)
     return (
       <div className="flex justify-center">
         <div className="rounded-full bg-gray-100 px-3 py-1 text-xs italic text-gray-400">
@@ -1535,7 +1543,7 @@ function MessageItem({
     );
   }
 
-  // 편집 모드 — 본인 메시지에 한해 inline textarea
+  // 편집 모드 — 본인 메시지 inline textarea (말풍선 유지)
   if (isEditing) {
     return (
       <div className="flex justify-end">
@@ -1579,7 +1587,9 @@ function MessageItem({
     );
   }
 
-  // 낙관적 UI 상태에 따른 시각 변형
+  // 낙관적 UI 상태에 따른 시각 변형 — 말풍선/첨부 모두에 적용
+  // ring은 element의 자체 border-radius를 따르므로, 적용 대상이 rounded 클래스를 갖고 있어야 함.
+  // 말풍선(rounded-2xl), 첨부 wrapper(rounded-xl)에 각각 적용.
   const stateClass = message.__pending
     ? 'opacity-60'
     : message.__failed
@@ -1598,134 +1608,204 @@ function MessageItem({
   // 편집/삭제 가능 여부 — 본인 + 정상 상태(아직 미확정 메시지 X)
   const canMutate = isMine && !message.__pending && !message.__failed;
   const canReact = !message.__pending && !message.__failed;
-
-  // 반응 그룹화 — emoji별 카운트 + 본인 포함 여부
   const groupedReactions = groupReactions(message.reactions, myId);
 
-  return (
-    <div className={`group flex ${isMine ? 'justify-end' : 'justify-start'} gap-1`}>
-      {/* 본인 메시지 좌측 액션 버튼 (편집/삭제/답글/반응/원문 복사) */}
-      {isMine && (
-        <div className="pointer-events-none mb-0.5 flex items-center self-end opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
-          {canReact && (
-            <ReactionPicker onPick={onToggleReaction} />
+  // 본문 + 첨부 파싱. 텍스트가 있거나 답글 인용이 있으면 말풍선 렌더,
+  // 첨부만 있으면 말풍선 없이 첨부만 단독 (KakaoTalk 스타일).
+  const parsed = parseAttachmentMarker(message.content);
+  const hasText = parsed.cleanContent.trim().length > 0;
+  const hasAttachments = parsed.attachments.length > 0;
+  const hasTextBubble = hasText || (!!message.parent && !hasAttachments);
+
+  // 액션 버튼 묶음 — mine/non-mine 공통 (편집·삭제만 mine 한정 분기)
+  const actionButtons = (
+    <>
+      {canReact && <ReactionPicker onPick={onToggleReaction} />}
+      <button
+        type="button"
+        onClick={onReply}
+        className="rounded p-[3px] text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+        aria-label="답글"
+        title="답글"
+      >
+        <ReplyIcon className="h-3 w-3" />
+      </button>
+      <button
+        type="button"
+        onClick={handleCopyRaw}
+        className="rounded p-[3px] text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+        aria-label="원문 복사 (마크다운 그대로)"
+        title={copied ? '복사됨!' : '원문 복사 (마크다운 그대로)'}
+      >
+        {copied ? (
+          <CheckIcon className="h-3 w-3 text-green-600" />
+        ) : (
+          <ClipboardIcon className="h-3 w-3" />
+        )}
+      </button>
+      {canMutate && (
+        <>
+          <button
+            type="button"
+            onClick={onStartEdit}
+            className="rounded p-[3px] text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+            aria-label="메시지 편집"
+            title="편집"
+          >
+            <PencilIcon className="h-3 w-3" />
+          </button>
+          <button
+            type="button"
+            onClick={onDelete}
+            className="rounded p-[3px] text-gray-400 hover:bg-gray-100 hover:text-red-600"
+            aria-label="메시지 삭제"
+            title="삭제"
+          >
+            <TrashIcon className="h-3 w-3" />
+          </button>
+        </>
+      )}
+    </>
+  );
+
+  // 타임스탬프/액션 슬롯 — 콘텐츠 옆 하단 정렬. 액션은 항상 hover 시 timestamp 위에 등장.
+  // showTime 없으면 timestamp는 렌더 안 함 (액션만 hover로 노출).
+  // pending/failed면 stateLabel이 timestamp 자리 차지.
+  const timestampSlot = (
+    <div
+      className={`flex shrink-0 select-none flex-col self-end pb-0.5 ${
+        isMine ? 'items-end' : 'items-start'
+      }`}
+    >
+      {/* hover: 액션 버튼 (timestamp 위) */}
+      <div className="pointer-events-none flex items-center opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
+        {actionButtons}
+      </div>
+      {/* default: timestamp + unread + state (showTime일 때만) */}
+      {showTime && (
+        <div
+          className={`flex items-center gap-1 whitespace-nowrap text-[0.7rem] leading-none text-gray-400 ${
+            isMine ? 'flex-row-reverse' : ''
+          }`}
+        >
+          {isMine && !stateLabel && unreadBy > 0 && (
+            <span
+              className="rounded-full bg-primary-100 px-1.5 py-0.5 text-[0.6rem] font-semibold leading-none text-primary-700"
+              aria-label={`안 읽은 사람 ${unreadBy}명`}
+              title={`${unreadBy}명 안 읽음`}
+            >
+              {unreadBy}
+            </span>
           )}
-          <button
-            type="button"
-            onClick={onReply}
-            className="rounded p-[3px] text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-            aria-label="답글"
-            title="답글"
-          >
-            <ReplyIcon className="h-3 w-3" />
-          </button>
-          <button
-            type="button"
-            onClick={handleCopyRaw}
-            className="rounded p-[3px] text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-            aria-label="원문 복사 (마크다운 그대로)"
-            title={copied ? '복사됨!' : '원문 복사 (마크다운 그대로)'}
-          >
-            {copied ? (
-              <CheckIcon className="h-3 w-3 text-green-600" />
-            ) : (
-              <ClipboardIcon className="h-3 w-3" />
-            )}
-          </button>
-          {canMutate && (
+          {stateLabel ? (
+            <span
+              className={message.__failed ? 'font-semibold text-red-500' : ''}
+            >
+              {stateLabel}
+            </span>
+          ) : (
             <>
-              <button
-                type="button"
-                onClick={onStartEdit}
-                className="rounded p-[3px] text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-                aria-label="메시지 편집"
-                title="편집"
-              >
-                <PencilIcon className="h-3 w-3" />
-              </button>
-              <button
-                type="button"
-                onClick={onDelete}
-                className="rounded p-[3px] text-gray-400 hover:bg-gray-100 hover:text-red-600"
-                aria-label="메시지 삭제"
-                title="삭제"
-              >
-                <TrashIcon className="h-3 w-3" />
-              </button>
+              {message.editedAt && <span>(편집됨)</span>}
+              <span>{time}</span>
             </>
           )}
         </div>
       )}
+    </div>
+  );
 
+  return (
+    <div
+      className={`group flex items-end gap-1.5 ${
+        isMine ? 'justify-end' : 'justify-start'
+      }`}
+    >
+      {/* mine: timestamp/액션 슬롯이 말풍선 LEFT */}
+      {isMine && timestampSlot}
+
+      {/* 콘텐츠 컬럼 — 발신자 이름 + 말풍선/첨부 + 반응 */}
       <div
-        className={`min-w-0 max-w-[70%] rounded-2xl px-4 py-2 ${
-          isMine ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-900'
-        } ${stateClass}`}
+        className={`flex max-w-[70%] flex-col gap-1 ${
+          isMine ? 'items-end' : 'items-start'
+        }`}
       >
-        {/* 부모 메시지 인용 (답글) */}
-        {message.parent && (
-          <div
-            className={`mb-2 border-l-2 pl-2 text-xs ${
-              isMine
-                ? 'border-primary-300 text-primary-100'
-                : 'border-gray-400 text-gray-500'
-            }`}
-          >
-            <p className="flex items-center gap-1 truncate italic">
-              <ReplyIcon className="h-3 w-3 shrink-0" />
-              <span className="truncate">
-                {message.parent.deletedAt
-                  ? '(삭제된 메시지)'
-                  : message.parent.content}
-              </span>
-            </p>
-          </div>
-        )}
-
-        {!isMine && (
-          <p className="mb-0.5 text-xs font-medium opacity-80">
+        {/* 타인일 때 발신자 이름 — 그룹 첫 메시지에만 (말풍선 위 왼쪽) */}
+        {!isMine && showName && (
+          <p className="ml-1 text-xs font-medium text-gray-500">
             {message.sender.name}
           </p>
         )}
-        {/* 메시지 본문 + attachment 마커 파싱 — 마커는 본문에서 제거되고 둥근사각형 버튼으로 별도 렌더.
-            본문은 MessageMarkdown으로 마크다운+수식+코드 highlighting 렌더 (Stance B 정책 docs/chat/09).
-            soft-deleted 메시지는 placeholder 표시. */}
-        {(() => {
-          const parsed = parseAttachmentMarker(message.content);
-          return (
-            <>
-              {message.deletedAt ? (
-                <p className="text-sm italic text-gray-500">삭제된 메시지</p>
-              ) : (
-                <MessageMarkdown content={parsed.cleanContent} />
-              )}
-              {parsed.attachments.map((a, i) => {
-                const key = `${a.type}-${a.target}-${i}`;
-                if (a.type === 'image') {
-                  return (
-                    <ImageAttachment key={key} attachment={a} isMine={isMine} />
-                  );
-                }
-                if (a.type === 'file') {
-                  return (
-                    <FileAttachmentCard
-                      key={key}
-                      attachment={a}
-                      isMine={isMine}
-                    />
-                  );
-                }
-                return (
-                  <AttachmentButton key={key} attachment={a} isMine={isMine} />
-                );
-              })}
-            </>
-          );
-        })()}
 
-        {/* 반응 표시 — emoji별 그룹 */}
+        {/* 텍스트 말풍선 — 텍스트 있거나, 답글만 있는 경우(첨부 없음). 첨부만 있는 케이스는
+            아래 mini-quote로 답글 표시하고 말풍선 미렌더. */}
+        {hasTextBubble && (
+          <div
+            className={`min-w-0 rounded-2xl px-4 py-2 ${
+              isMine ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-900'
+            } ${stateClass}`}
+          >
+            {message.parent && (
+              <div
+                className={`mb-2 border-l-2 pl-2 text-xs ${
+                  isMine
+                    ? 'border-primary-300 text-primary-100'
+                    : 'border-gray-400 text-gray-500'
+                }`}
+              >
+                <p className="flex items-center gap-1 truncate italic">
+                  <ReplyIcon className="h-3 w-3 shrink-0" />
+                  <span className="truncate">
+                    {message.parent.deletedAt
+                      ? '(삭제된 메시지)'
+                      : message.parent.content}
+                  </span>
+                </p>
+              </div>
+            )}
+            {hasText && <MessageMarkdown content={parsed.cleanContent} />}
+          </div>
+        )}
+
+        {/* 첨부만 + 답글 있는 케이스 — 작은 인용 라벨을 첨부 위에 (말풍선 대신) */}
+        {message.parent && !hasTextBubble && (
+          <div className="flex items-center gap-1 text-[0.7rem] italic text-gray-500">
+            <ReplyIcon className="h-3 w-3 shrink-0" />
+            <span className="max-w-[16rem] truncate">
+              {message.parent.deletedAt
+                ? '(삭제된 메시지)'
+                : message.parent.content}
+            </span>
+          </div>
+        )}
+
+        {/* 첨부 — 말풍선 없이 단독 렌더 (이미지/파일 테두리 제거) */}
+        {parsed.attachments.map((a, i) => {
+          const key = `${a.type}-${a.target}-${i}`;
+          if (a.type === 'image') {
+            return (
+              <div key={key} className={`rounded-xl ${stateClass}`}>
+                <ImageAttachment attachment={a} isMine={isMine} />
+              </div>
+            );
+          }
+          if (a.type === 'file') {
+            return (
+              <div key={key} className={`rounded-xl ${stateClass}`}>
+                <FileAttachmentCard attachment={a} isMine={isMine} />
+              </div>
+            );
+          }
+          // 인앱 link 카드 (profile/portfolio/team/external) — 기존 그대로 (말풍선 분리)
+          return (
+            <div key={key} className={stateClass}>
+              <AttachmentButton attachment={a} isMine={isMine} />
+            </div>
+          );
+        })}
+
+        {/* 반응 — 말풍선 밖, 콘텐츠 아래 */}
         {groupedReactions.length > 0 && (
-          <div className="mt-1 flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1">
             {groupedReactions.map((r) => (
               <button
                 key={r.emoji}
@@ -1733,12 +1813,8 @@ function MessageItem({
                 onClick={() => onToggleReaction(r.emoji)}
                 className={`rounded-full px-2 py-0.5 text-xs ${
                   r.mine
-                    ? isMine
-                      ? 'bg-primary-400 text-white'
-                      : 'bg-primary-100 text-primary-700'
-                    : isMine
-                      ? 'bg-primary-700/40 text-white'
-                      : 'bg-gray-200 text-gray-700'
+                    ? 'bg-primary-100 text-primary-700'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
                 aria-label={`${r.emoji} 반응 ${r.count}개${r.mine ? ' (내가 추가함)' : ''}`}
               >
@@ -1747,63 +1823,10 @@ function MessageItem({
             ))}
           </div>
         )}
-
-        <p
-          className={`mt-1 flex items-center justify-end gap-1 text-xs ${
-            isMine ? 'text-primary-200' : 'text-gray-400'
-          }`}
-        >
-          {/* 본인 메시지 한정 — 안 읽은 사람 수 (카톡 "1" 패턴, DIRECT는 1/0, GROUP은 N/0) */}
-          {isMine && !stateLabel && !message.deletedAt && unreadBy > 0 && (
-            <span
-              className="rounded-full bg-primary-300/40 px-1.5 py-0.5 text-[0.6rem] font-semibold leading-none text-primary-100"
-              aria-label={`안 읽은 사람 ${unreadBy}명`}
-              title={`${unreadBy}명 안 읽음`}
-            >
-              {unreadBy}
-            </span>
-          )}
-          {stateLabel ? (
-            <span className={message.__failed ? 'font-semibold text-red-200' : ''}>
-              {stateLabel}
-            </span>
-          ) : (
-            <>
-              {message.editedAt && '(편집됨) '}
-              {time}
-            </>
-          )}
-        </p>
       </div>
 
-      {/* 타인 메시지 우측 액션 버튼 (답글/반응/원문 복사) — 편집·삭제는 권한 없음 */}
-      {!isMine && (
-        <div className="pointer-events-none mb-0.5 flex items-center self-end opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
-          {canReact && <ReactionPicker onPick={onToggleReaction} />}
-          <button
-            type="button"
-            onClick={onReply}
-            className="rounded p-[3px] text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-            aria-label="답글"
-            title="답글"
-          >
-            <ReplyIcon className="h-3 w-3" />
-          </button>
-          <button
-            type="button"
-            onClick={handleCopyRaw}
-            className="rounded p-[3px] text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-            aria-label="원문 복사 (마크다운 그대로)"
-            title={copied ? '복사됨!' : '원문 복사 (마크다운 그대로)'}
-          >
-            {copied ? (
-              <CheckIcon className="h-3 w-3 text-green-600" />
-            ) : (
-              <ClipboardIcon className="h-3 w-3" />
-            )}
-          </button>
-        </div>
-      )}
+      {/* non-mine: timestamp/액션 슬롯이 말풍선 RIGHT */}
+      {!isMine && timestampSlot}
     </div>
   );
 }
@@ -1950,4 +1973,45 @@ function computeUnreadBy(
     }
   }
   return unreadCount;
+}
+
+/**
+ * 카카오톡식 메시지 그룹화 메타데이터 — 같은 발신자 + 같은 분(HH:MM)으로 묶어
+ * 발신자 이름과 타임스탬프를 그룹의 양 끝에만 노출하기 위한 정보.
+ *
+ *  - showName: 직전 메시지의 senderId가 다르거나 첫 메시지 → 그룹 진입점에서 한 번만
+ *  - showTime: 다음 메시지의 senderId가 다르거나 분(HH:MM)이 다르거나 마지막 메시지
+ *              → 같은 분 연속 발화의 끝에서 한 번만
+ *
+ * pending/failed 메시지(임시 tempId, 아직 서버 미저장)에 대해서도 안정적으로 동작 —
+ * createdAt이 클라이언트 새로 찍어둔 값이라 minute 비교 그대로 사용 가능.
+ */
+function computeMessageGroups(
+  messages: LocalMessage[],
+): Array<{ showName: boolean; showTime: boolean }> {
+  return messages.map((msg, i) => {
+    const prev = i > 0 ? messages[i - 1] : null;
+    const next = i < messages.length - 1 ? messages[i + 1] : null;
+
+    const minuteOf = (m: LocalMessage) => {
+      // YYYY-MM-DDTHH:MM 정밀도. ISO string 16자리 슬라이스로 비교 — TZ 동일 가정(서버가 UTC ISO 반환).
+      return new Date(m.createdAt).toISOString().slice(0, 16);
+    };
+
+    const prevSameSender = !!prev && prev.senderId === msg.senderId;
+    const nextSameSender = !!next && next.senderId === msg.senderId;
+
+    const thisMin = minuteOf(msg);
+    const nextSameMinute = !!next && minuteOf(next) === thisMin;
+
+    // 삭제된 메시지는 senderId 익명화돼 별도 시스템 라인으로 렌더되니, 그룹 경계로 취급
+    // (이전이 삭제 → 다음 메시지는 showName=true 강제)
+    const prevDeleted = !!prev && !!prev.deletedAt;
+    const nextDeleted = !!next && !!next.deletedAt;
+
+    const showName = !prev || !prevSameSender || prevDeleted;
+    const showTime = !next || !nextSameSender || !nextSameMinute || nextDeleted;
+
+    return { showName, showTime };
+  });
 }
