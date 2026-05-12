@@ -6,12 +6,11 @@ import { use, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { findMockFeedUser, type FeedUser } from '@/lib/mock/portfolioFeed';
 import { notifyPortfolioChanged } from '@/hooks/useMyPortfolioStatus';
-import { invalidateMyPortfolio } from '@/hooks/useMyPortfolio';
+import { useMyPortfolio, invalidateMyPortfolio } from '@/hooks/useMyPortfolio';
 import api from '@/lib/api';
 import {
   updateMyMeta,
   getPortfolioByUserId,
-  getMyPortfolio,
   createWorkExperience as apiCreateWork,
   updateWorkExperience as apiUpdateWork,
   deleteWorkExperience as apiDeleteWork,
@@ -81,6 +80,8 @@ export default function PortfolioDetailPage({
   const { user, loading } = useAuth();
   const router = useRouter();
   const isOwner = !!user && user.id === paramUserId;
+  // owner 전용 — SWR 캐시 활용으로 피드→내포폴 이동 시 즉시 표시 (네트워크 요청 없음)
+  const { portfolio: myPortfolioData, isLoading: myPortfolioLoading } = useMyPortfolio();
   const feedUser: FeedUser | undefined = useMemo(
     () => (!isOwner ? findMockFeedUser(paramUserId) : undefined),
     [isOwner, paramUserId],
@@ -228,43 +229,36 @@ export default function PortfolioDetailPage({
     roles: string[];
   } | null>(null);
 
-  // owner: 백엔드에서 직접 포트폴리오 로드. localStorage 에 의존하지 않음.
+  // owner: useMyPortfolio() SWR 캐시에서 데이터 반영.
+  // 피드 탭에서 이미 fetch 된 캐시가 있으면 이동 즉시 데이터가 표시됨 (로딩 없음).
+  // invalidateMyPortfolio() 호출 시 SWR 이 재요청하고 이 effect 가 다시 실행된다.
   useEffect(() => {
     if (!isOwner) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const remote = await getMyPortfolio();
-        if (cancelled) return;
-        setItems((remote.items ?? []).map(fromBackendItem));
-        setExperiences((remote.workExperiences ?? []).map(fromBackendWorkExperience));
-        setCareers((remote.activities ?? []).map(fromBackendActivity));
-        setLinks((remote.links ?? []).map(fromBackendLink));
-        const vis: PortfolioVisibility = remote.isPublic ? 'public' : 'private';
-        setVisibility(vis);
-        const introVal = remote.intro ?? user?.bio ?? '';
-        setIntroSaved(introVal);
-        setIntroDraft(introVal);
-        // 직군 — backend user 에서
-        const userRoles = user?.roles ?? [];
-        setMainRole(userRoles[0] ?? '');
-        setSubRoles(userRoles.slice(1));
-        // useMyPortfolioStatus 훅(nav 상태)을 위해 두 값만 localStorage 에 기록.
-        // OWNER_STORAGE_KEY 도 갱신 — 새 기기/onboarding 미진행자의 getMyPortfolioPath() 보정.
-        try {
-          localStorage.setItem(INTRO_STORAGE_KEY, introVal);
-          localStorage.setItem(VISIBILITY_STORAGE_KEY, vis);
-          if (user?.id) localStorage.setItem(OWNER_STORAGE_KEY, user.id);
-        } catch { /* 무시 */ }
-        notifyPortfolioChanged();
-      } catch {
-        // 백엔드 호출 실패 시 빈 화면 — localStorage fallback 없음
-      } finally {
-        if (!cancelled) setItemsLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [isOwner, user]);
+    if (myPortfolioLoading) return; // SWR 첫 로딩 중 — 캐시 없는 첫 방문
+    if (!myPortfolioData) {
+      setItemsLoading(false); // 오류 등으로 데이터 없음
+      return;
+    }
+    setItems((myPortfolioData.items ?? []).map(fromBackendItem));
+    setExperiences((myPortfolioData.workExperiences ?? []).map(fromBackendWorkExperience));
+    setCareers((myPortfolioData.activities ?? []).map(fromBackendActivity));
+    setLinks((myPortfolioData.links ?? []).map(fromBackendLink));
+    const vis: PortfolioVisibility = myPortfolioData.isPublic ? 'public' : 'private';
+    setVisibility(vis);
+    const introVal = myPortfolioData.intro ?? user?.bio ?? '';
+    setIntroSaved(introVal);
+    setIntroDraft(introVal);
+    const userRoles = user?.roles ?? [];
+    setMainRole(userRoles[0] ?? '');
+    setSubRoles(userRoles.slice(1));
+    try {
+      localStorage.setItem(INTRO_STORAGE_KEY, introVal);
+      localStorage.setItem(VISIBILITY_STORAGE_KEY, vis);
+      if (user?.id) localStorage.setItem(OWNER_STORAGE_KEY, user.id);
+    } catch { /* 무시 */ }
+    notifyPortfolioChanged();
+    setItemsLoading(false);
+  }, [isOwner, myPortfolioData, myPortfolioLoading, user]);
 
   // 타인 프로필일 때 백엔드에서 직접 데이터 조회. mock 은 fallback 으로만 유지.
   // 백엔드 호출이 성공하면 viewerInitial(mock) 위에 실제 데이터를 덮어쓴다.
