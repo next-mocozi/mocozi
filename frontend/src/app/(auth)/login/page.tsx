@@ -16,10 +16,22 @@ export default function LoginPage() {
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     try {
-      await login(email, password);
+      await login(email.trim(), password);
       router.push('/');
     } catch (err: any) {
-      setError(err?.response?.data?.message || '이메일 또는 비밀번호가 올바르지 않습니다.');
+      if (err?.response?.data?.message) {
+        setError(err.response.data.message);
+        return;
+      }
+      if (err?.code === 'ECONNABORTED') {
+        setError('서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요.');
+        return;
+      }
+      if (err?.request) {
+        setError('서버에 연결할 수 없습니다. 백엔드 실행 상태를 확인해주세요.');
+        return;
+      }
+      setError('이메일 또는 비밀번호가 올바르지 않습니다.');
     }
   };
 
