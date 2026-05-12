@@ -3,6 +3,7 @@
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { ScoutModal } from '@/components/chat/ScoutModal';
 import api from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -91,6 +92,9 @@ export default function UserProfilePage({
   const [notFound, setNotFound] = useState(false);
 
   const [activeTab, setActiveTab] = useState<SectionKey>('intro');
+
+  /** §B-DM-8 — 스카우트 모달 열림 상태. 버튼 클릭 시 셋, 모달 onClose에서 null. */
+  const [scoutOpen, setScoutOpen] = useState(false);
 
   useEffect(() => {
     if (me?.id === id) {
@@ -205,13 +209,22 @@ export default function UserProfilePage({
             </div>
           )}
         </div>
-        <Link
-          href={`/chat?userId=${id}&context=RECRUIT_INDIVIDUAL`}
+        {/* §B-DM-8 — 기존 "채팅하기"(RECRUIT_INDIVIDUAL)는 sender 프로필만 양식에 첨부되어
+            scout 의도와 맞지 않음. 스카우트 모달(팀 선택 → SCOUT_FROM_TEAM)로 통일. */}
+        <button
+          type="button"
+          onClick={() => setScoutOpen(true)}
           className="btn-primary text-sm"
         >
-          채팅하기
-        </Link>
+          스카우트
+        </button>
       </div>
+      <ScoutModal
+        targetUser={
+          scoutOpen && profile ? { id: profile.id, name: profile.name } : null
+        }
+        onClose={() => setScoutOpen(false)}
+      />
 
       {/* 한 줄 소개 */}
       <div className="card mb-6">
