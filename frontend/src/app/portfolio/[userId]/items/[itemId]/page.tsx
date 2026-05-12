@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { use, useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { getPortfolioByUserId, getMyPortfolio, updateItem as apiUpdateItem } from '@/lib/portfolio-api';
+import { useMyPortfolio } from '@/hooks/useMyPortfolio';
+import { getPortfolioByUserId, updateItem as apiUpdateItem } from '@/lib/portfolio-api';
 import {
   FeaturedStar,
   type PortfolioItem,
@@ -40,6 +41,13 @@ export default function PortfolioItemPage({
   const itemId = Number(itemIdStr);
   const isOwner = !!user && user.id === paramUserId;
 
+  // 본인 케이스는 useMyPortfolio SWR hook 으로 통일 — 다른 화면(피드/내포폴/편집기)이
+  // invalidateMyPortfolio() 호출하면 이 페이지도 자동 refetch → 수정사항 즉시 반영.
+  // (이전엔 여기서만 raw getMyPortfolio() 직접 호출이라 SWR 무효화와 동기 안 돼서
+  //  본인 페이지 → 카드 클릭 시 stale 데이터 보이던 버그.)
+  const { portfolio: myPortfolio, isLoading: myPortfolioLoading } =
+    useMyPortfolio();
+
   const [item, setItem] = useState<PortfolioItem | null>(null);
   const [details, setDetails] = useState<Draft | null>(null);
   const [research, setResearch] = useState<ResearchDetail | null>(null);
@@ -54,47 +62,54 @@ export default function PortfolioItemPage({
     }
     let cancelled = false;
     if (isOwner) {
-      (async () => {
-        try {
-          const remote = await getMyPortfolio();
-          if (cancelled) return;
-          const found = (remote?.items ?? []).find(
-            (b) => new Date(b.createdAt).getTime() === itemId,
-          );
-          if (found) {
-            setItem({
-              id: new Date(found.createdAt).getTime(),
-              serverId: found.id,
-              type: TYPE_FROM_BACKEND[found.type] ?? 'project',
-              title: found.title,
-              description: found.description,
-              summary: found.summary ?? undefined,
-              period: found.period ?? found.duration ?? '',
-              current: found.current ?? false,
-              domain: found.domain || undefined,
-              tags: found.tags ?? [],
-              featured: found.featured ?? false,
-              thumbnail: found.thumbnail ?? undefined,
-              createdAt: new Date(found.createdAt).getTime(),
-            });
-            const det = found.details as { kind?: string; data?: unknown } | null;
-            if (det?.kind === 'interview') setDetails(det.data as Draft);
-            else if (det?.kind === 'research') setResearch(det.data as ResearchDetail);
-            else if (det?.kind === 'study') setStudy(det.data as StudyDetail);
-          } else {
-            setItem(null);
-            // 백엔드에 없으면 localStorage details 캐시 시도 (mid-edit draft)
-            const d = loadItemDetails(itemId);
-            setDetails(d.details);
-            setResearch(d.research);
-            setStudy(d.study);
-          }
-        } catch {
-          setItem(null);
-        } finally {
-          if (!cancelled) setLoaded(true);
+      // SWR 데이터가 아직 안 왔으면 대기
+      if (myPortfolioLoading) return;
+      const found = (myPortfolio?.items ?? []).find(
+        (b) => new Date(b.createdAt).getTime() === itemId,
+      );
+      if (found) {
+        setItem({
+          id: new Date(found.createdAt).getTime(),
+          serverId: found.id,
+          type: TYPE_FROM_BACKEND[found.type] ?? 'project',
+          title: found.title,
+          description: found.description,
+          summary: found.summary ?? undefined,
+          period: found.period ?? found.duration ?? '',
+          current: found.current ?? false,
+          domain: found.domain || undefined,
+          tags: found.tags ?? [],
+          featured: found.featured ?? false,
+          thumbnail: found.thumbnail ?? undefined,
+          createdAt: new Date(found.createdAt).getTime(),
+        });
+        const det = found.details as { kind?: string; data?: unknown } | null;
+        if (det?.kind === 'interview') {
+          setDetails(det.data as Draft);
+          setResearch(null);
+          setStudy(null);
+        } else if (det?.kind === 'research') {
+          setResearch(det.data as ResearchDetail);
+          setDetails(null);
+          setStudy(null);
+        } else if (det?.kind === 'study') {
+          setStudy(det.data as StudyDetail);
+          setDetails(null);
+          setResearch(null);
+        } else {
+          setDetails(null);
+          setResearch(null);
+          setStudy(null);
         }
-      })();
+      } else {
+        setItem(null);
+        // 백엔드에 없으면 localStorage details 캐시 시도 (mid-edit draft)
+        const d = loadItemDetails(itemId);
+        setDetails(d.details);
+        setResearch(d.research);
+        setStudy(d.study);
+      }
+      setLoaded(true);
     } else {
       // 타인: backend 에서 그 사람 portfolio 호출 → itemId(= createdAt 기반 epoch ms)
       // 와 일치하는 item 찾기. 비공개 portfolio 면 items 빈 배열로 응답되어 null.
@@ -170,7 +185,7 @@ export default function PortfolioItemPage({
     return () => {
       cancelled = true;
     };
-  }, [authLoading, user, itemId, router, isOwner, paramUserId]);
+  }, [authLoading, user, itemId, router, isOwner, paramUserId, myPortfolio, myPortfolioLoading]);
 
   if (authLoading || !loaded) {
     return (
