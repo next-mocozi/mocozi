@@ -1,11 +1,19 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // body parser 한도 확장 — 포트폴리오 카드 details(Json) 안에 base64
+  // 이미지/파일 dataUrl 이 들어가서 default 100KB 한도를 쉽게 넘김.
+  // frontend 가 강제로 이미지 3MB / 파일 8MB 까지만 허용하므로, 여러 자료가
+  // 한 카드에 묶여도 20MB 안쪽에서 처리 가능하도록 설정.
+  app.use(json({ limit: '20mb' }));
+  app.use(urlencoded({ limit: '20mb', extended: true }));
 
   // CORS 설정 — FRONTEND_URL 에 콤마로 여러 origin 지정 가능
   // 예: FRONTEND_URL=https://mocozi.vercel.app,http://localhost:3000

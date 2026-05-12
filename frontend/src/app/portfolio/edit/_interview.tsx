@@ -344,6 +344,37 @@ const EXAMPLES: Partial<Record<StepKey, string>> = {
 
 // ─────── Helpers ───────
 
+/** 첨부 파일 용량 한도 (bytes). 사진은 작게, 그 외 파일은 조금 더 크게.
+ *  base64 인코딩 시 약 33% 부풀어 backend body parser·Postgres jsonb 단계에서
+ *  큰 payload 가 거부되는 일이 잦아 frontend 에서 강제로 제한. */
+const MAX_IMAGE_BYTES = 3 * 1024 * 1024; // 3MB
+const MAX_FILE_BYTES = 8 * 1024 * 1024; // 8MB
+
+function isImageFile(file: File): boolean {
+  if (file.type && file.type.startsWith('image/')) return true;
+  return /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(file.name);
+}
+
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n}B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)}KB`;
+  return `${(n / 1024 / 1024).toFixed(1)}MB`;
+}
+
+/** 용량 검사. 초과 시 alert 후 null 반환 — caller 는 null 이면 업로드 중단. */
+function checkFileSize(file: File): boolean {
+  const limit = isImageFile(file) ? MAX_IMAGE_BYTES : MAX_FILE_BYTES;
+  if (file.size > limit) {
+    alert(
+      `${isImageFile(file) ? '이미지' : '파일'} 용량이 너무 커요.\n` +
+        `최대 ${formatBytes(limit)} 까지 (현재 ${formatBytes(file.size)}).\n` +
+        `압축하거나 작은 파일로 다시 시도해주세요.`,
+    );
+    return false;
+  }
+  return true;
+}
+
 const fileToDataUrl = (file: File) =>
   new Promise<string>((resolve, reject) => {
     const r = new FileReader();
@@ -2045,6 +2076,7 @@ function ThumbnailPicker({
     if (!file) return;
     if (!file.type.startsWith('image/')) return;
     try {
+      if (!checkFileSize(file)) return;
       const dataUrl = await fileToDataUrl(file);
       onChange(dataUrl);
     } catch {
@@ -2474,6 +2506,7 @@ function SimpleTextarea({
     for (const file of Array.from(files)) {
       if (kind === 'image' && !file.type.startsWith('image/')) continue;
       try {
+        if (!checkFileSize(file)) return;
         const dataUrl = await fileToDataUrl(file);
         // 같은 배치 안에서 alias 충돌 방지 — 로컬 pool 을 갱신해 가며 발급.
         const alias = nextAlias(pool);
@@ -2670,6 +2703,7 @@ function DeliverablesStep({
     const nextFiles = draft.deliverableFiles.slice();
     for (const file of files) {
       try {
+        if (!checkFileSize(file)) return;
         const dataUrl = await fileToDataUrl(file);
         nextFiles.push({
           id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -3179,6 +3213,7 @@ function BlockEditor({
   const addImageFile = async (file: File | null) => {
     if (!file || !file.type.startsWith('image/')) return;
     try {
+      if (!checkFileSize(file)) return;
       const dataUrl = await fileToDataUrl(file);
       // assets 풀이 주입돼있으면 등록 + alias 참조 사용 (텍스트 짧아짐)
       if (onAddAsset) {
@@ -3209,6 +3244,7 @@ function BlockEditor({
   const addAttachmentFile = async (file: File | null) => {
     if (!file) return;
     try {
+      if (!checkFileSize(file)) return;
       const dataUrl = await fileToDataUrl(file);
       if (onAddAsset) {
         const alias = nextAlias(assets ?? []);
@@ -3892,6 +3928,7 @@ function EditableMarkdownSection({
   const handleImageUpload = async (file: File | null) => {
     if (!file || !file.type.startsWith('image/')) return;
     try {
+      if (!checkFileSize(file)) return;
       const dataUrl = await fileToDataUrl(file);
       insertAtCursor(`\n\n![${file.name}](${dataUrl})\n\n`);
     } catch {
@@ -4051,6 +4088,7 @@ function SummaryView({
   const handleThumbFile = async (file: File | null) => {
     if (!file || !file.type.startsWith('image/')) return;
     try {
+      if (!checkFileSize(file)) return;
       const dataUrl = await fileToDataUrl(file);
       setDraft((d) => ({ ...d, thumbnail: dataUrl }));
     } catch {
