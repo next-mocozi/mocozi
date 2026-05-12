@@ -91,19 +91,34 @@ export class StorageService implements OnModuleInit {
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
     this.bucket = process.env.SUPABASE_STORAGE_BUCKET ?? 'chat-attachments';
 
-    if (!url || !key) {
-      // dev에서 Supabase 미설정이어도 backend가 부팅 자체는 가능하게 — Storage 호출 시점에 fail.
-      // 채팅 첨부 미사용 케이스(텍스트만 채팅)에선 영향 없음.
+    // .env.example placeholder를 그대로 둔 신규 팀원의 백엔드 부팅 실패 함정 차단.
+    // truthy 체크만으론 'https://[project-ref].supabase.co' 같은 placeholder가 통과돼
+    // createClient에서 "Invalid supabaseUrl" throw → 모듈 init 실패 → 모든 API 500.
+    const looksLikePlaceholder = (v: string | undefined) =>
+      !!v && /\[project-ref\]|your-|placeholder|example/i.test(v);
+
+    if (!url || !key || looksLikePlaceholder(url) || looksLikePlaceholder(key)) {
       this.logger.warn(
-        '[StorageService] SUPABASE_URL/SERVICE_ROLE_KEY 미설정 — 첨부 기능 비활성.',
+        '[StorageService] SUPABASE_URL/SERVICE_ROLE_KEY 미설정 또는 placeholder — 첨부 기능 비활성.',
       );
       return;
     }
 
-    this.client = createClient(url, key, {
-      auth: { persistSession: false },
-    });
-    this.logger.log(`[StorageService] Supabase Storage ready (bucket: ${this.bucket})`);
+    // createClient는 동기로 URL 파싱 → 비정상 URL이면 throw. 마지막 방어선으로 try/catch.
+    try {
+      this.client = createClient(url, key, {
+        auth: { persistSession: false },
+      });
+      this.logger.log(
+        `[StorageService] Supabase Storage ready (bucket: ${this.bucket})`,
+      );
+    } catch (e) {
+      this.client = null;
+      this.logger.error(
+        '[StorageService] Supabase client init 실패 — 첨부 기능 비활성. URL/key 확인 필요.',
+        e instanceof Error ? e.message : String(e),
+      );
+    }
   }
 
   /** Storage 사용 가능 여부 — 미설정 환경에서 endpoint 호출 시 503 응답에 활용 */
