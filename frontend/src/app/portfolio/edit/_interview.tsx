@@ -933,12 +933,20 @@ export default function ProjectInterview() {
               return;
             }
           }
-          // 백엔드에도 없음 — 기본 필드로 폼 초기화
-          setDraft({
-            ...EMPTY_DRAFT,
-            name: backendItem?.title ?? '',
-            thumbnail: backendItem?.thumbnail ?? '',
-          });
+          // 백엔드에도 없음 — 기본 필드로 폼 초기화.
+          // details 를 한 번도 저장하지 않은 항목(구버전 저장)은 preview 단계에서 시작해
+          // 바로 "수정 완료" 버튼을 누를 수 있게 한다.
+          // (step 0 에서 시작하면 필수 항목 검증에 막혀 저장 버튼에 도달 불가)
+          // initialDetailRef 는 null 로 두어 handleClose 가 빈 폼을 저장하지 않도록 한다.
+          {
+            const stepsForEmpty = buildSteps(null);
+            setDraft({
+              ...EMPTY_DRAFT,
+              name: backendItem?.title ?? '',
+              thumbnail: backendItem?.thumbnail ?? '',
+              stepIdx: stepsForEmpty.length - 1,
+            });
+          }
           setPhase('form');
         } catch {
           setPhase('form');
@@ -1023,8 +1031,10 @@ export default function ProjectInterview() {
       if (idx >= 0) setDraft((d) => ({ ...d, stepIdx: idx }));
       return;
     }
-    // 편집 모드: auto-save 가 localStorage 만 갱신 — 나가기 전에 백엔드에 실제 저장
-    if (isEdit && projectId !== null) {
+    // 편집 모드: auto-save 가 localStorage 만 갱신 — 나가기 전에 백엔드에 실제 저장.
+    // initialDetailRef.current 가 null 이면 details 가 없던 항목 → 빈 폼을 저장하면
+    // 기존 기본 정보까지 덮어쓰므로 저장 건너뜀.
+    if (isEdit && projectId !== null && initialDetailRef.current !== null) {
       try {
         const itemsRaw = localStorage.getItem(ITEMS_STORAGE_KEY);
         const list: PortfolioItem[] = itemsRaw ? JSON.parse(itemsRaw) : [];
@@ -1211,14 +1221,14 @@ export default function ProjectInterview() {
         localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(nextList));
         // 최종 저장 시점에만 백엔드 동기화 (auto-save 단계에선 호출 X).
         // 인터뷰 답변(draft) 도 같이 보내 타인 viewer 가 미리보기 풀세트로 볼 수 있게.
-        const finalItem = nextList.find((it) => it.id === projectId);
-        if (finalItem) {
-          await syncItemToBackend(
-            { ...finalItem, serverId: serverIdRef.current ?? undefined },
-            { kind: 'interview', data: draft },
-          );
-          await invalidateMyPortfolio();
-        }
+        // ITEMS_STORAGE_KEY 에 없을 때(새 기기 등 auto-save 미완료)는 직접 생성.
+        const finalItem =
+          nextList.find((it) => it.id === projectId) ?? buildItem(projectId, draft);
+        await syncItemToBackend(
+          { ...finalItem, serverId: serverIdRef.current ?? undefined },
+          { kind: 'interview', data: draft },
+        );
+        await invalidateMyPortfolio();
       } catch {
         // 저장 실패해도 이동은 진행
       }
