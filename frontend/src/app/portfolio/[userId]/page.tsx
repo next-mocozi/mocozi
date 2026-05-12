@@ -751,23 +751,10 @@ export default function PortfolioDetailPage({
       />
       {/* ─────── 기본 정보 — /profile 페이지와 동일 (수정 버튼 없음) ─────── */}
       <div className="card relative mb-6">
-        {/* 공개/비공개 상태 + 설정 버튼 — owner 전용 */}
+        {/* 공개 설정 버튼 — owner 전용. 옆에 있던 공개/비공개 상태 뱃지는 제거됨
+            (사용자 요청: 토글 옆 공개 라벨 제거). 현재 상태는 settings 모달에서 확인. */}
         {isOwner && (
           <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
-            <span
-              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${
-                visibility === 'public'
-                  ? 'bg-green-100 text-green-700'
-                  : 'bg-gray-100 text-gray-600'
-              }`}
-            >
-              <span
-                className={`h-1.5 w-1.5 rounded-full ${
-                  visibility === 'public' ? 'bg-green-500' : 'bg-gray-400'
-                }`}
-              />
-              {visibility === 'public' ? '공개' : '비공개'}
-            </span>
             <button
               type="button"
               onClick={() => setSettingsOpen(true)}

@@ -347,7 +347,7 @@ const EXAMPLES: Partial<Record<StepKey, string>> = {
 /** 첨부 파일 용량 한도 (bytes). 사진은 작게, 그 외 파일은 조금 더 크게.
  *  base64 인코딩 시 약 33% 부풀어 backend body parser·Postgres jsonb 단계에서
  *  큰 payload 가 거부되는 일이 잦아 frontend 에서 강제로 제한. */
-const MAX_IMAGE_BYTES = 3 * 1024 * 1024; // 3MB
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB
 const MAX_FILE_BYTES = 8 * 1024 * 1024; // 8MB
 
 function isImageFile(file: File): boolean {
