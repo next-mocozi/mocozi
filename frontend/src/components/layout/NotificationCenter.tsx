@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+import { NotificationIcon } from '@/components/icons/NotificationIcon';
 import { useChatNotifications } from '@/providers/SocketProvider';
 
 /**
@@ -61,14 +62,8 @@ export default function NotificationCenter() {
         aria-haspopup="menu"
         aria-expanded={open}
       >
-        {/* 임시 아이콘 — 추후 SVG 컴포넌트로 교체 예정 (사용자 지정) */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          width={28}
-          height={28}
-          src="https://img.icons8.com/windows/32/12B886/notification-center--v2.png"
-          alt="알림 센터"
-        />
+        {/* SVG로 자체 구현 — 외부 PNG 의존 제거. currentColor 상속으로 dark mode 등 향후 확장 용이 */}
+        <NotificationIcon className="h-6 w-6 text-gray-700" />
         {totalUnread > 0 && (
           <span
             className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white"
