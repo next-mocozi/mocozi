@@ -221,8 +221,10 @@ function ChatRoomPageContent({ params }: PageProps) {
   const [replyTo, setReplyTo] = useState<LocalMessage | null>(null);
 
   // §15 빈 방 떠남 가드 — 메시지/draft/replyTo 모두 비었을 때만 보호 등록.
-  // 사용자가 다른 채팅·페이지로 navigate 시 confirm dialog (RoomList Link onClick, 뒤로 버튼).
-  // unmount 시 보호 해제. 새로고침/탭 닫기는 beforeunload listener (브라우저 기본 dialog).
+  // 사용자가 navigate 시 confirm dialog. 모든 anchor click을 document capture phase로
+  // 가로채므로 Header/RoomList/"뒤로" 어디서 클릭하든 자동 cover (Link onClick 불필요).
+  // 새로고침/탭 닫기는 beforeunload listener (브라우저 기본 dialog).
+  // unmount/메시지 보낸 후 보호 해제.
   useEffect(() => {
     if (!roomId) return;
     const isEmpty =
@@ -234,13 +236,41 @@ function ChatRoomPageContent({ params }: PageProps) {
     }
 
     if (!isEmpty || typeof window === 'undefined') return;
+
+    // 1) 새로고침/탭 닫기 — 브라우저 기본 dialog
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
-      e.returnValue = EMPTY_ROOM_LEAVE_MESSAGE; // 일부 옛 브라우저용 (커스텀 문구는 무시되고 기본 dialog 노출)
+      e.returnValue = EMPTY_ROOM_LEAVE_MESSAGE; // 일부 옛 브라우저용 — 커스텀 문구는 무시됨
     };
     window.addEventListener('beforeunload', onBeforeUnload);
+
+    // 2) 페이지 내 anchor 클릭 — capture phase로 모든 Link를 일괄 가로챔.
+    //    Header(홈/recruit/team/portfolio/chat/profile) + RoomList 다른 채팅 + "뒤로" 버튼
+    //    + 채팅창 내 인앱 link 카드까지 모두 cover.
+    const onClickCapture = (e: MouseEvent) => {
+      if (e.defaultPrevented) return;
+      const anchor = (e.target as HTMLElement | null)?.closest(
+        'a[href]',
+      ) as HTMLAnchorElement | null;
+      if (!anchor) return;
+      if (anchor.target === '_blank') return; // 새 탭 — 현재 페이지 안 떠남
+      const href = anchor.getAttribute('href');
+      if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) {
+        return; // 같은 페이지 anchor / mail / tel
+      }
+      // 현재 채팅방 자체 클릭은 통과 (idempotent)
+      if (href === window.location.pathname) return;
+      // confirm 거부 시 navigation 차단
+      if (!window.confirm(EMPTY_ROOM_LEAVE_MESSAGE)) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }
+    };
+    document.addEventListener('click', onClickCapture, true);
+
     return () => {
       window.removeEventListener('beforeunload', onBeforeUnload);
+      document.removeEventListener('click', onClickCapture, true);
     };
   }, [roomId, messages.length, draft, replyTo]);
 
@@ -932,14 +962,6 @@ function ChatRoomPageContent({ params }: PageProps) {
       <div className="flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-3">
         <Link
           href="/chat"
-          onClick={(e) => {
-            // §15 빈 방 떠남 가드 — 빈 방 상태면 confirm. 사용자 취소 시 navigation 차단.
-            const isEmpty =
-              messages.length === 0 && draft.trim().length === 0 && !replyTo;
-            if (isEmpty && !window.confirm(EMPTY_ROOM_LEAVE_MESSAGE)) {
-              e.preventDefault();
-            }
-          }}
           className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
           aria-label="채팅 목록으로"
         >
