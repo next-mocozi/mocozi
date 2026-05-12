@@ -24,6 +24,7 @@ export class UserService {
         skills: true,
         roles: true,
         careerSummary: true,
+        bannerColor: true,
         createdAt: true,
         portfolio: { include: { items: true } },
       },
@@ -52,6 +53,7 @@ export class UserService {
         skills: true,
         roles: true,
         careerSummary: true,
+        bannerColor: true,
       },
     });
   }

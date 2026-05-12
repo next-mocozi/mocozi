@@ -176,6 +176,7 @@ export class AuthService {
         skills: user.skills,
         roles: user.roles,
         careerSummary: user.careerSummary,
+        bannerColor: user.bannerColor,
       },
       message: '로그인에 성공하였습니다.',
     };

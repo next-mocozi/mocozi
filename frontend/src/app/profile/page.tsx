@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useMyPortfolio } from '@/hooks/useMyPortfolio';
+import api from '@/lib/api';
 import {
   PlatformIcon,
   PLATFORM_META,
@@ -15,6 +16,29 @@ import {
 const PROFILE_SECTIONS_KEY = 'mock_profile_portfolio_sections';
 
 const DEFAULT_LINKS: ProfileLink[] = [];
+
+type BannerColor =
+  | 'indigo'
+  | 'rose'
+  | 'emerald'
+  | 'amber'
+  | 'sky'
+  | 'fuchsia'
+  | 'stone'
+  | 'slate';
+
+const BANNER_GRADIENTS: { key: BannerColor; label: string; class: string }[] = [
+  { key: 'indigo',  label: '인디고',   class: 'from-indigo-600 via-indigo-700 to-violet-700' },
+  { key: 'rose',    label: '로즈',     class: 'from-rose-500 via-rose-600 to-pink-700' },
+  { key: 'emerald', label: '에메랄드', class: 'from-emerald-500 via-emerald-600 to-teal-700' },
+  { key: 'amber',   label: '앰버',     class: 'from-amber-400 via-orange-500 to-rose-600' },
+  { key: 'sky',     label: '스카이',   class: 'from-sky-400 via-sky-600 to-blue-700' },
+  { key: 'fuchsia', label: '푸시아',   class: 'from-fuchsia-500 via-purple-600 to-violet-700' },
+  { key: 'stone',   label: '스톤',     class: 'from-stone-500 via-stone-600 to-stone-700' },
+  { key: 'slate',   label: '슬레이트', class: 'from-slate-700 via-slate-800 to-slate-900' },
+];
+
+const DEFAULT_BANNER_COLOR: BannerColor = 'indigo';
 
 // /portfolio 페이지와 같은 형태 — 단순 표시 용도라 import 없이 정의
 type Experience = {
@@ -112,7 +136,7 @@ const SECTION_META: Record<SectionKey, { label: string; hint: string }> = {
 
 /** 내 프로필 페이지 (보기 전용 — 수정은 /profile/edit, /portfolio) */
 export default function MyProfilePage() {
-  const { user, loading } = useAuth();
+  const { user, loading, refreshUser } = useAuth();
   const { portfolio } = useMyPortfolio();
   const [links, setLinks] = useState<ProfileLink[]>(DEFAULT_LINKS);
 
@@ -136,6 +160,33 @@ export default function MyProfilePage() {
 
   // 세그먼트 컨트롤 — 현재 활성 탭
   const [activeTab, setActiveTab] = useState<SectionKey>(SECTION_ORDER[0]);
+
+  // 배너 색상 — 서버(User.bannerColor)가 source of truth
+  const [bannerColor, setBannerColor] = useState<BannerColor>(DEFAULT_BANNER_COLOR);
+  const [colorPickerOpen, setColorPickerOpen] = useState(false);
+
+  useEffect(() => {
+    const saved = user?.bannerColor;
+    if (saved && BANNER_GRADIENTS.some((g) => g.key === saved)) {
+      setBannerColor(saved as BannerColor);
+    }
+  }, [user?.bannerColor]);
+
+  const changeBannerColor = async (color: BannerColor) => {
+    const prev = bannerColor;
+    setBannerColor(color); // optimistic
+    setColorPickerOpen(false);
+    try {
+      await api.put('/api/users/me', { bannerColor: color });
+      await refreshUser();
+    } catch {
+      setBannerColor(prev); // 롤백
+    }
+  };
+
+  const currentGradient =
+    BANNER_GRADIENTS.find((g) => g.key === bannerColor)?.class ??
+    BANNER_GRADIENTS[0].class;
 
   // selected 가 바뀌었을 때 activeTab 이 더 이상 선택돼있지 않으면 첫 번째로 이동
   useEffect(() => {
@@ -273,6 +324,71 @@ export default function MyProfilePage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
+      {/* 프로필 배너 — 사용자가 색상 선택 가능 */}
+      <div className="relative mb-6 overflow-visible">
+        <div
+          className={`relative h-32 overflow-hidden rounded-2xl bg-gradient-to-br ${currentGradient}`}
+        >
+          <div className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/5" />
+          <div className="pointer-events-none absolute -bottom-6 right-16 h-24 w-24 rounded-full bg-white/5" />
+          <div className="absolute inset-x-0 bottom-0 h-px bg-white/10" />
+        </div>
+
+        <div className="absolute right-3 top-3 z-10">
+          <button
+            type="button"
+            onClick={() => setColorPickerOpen((v) => !v)}
+            className="flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/25"
+            aria-label="배너 색상 변경"
+            aria-expanded={colorPickerOpen}
+          >
+            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+            </svg>
+            색상 변경
+          </button>
+
+          {colorPickerOpen && (
+            <>
+              <div
+                className="fixed inset-0 z-10"
+                onClick={() => setColorPickerOpen(false)}
+                aria-hidden="true"
+              />
+              <div className="absolute right-0 top-full z-20 mt-2 w-60 rounded-2xl border border-stone-200 bg-white p-3 shadow-lg">
+                <p className="mb-2 text-xs font-semibold text-stone-700">배너 색상</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {BANNER_GRADIENTS.map((g) => {
+                    const selected = bannerColor === g.key;
+                    return (
+                      <button
+                        key={g.key}
+                        type="button"
+                        onClick={() => changeBannerColor(g.key)}
+                        className={`relative aspect-square overflow-hidden rounded-lg bg-gradient-to-br ${g.class} transition-transform hover:scale-105 ${
+                          selected ? 'ring-2 ring-offset-2 ring-stone-900' : ''
+                        }`}
+                        aria-label={g.label}
+                        aria-pressed={selected}
+                        title={g.label}
+                      >
+                        {selected && (
+                          <span className="absolute inset-0 flex items-center justify-center text-white">
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
       {/* 프로필 요약 */}
         <div className="mb-6 flex items-start gap-6">
           <div className="flex h-31 w-31 items-center justify-center rounded-full bg-primary-100 text-4xl text-primary-600">

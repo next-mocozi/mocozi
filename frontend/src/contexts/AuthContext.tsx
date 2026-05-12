@@ -17,6 +17,7 @@ export interface AuthUser {
   roles: string[];
   careerSummary: string | null;
   profileImage: string | null;
+  bannerColor: string | null;
 }
 
 interface AuthContextType {

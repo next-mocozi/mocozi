@@ -48,4 +48,9 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsString()
   careerSummary?: string;
+
+  /** 프로필 배너 색상 (프리셋 키) */
+  @IsOptional()
+  @IsString()
+  bannerColor?: string;
 }
