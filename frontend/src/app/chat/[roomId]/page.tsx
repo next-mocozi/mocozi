@@ -234,10 +234,18 @@ function ChatRoomPageContent({ params }: PageProps) {
   // 가로채므로 Header/RoomList/"뒤로" 어디서 클릭하든 자동 cover (Link onClick 불필요).
   // 새로고침/탭 닫기는 beforeunload listener (브라우저 기본 dialog).
   // unmount/메시지 보낸 후 보호 해제.
+  //
+  // !loading 가드 필수 — fetch 진행 중엔 messages가 빈 배열로 초기화돼있을 뿐 진짜 빈 방인지
+  // 모름. loading 중에 가드 set하면 fetch 끝나기 전 navigate 시 confirm이 잘못 뜬다.
+  // error 케이스도 제외 — 멤버 아님/방 없음 등 실패 시엔 가드 의미 없음.
   useEffect(() => {
     if (!roomId) return;
     const isEmpty =
-      messages.length === 0 && draft.trim().length === 0 && !replyTo;
+      !loading &&
+      !error &&
+      messages.length === 0 &&
+      draft.trim().length === 0 &&
+      !replyTo;
     if (isEmpty) {
       setEmptyRoomGuard(roomId);
     } else {
@@ -281,7 +289,7 @@ function ChatRoomPageContent({ params }: PageProps) {
       window.removeEventListener('beforeunload', onBeforeUnload);
       document.removeEventListener('click', onClickCapture, true);
     };
-  }, [roomId, messages.length, draft, replyTo]);
+  }, [roomId, loading, error, messages.length, draft, replyTo]);
 
   // 페이지 unmount 시 항상 guard 해제
   useEffect(() => {
