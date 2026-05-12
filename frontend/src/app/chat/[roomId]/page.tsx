@@ -36,6 +36,11 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import {
+  clearEmptyRoomGuard,
+  EMPTY_ROOM_LEAVE_MESSAGE,
+  setEmptyRoomGuard,
+} from '@/lib/chat/emptyRoomGuard';
+import {
   ensureProfileAttachment,
   parseAttachmentMarker,
   renderTemplate,
@@ -214,6 +219,37 @@ function ChatRoomPageContent({ params }: PageProps) {
    * (UI: 입력창 위에 "○○○에게 답글" 미리보기 표시)
    */
   const [replyTo, setReplyTo] = useState<LocalMessage | null>(null);
+
+  // §15 빈 방 떠남 가드 — 메시지/draft/replyTo 모두 비었을 때만 보호 등록.
+  // 사용자가 다른 채팅·페이지로 navigate 시 confirm dialog (RoomList Link onClick, 뒤로 버튼).
+  // unmount 시 보호 해제. 새로고침/탭 닫기는 beforeunload listener (브라우저 기본 dialog).
+  useEffect(() => {
+    if (!roomId) return;
+    const isEmpty =
+      messages.length === 0 && draft.trim().length === 0 && !replyTo;
+    if (isEmpty) {
+      setEmptyRoomGuard(roomId);
+    } else {
+      clearEmptyRoomGuard();
+    }
+
+    if (!isEmpty || typeof window === 'undefined') return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = EMPTY_ROOM_LEAVE_MESSAGE; // 일부 옛 브라우저용 (커스텀 문구는 무시되고 기본 dialog 노출)
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', onBeforeUnload);
+    };
+  }, [roomId, messages.length, draft, replyTo]);
+
+  // 페이지 unmount 시 항상 guard 해제
+  useEffect(() => {
+    return () => {
+      clearEmptyRoomGuard();
+    };
+  }, []);
 
   /** 무한 스크롤 — 위쪽으로 이전 메시지 페이징 */
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -896,6 +932,14 @@ function ChatRoomPageContent({ params }: PageProps) {
       <div className="flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-3">
         <Link
           href="/chat"
+          onClick={(e) => {
+            // §15 빈 방 떠남 가드 — 빈 방 상태면 confirm. 사용자 취소 시 navigation 차단.
+            const isEmpty =
+              messages.length === 0 && draft.trim().length === 0 && !replyTo;
+            if (isEmpty && !window.confirm(EMPTY_ROOM_LEAVE_MESSAGE)) {
+              e.preventDefault();
+            }
+          }}
           className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
           aria-label="채팅 목록으로"
         >

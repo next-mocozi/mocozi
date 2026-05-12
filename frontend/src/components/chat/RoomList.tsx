@@ -12,6 +12,7 @@ import {
 } from '@/components/icons/ChatIcons';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
+import { confirmLeaveEmptyRoom } from '@/lib/chat/emptyRoomGuard';
 import { summarizePreview } from '@/lib/messageTemplate';
 import { timeAgo } from '@/lib/utils';
 import { useChatNotifications, useChatSocket } from '@/providers/SocketProvider';
@@ -497,6 +498,13 @@ export default function RoomList() {
               >
                 <Link
                   href={`/chat/${room.id}`}
+                  onClick={(e) => {
+                    // §15 빈 방 떠남 가드 — 현재 보고 있는 채팅이 빈 방이면 confirm.
+                    // 같은 방 클릭은 통과 (idempotent navigation).
+                    if (!confirmLeaveEmptyRoom(room.id)) {
+                      e.preventDefault();
+                    }
+                  }}
                   className="flex min-w-0 flex-1 items-center gap-3 p-3 transition-colors"
                 >
                   <div className="relative shrink-0">
