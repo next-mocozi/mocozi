@@ -1723,9 +1723,12 @@ function MessageItem({
       {/* mine: timestamp/액션 슬롯이 말풍선 LEFT */}
       {isMine && timestampSlot}
 
-      {/* 콘텐츠 컬럼 — 발신자 이름 + 말풍선/첨부 + 반응 */}
+      {/* 콘텐츠 컬럼 — 발신자 이름 + 말풍선/첨부 + 반응.
+          min-w-0 필수 — flex 기본 min-width:auto가 자식 intrinsic width(긴 코드 줄 등)에
+          밀려 max-w-[70%]를 무력화시키는 것을 막음. min-w-0이 있어야 내부 pre의
+          overflow-x-auto가 정상 발동해 가로 스크롤바가 뜬다. */}
       <div
-        className={`flex max-w-[70%] flex-col gap-1 ${
+        className={`flex min-w-0 max-w-[70%] flex-col gap-1 ${
           isMine ? 'items-end' : 'items-start'
         }`}
       >
