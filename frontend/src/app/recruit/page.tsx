@@ -9,12 +9,6 @@ import api from '@/lib/api';
 
 const PAGE_SIZE = 12;
 
-const SCHOOL_COLORS = ['#8B0000', '#003876', '#00205B', '#000080', '#004B23', '#004A99', '#7B1A1A', '#b6001f'];
-function getSchoolColor(university: string): string {
-  const hash = [...university].reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  return SCHOOL_COLORS[hash % SCHOOL_COLORS.length];
-}
-
 const toggleItem = (item: string, list: string[], setList: (v: string[]) => void) => {
   setList(list.includes(item) ? list.filter((i) => i !== item) : [...list, item]);
 };
@@ -443,20 +437,18 @@ export default function RecruitListPage() {
                 const roles = person.roles ?? [];
                 const mainRole = roles[0] ?? null;
                 const subRoles = roles.slice(1);
-                const schoolColor = getSchoolColor(person.university);
                 return (
                   <div
                     key={person.id}
-                    className="flex h-full flex-col overflow-hidden rounded-xl border border-gray-100 bg-white shadow-[0_2px_12px_-2px_rgba(0,0,0,0.07)] transition-all hover:shadow-[0_8px_24px_-4px_rgba(99,102,241,0.12)] hover:-translate-y-0.5"
+                    className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_2px_12px_-2px_rgba(0,0,0,0.07)] transition-all hover:shadow-[0_8px_24px_-4px_rgba(99,102,241,0.12)] hover:-translate-y-0.5"
                   >
-                    {/* 학교 컬러 헤더 */}
+                    {/* 그라데이션 헤더 (팀 카드와 통일) */}
                     <div
-                      className="relative h-16 overflow-hidden z-10"
-                      style={{
-                        background: `linear-gradient(135deg, ${schoolColor} 0%, color-mix(in oklch, ${schoolColor} 75%, #000) 100%)`,
-                      }}
+                      className="relative h-16 overflow-hidden bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-700 z-10"
                       aria-hidden="true"
                     >
+                      <div className="pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/5" />
+                      <div className="pointer-events-none absolute -bottom-4 right-10 h-16 w-16 rounded-full bg-white/5" />
                       <div className="absolute inset-x-0 bottom-0 h-px bg-white/10" />
                     </div>
 
