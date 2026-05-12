@@ -41,7 +41,7 @@ import {
   setEmptyRoomGuard,
 } from '@/lib/chat/emptyRoomGuard';
 import {
-  ensureProfileAttachment,
+  ensureContextAttachment,
   parseAttachmentMarker,
   renderTemplate,
   type TemplateVars,
@@ -431,16 +431,20 @@ function ChatRoomPageContent({ params }: PageProps) {
       typeof window !== 'undefined'
         ? `${window.location.origin}/profile/${user.id}`
         : `/profile/${user.id}`;
+    // teamId — SCOUT_FROM_TEAM은 room.contextTargetId, RECRUIT_TEAM은 URL teamIdParam.
+    const teamIdForVars =
+      room?.contextTargetId ?? teamIdParam ?? undefined;
     const vars: TemplateVars = {
       senderName: user.name,
       senderId: user.id,
       recipientName,
       role: selectedRole ?? undefined,
       teamName: teamContact?.teamName,
+      teamId: teamIdForVars,
       profileUrl,
     };
     return renderTemplate(templateContent, vars);
-  }, [templateContent, user, recipientName, selectedRole, teamContact]);
+  }, [templateContent, user, recipientName, selectedRole, teamContact, room, teamIdParam]);
 
   /** 양식 트리거 클릭 — 패널 열고 첫 단계 결정 */
   const openTemplatePanel = useCallback(() => {
@@ -460,11 +464,14 @@ function ChatRoomPageContent({ params }: PageProps) {
   /** [보내기] — 양식 본문에 attachment 마커 보장 후 sendMessage 호출 */
   const handleTemplateSend = useCallback(async () => {
     if (!user || !room) return;
-    const finalContent = ensureProfileAttachment(
-      renderedTemplate,
-      user.id,
-      user.name,
-    );
+    // 마커 자동 합성 — SCOUT_FROM_TEAM은 팀 기획서, 그 외는 sender 프로필.
+    // 사용자가 마커 없는 커스텀 양식을 저장했을 때의 안전망 (양식 default엔 이미 적절한 마커 포함).
+    const finalContent = ensureContextAttachment(renderedTemplate, {
+      context: room.context,
+      contextTargetId: room.contextTargetId,
+      senderId: user.id,
+      senderName: user.name,
+    });
     await sendMessage({ roomId: room.id, content: finalContent });
     setPanelOpen(false);
   }, [renderedTemplate, room, sendMessage, user]);

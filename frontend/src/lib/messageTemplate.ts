@@ -18,6 +18,8 @@ export interface TemplateVars {
   /** RECRUIT_TEAM의 직군 선택 결과 */
   role?: string;
   teamName?: string;
+  /** SCOUT_FROM_TEAM 등 팀 컨텍스트의 teamId — 기획서 marker `{teamId}` 치환에 사용. */
+  teamId?: string;
   /** 사용자 프로필 URL (자동 합성) */
   profileUrl: string;
 }
@@ -49,6 +51,11 @@ export function buildDefaultTemplate(
 
     case 'RECRUIT_TEAM':
       return `안녕하세요, {recipientName}님!\n${user.name}입니다.\n{teamName} 팀에 {role} 분야로 지원하고 싶어 연락드렸습니다.\n${careerLine}\n자세한 소개는 아래 프로필을 참고해주시면 감사하겠습니다.\n\n[[link:profile:{senderId}|${user.name}의 프로필 보기]]`;
+
+    case 'SCOUT_FROM_TEAM':
+      // 보내는 사람 = 팀 leader, 받는 사람 = 영입 후보. 핵심 정보는 sender 프로필이 아닌
+      // **팀 기획서** (사용자 의견). teamId는 vars로 채워짐.
+      return `안녕하세요, {recipientName}님!\n${user.name}입니다. 저희 팀에서 함께 할 분을 찾고 있어 연락드렸습니다.\n저희가 진행 중인 프로젝트는 아래 기획서를 참고해주세요.\n\n[[link:team:{teamId}|팀 기획서 보기]]`;
 
     default:
       return `안녕하세요, {recipientName}님!\n${user.name}입니다.\n\n[[link:profile:{senderId}|${user.name}의 프로필 보기]]`;
@@ -190,14 +197,23 @@ export function summarizePreview(raw: string | null | undefined): string {
 }
 
 /**
- * 사용자가 양식을 보낼 때 마지막에 붙일 attachment 마커 합성.
- * 양식 본문 자체에 이미 마커가 있으면 그것 사용, 없으면 자동 추가.
+ * 사용자가 양식을 보낼 때 마지막에 attachment 마커 보장.
+ * 양식 본문에 이미 마커가 있으면 그대로, 없으면 context에 맞는 marker 자동 추가:
+ *   - SCOUT_FROM_TEAM: 팀 기획서 marker (사용자가 마커 없는 양식으로 저장했어도 안전망)
+ *   - 그 외: sender 프로필 marker (기존 동작 유지)
  */
-export function ensureProfileAttachment(
+export function ensureContextAttachment(
   content: string,
-  senderId: string,
-  senderName: string,
+  ctx: {
+    context: MessageContext | null;
+    contextTargetId: string | null;
+    senderId: string;
+    senderName: string;
+  },
 ): string {
   if (content.includes('[[link:')) return content;
-  return `${content}\n\n[[link:profile:${senderId}|${senderName}의 프로필 보기]]`;
+  if (ctx.context === 'SCOUT_FROM_TEAM' && ctx.contextTargetId) {
+    return `${content}\n\n[[link:team:${ctx.contextTargetId}|팀 기획서 보기]]`;
+  }
+  return `${content}\n\n[[link:profile:${ctx.senderId}|${ctx.senderName}의 프로필 보기]]`;
 }
