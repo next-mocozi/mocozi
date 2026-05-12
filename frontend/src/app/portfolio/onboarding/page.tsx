@@ -1,8 +1,12 @@
 'use client';
 
+// useSearchParams 사용 — Next.js 16 정적 prerender 가 Suspense 없이는 거부하므로
+// 페이지 자체에 force-dynamic + Inner 컴포넌트를 Suspense 로 감싸는 패턴.
+export const dynamic = 'force-dynamic';
+
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import { updateMyMeta } from '@/lib/portfolio-api';
@@ -53,6 +57,21 @@ const SKILL_GROUPS: { label: string; skills: string[] }[] = [
  *  자기소개(1자 이상) + 기술 스택(1개 이상)을 충족해야 저장 후 본인 상세로 이동.
  *  이미 작성한 사용자는 /portfolio 로 리다이렉트(피드 노출). */
 export default function PortfolioOnboardingPage() {
+  // useSearchParams 가 Inner 안에 있으므로 Suspense 로 감싸 prerender 호환.
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <p className="text-sm text-gray-400">로딩 중…</p>
+        </div>
+      }
+    >
+      <PortfolioOnboardingPageInner />
+    </Suspense>
+  );
+}
+
+function PortfolioOnboardingPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading, refreshUser } = useAuth();
