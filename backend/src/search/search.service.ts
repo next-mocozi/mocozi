@@ -80,6 +80,8 @@ export class SearchService {
         roles: true,
         profileImage: true,
         bio: true,
+        // 구인 카드 헤더 그라데이션 색상 — frontend 가 사용자별로 적용
+        bannerColor: true,
       },
       orderBy: { createdAt: 'desc' },
     });

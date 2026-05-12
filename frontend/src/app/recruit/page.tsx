@@ -6,6 +6,7 @@ import { usePagination } from '@/hooks/usePagination';
 import { Pagination } from '@/components/ui/Pagination';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
+import { getBannerGradientClass } from '@/app/profile/_banner';
 
 const PAGE_SIZE = 12;
 
@@ -34,6 +35,8 @@ interface UserProfile {
   roles: string[];
   profileImage: string | null;
   bio: string | null;
+  /** 구인 카드 헤더 그라데이션. backend User.bannerColor — 사용자가 /profile 에서 선택. */
+  bannerColor?: string | null;
 }
 
 interface MyTeam {
@@ -442,9 +445,11 @@ export default function RecruitListPage() {
                     key={person.id}
                     className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_2px_12px_-2px_rgba(0,0,0,0.07)] transition-all hover:shadow-[0_8px_24px_-4px_rgba(99,102,241,0.12)] hover:-translate-y-0.5"
                   >
-                    {/* 그라데이션 헤더 (팀 카드와 통일) */}
+                    {/* 그라데이션 헤더 — 사용자가 /profile 에서 선택한 banner 색상.
+                        bannerColor 미설정이면 default 그라데이션. /profile 등 다른 페이지와
+                        동일한 색상이 보이도록 통일. */}
                     <div
-                      className="relative h-16 overflow-hidden bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-700 z-10"
+                      className={`relative h-16 overflow-hidden bg-gradient-to-br ${getBannerGradientClass(person.bannerColor)} z-10`}
                       aria-hidden="true"
                     >
                       <div className="pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/5" />
