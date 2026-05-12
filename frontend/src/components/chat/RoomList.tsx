@@ -871,11 +871,15 @@ function roomDisplayName(
  */
 function contextLabel(c: MessageContext): string {
   switch (c) {
+    // 구인 카테고리 — "사람이 다른 사람/팀이 사람을 영입하려는" 방향.
+    //   RECRUIT_INDIVIDUAL = 개인이 개인 프로필 보고 채팅 시작
+    //   SCOUT_FROM_TEAM    = 팀이 (구인 페이지에서) 개인을 영입 시도
     case 'RECRUIT_INDIVIDUAL':
-      return '구인';
-    case 'RECRUIT_TEAM':
     case 'SCOUT_FROM_TEAM':
-      return '팀';
+      return '구인';
+    // 팀 합류 카테고리 — "사람이 팀에 들어가려는" 방향.
+    case 'RECRUIT_TEAM':
+      return '팀 합류';
     case 'PORTFOLIO_COFFEE_CHAT':
     case 'PORTFOLIO_FRIENDSHIP':
     case 'PORTFOLIO_INQUIRY':
@@ -891,9 +895,9 @@ function contextLabel(c: MessageContext): string {
 function contextColor(c: MessageContext): string {
   switch (c) {
     case 'RECRUIT_INDIVIDUAL':
+    case 'SCOUT_FROM_TEAM':
       return 'bg-blue-500';
     case 'RECRUIT_TEAM':
-    case 'SCOUT_FROM_TEAM':
       return 'bg-amber-500';
     case 'PORTFOLIO_COFFEE_CHAT':
     case 'PORTFOLIO_FRIENDSHIP':

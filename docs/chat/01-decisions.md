@@ -455,16 +455,19 @@ ChatMessage 모델 변경 없음 — 마커가 본문 content TEXT에 inline. pa
 DIRECT find-or-create 시 **첫 컨텍스트 값 유지** — 같은 두 명이 다른 페이지에서 다시 채팅
 시작해도 원본 컨텍스트 보존 ("이 방이 어떻게 시작됐는가" 원점 의미).
 
-### 색 매핑 (Phase A — RECRUIT 2종)
+### 색 매핑 (Phase A + B-DM-1 통합)
 
 | 컨텍스트 | enum | 색 | 라벨 |
 |---|---|---|---|
-| 구인 (개인) | `RECRUIT_INDIVIDUAL` | `bg-blue-500` 🔵 | 구인 |
-| 팀 합류 | `RECRUIT_TEAM` | `bg-amber-500` 🟡 | 팀 |
+| 구인 (개인 → 개인) | `RECRUIT_INDIVIDUAL` | `bg-blue-500` 🔵 | 구인 |
+| 구인 (팀 → 개인 스카우트) | `SCOUT_FROM_TEAM` | `bg-blue-500` 🔵 | 구인 |
+| 팀 합류 (개인 → 팀) | `RECRUIT_TEAM` | `bg-amber-500` 🟡 | 팀 합류 |
 | 포트폴리오 (5종) | `PORTFOLIO_*` | `bg-emerald-500` 🟢 | 포트폴리오 |
 | 옛 방 (context=null) | — | (점 없음) | — |
 
-Phase A에선 RECRUIT 2종만 실제 진입점 코드 wired. Phase B 진입(포트폴리오 페이지) 도입 시
+**카테고리 결정 기준**: "방향성"이 핵심. *구인*은 누군가가 사람을 영입하려는 활동 (개인-개인 + 팀-개인 스카우트 모두 같은 결). *팀 합류*는 사람이 팀에 들어가려는 활동.
+
+Phase A에선 RECRUIT 2종 + SCOUT_FROM_TEAM(B-DM-1 통합) 진입점 코드 wired. Phase B 진입(포트폴리오 페이지) 도입 시
 schema/backend는 enum 그대로 동작, frontend도 색·라벨 매핑 이미 등록돼 있어 자동 작동.
 
 ### UI
@@ -499,6 +502,7 @@ schema/backend는 enum 그대로 동작, frontend도 색·라벨 매핑 이미 �
 | 2026-05-12 | 응답 만료 임계: 7일 → **3일** (§B-DM-8) | 활성 플랫폼 기준 3일이 합리적. 사용자 피드백 빠른 회수 |
 | 2026-05-12 | Scout 흐름 B-DM-1 → **C 안** (§19) | 메시지 작성을 채팅방 인사양식 패널로 통일 — UX 일관성. 팝업은 팀 선택만 |
 | 2026-05-12 | Scout 모델·API **즉시 폐기** (§20) | B-DM-1 통합 후 `/api/scout/*` 호출 0건. dead code 비용 > 통계 보존 가치 |
+| 2026-05-13 | SCOUT_FROM_TEAM 색·라벨: `bg-amber-500/팀` → **`bg-blue-500/구인`** | 스카우트는 팀이 사람을 *영입(구인)*하는 활동. RECRUIT_TEAM(개인이 팀에 *합류*)와 방향 반대 — 같은 색 묶임은 의미 혼선. SCOUT_FROM_TEAM은 RECRUIT_INDIVIDUAL과 같은 "구인" 그룹이 정합 |
 
 ---
 
