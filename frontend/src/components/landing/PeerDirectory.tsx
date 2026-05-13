@@ -21,7 +21,7 @@ type Peer = {
 const PEERS: Peer[] = [
   {
     initial: '김',
-    name: '김태윤',
+    name: '김OO',
     school: '고려대학교',
     department: '컴퓨터학과',
     roles: ['백엔드'],
@@ -30,7 +30,7 @@ const PEERS: Peer[] = [
   },
   {
     initial: '이',
-    name: '이지민',
+    name: '이OO',
     school: '서울대학교',
     department: '컴퓨터공학부',
     roles: ['풀스택'],
@@ -39,7 +39,7 @@ const PEERS: Peer[] = [
   },
   {
     initial: '박',
-    name: '박우진',
+    name: '박OO',
     school: '서강대학교',
     department: '컴퓨터공학과',
     roles: ['프론트엔드'],
@@ -48,7 +48,7 @@ const PEERS: Peer[] = [
   },
   {
     initial: '정',
-    name: '정수아',
+    name: '정OO',
     school: 'KAIST',
     department: '전산학부',
     roles: ['ML/AI', '데이터'],
@@ -57,7 +57,7 @@ const PEERS: Peer[] = [
   },
   {
     initial: '최',
-    name: '최민준',
+    name: '최OO',
     school: '연세대학교',
     department: '디자인예술학부',
     roles: ['디자인'],
@@ -66,7 +66,7 @@ const PEERS: Peer[] = [
   },
   {
     initial: '강',
-    name: '강서연',
+    name: '강OO',
     school: '한양대학교',
     department: '컴퓨터소프트웨어학부',
     roles: ['모바일', 'iOS'],
@@ -75,7 +75,7 @@ const PEERS: Peer[] = [
   },
   {
     initial: '윤',
-    name: '윤도현',
+    name: '윤OO',
     school: '성균관대학교',
     department: '소프트웨어학과',
     roles: ['백엔드', '임베디드'],
@@ -84,7 +84,7 @@ const PEERS: Peer[] = [
   },
   {
     initial: '한',
-    name: '한지우',
+    name: '한OO',
     school: '이화여자대학교',
     department: '컴퓨터공학과',
     roles: ['PM'],
@@ -93,7 +93,7 @@ const PEERS: Peer[] = [
   },
   {
     initial: '임',
-    name: '임채원',
+    name: '임OO',
     school: '서강대학교',
     department: '컴퓨터공학과',
     roles: ['안드로이드', 'iOS', '모바일'],
@@ -102,7 +102,7 @@ const PEERS: Peer[] = [
   },
   {
     initial: '송',
-    name: '송예진',
+    name: '송OO',
     school: '중앙대학교',
     department: '소프트웨어학부',
     roles: ['프론트엔드'],
@@ -111,7 +111,7 @@ const PEERS: Peer[] = [
   },
   {
     initial: '오',
-    name: '오시현',
+    name: '오OO',
     school: '경희대학교',
     department: '컴퓨터공학과',
     roles: ['ML/AI', '게임', 'QA'],
@@ -120,7 +120,7 @@ const PEERS: Peer[] = [
   },
   {
     initial: '신',
-    name: '신유나',
+    name: '신OO',
     school: '숙명여자대학교',
     department: '컴퓨터과학과',
     roles: ['풀스택'],
