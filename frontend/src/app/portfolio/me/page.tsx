@@ -142,14 +142,19 @@ export default function MyFeedPage() {
           )}
         </div>
 
-        {/* 데스크톱 — 우측 sticky 패널. translate-x 로 우측에서 슬라이드 인/아웃. */}
+        {/* 데스크톱 — 우측 fixed 패널. viewport 에 고정되어 페이지 스크롤과 독립.
+            페이지 sticky 헤더(h-16) 아래(top-20)에서 시작 → 스크롤해도 X 버튼이 헤더에 가리지 않음.
+            폭은 단일 rem 고정값(w-[28rem]) — zoom 시 breakpoint 흔들림 영향 없음.
+            정렬: fixed + max-w-7xl mx-auto px-4 + 내부 absolute right-4. */}
         <div
           aria-hidden={!detailOpen}
-          className={`pointer-events-none absolute inset-y-0 right-0 hidden w-[28rem] xl:w-[32rem] lg:block transition-transform duration-300 ease-out ${
-            detailOpen ? 'translate-x-0' : 'translate-x-full'
-          }`}
+          className="pointer-events-none fixed inset-x-0 top-20 z-30 mx-auto hidden h-[calc(100vh-6rem)] max-w-7xl px-4 lg:block"
         >
-          <div className="pointer-events-auto sticky top-4 h-[calc(100vh-6rem)]">
+          <div
+            className={`pointer-events-auto absolute right-4 top-0 h-full w-[28rem] transition-transform duration-300 ease-out ${
+              detailOpen ? 'translate-x-0' : 'translate-x-full'
+            }`}
+          >
             {renderedTarget && (
               <FeedDetailPanel
                 target={renderedTarget}
