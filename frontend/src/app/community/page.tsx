@@ -1,7 +1,7 @@
 export default function CommunityPage() {
 return (
   <div className="mx-auto flex min-h-[calc(100vh-10rem)] max-w-3xl items-center justify-center px-6 py-12">
-    <div className="w-full rounded-2xl border border-gray-200 bg-white px-8 py-16 text-center shadow-sm">
+    <div className="w-full border-gray-200 bg-white px-8 py-16 text-center shadow-sm">
       <span className="inline-block rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600">
         Coming Soon
       </span>
