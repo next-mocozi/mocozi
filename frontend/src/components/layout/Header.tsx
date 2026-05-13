@@ -58,7 +58,7 @@ export default function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isProfileMenuOpen]);
 
-  const initial = user?.name?.trim().charAt(0).toUpperCase() ?? '?';
+  const initial = user?.lastName?.trim().charAt(0).toUpperCase() ?? '?';
 
   return (
     <header className="sticky top-0 z-50 border-b border-gray-200 bg-white">
