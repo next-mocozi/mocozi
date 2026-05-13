@@ -131,6 +131,19 @@ const PEERS: Peer[] = [
 // 학교 필터는 더 이상 상위권 하드코딩 6개가 아닌, [전체] + [내 학교] + [대학교 검색] 3개 구조.
 // 회원가입의 UNIVERSITIES 검색 dropdown을 복제해 비로그인 방문자도 self-contained 이용.
 
+/** accent의 bg-*-100을 strip용 vivid bg-*-500으로 매핑.
+ *  Tailwind v4 JIT이 정적 string만 인식하므로 동적 .replace() 대신 lookup. */
+const STRIP_BY_ACCENT_BG: Record<string, string> = {
+  'bg-primary-100': 'bg-primary-500',
+  'bg-emerald-100': 'bg-emerald-500',
+  'bg-amber-100': 'bg-amber-500',
+  'bg-purple-100': 'bg-purple-500',
+  'bg-pink-100': 'bg-pink-500',
+  'bg-sky-100': 'bg-sky-500',
+  'bg-rose-100': 'bg-rose-500',
+  'bg-teal-100': 'bg-teal-500',
+};
+
 const ROLE_FILTERS = [
   '전체',
   '백엔드',
@@ -309,56 +322,87 @@ export default function PeerDirectory() {
             조건에 맞는 동료가 없어요. 필터를 바꿔보세요.
           </p>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4">
             {filtered.map((p, idx) => {
-              // 모바일: 4개 / sm-md: 8개 / lg+: 전체. expanded면 모두 노출.
+              // 모바일(2-col): 4개 / sm-md: 8개 / lg+: 전체. expanded면 모두 노출.
               let visibility = '';
               if (!expanded) {
                 if (idx >= 8) visibility = 'hidden lg:flex';
                 else if (idx >= 4) visibility = 'hidden sm:flex';
               }
+              const accentBg = p.accent.split(' ')[0];
+              const stripBg = STRIP_BY_ACCENT_BG[accentBg] ?? 'bg-primary-500';
+              const subRoles = p.roles.slice(1);
               return (
-              <article key={p.name} className={`card flex flex-col gap-3 ${visibility}`}>
-                <div className="flex items-start gap-3">
-                  <div
-                    className={`flex h-11 w-11 shrink-0 items-center justify-center text-base font-semibold ${p.accent}`}
-                  >
-                    {p.initial}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-gray-900">{p.name}</p>
-                    <p className="truncate text-sm text-gray-500">
-                      {p.school} · {p.department}
+                <article
+                  key={p.name}
+                  className={`relative flex aspect-[3/5] flex-col overflow-hidden border border-stone-100 bg-white shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] lg:aspect-[17/20] ${visibility}`}
+                >
+                  {/* 상단 = 정체성 */}
+                  <div className="relative flex flex-col border-b border-stone-200 px-3 pb-2.5 pt-3.5 sm:px-4 sm:pt-4 lg:px-5 lg:pt-5">
+                    <div
+                      className={`absolute inset-x-3 top-0 h-[3px] sm:inset-x-4 lg:inset-x-5 ${stripBg}`}
+                      aria-hidden="true"
+                    />
+                    <div className="mt-1 flex items-center gap-2 sm:gap-2.5">
+                      <div
+                        className={`flex h-8 w-8 items-center justify-center text-xs font-bold sm:h-9 sm:w-9 sm:text-sm ${p.accent}`}
+                      >
+                        {p.initial}
+                      </div>
+                      <p className="text-base font-bold tracking-tight text-stone-900 sm:text-lg lg:text-xl">
+                        {p.name}
+                      </p>
+                    </div>
+                    <p className="mt-2 text-2xs leading-relaxed text-stone-600 sm:mt-3 sm:text-xs lg:text-sm">
+                      <span className="font-semibold text-stone-900">{p.school}</span>
+                      <span className="text-stone-400"> · </span>
+                      <span>{p.department}</span>
                     </p>
                   </div>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {p.roles[0] && (
-                    <span className="inline-flex items-center gap-1.5 border border-stone-200 bg-white px-3 py-1 text-xs font-medium text-stone-700">
-                      <span className="h-1.5 w-1.5 bg-indigo-500" aria-hidden="true" />
+
+                  {/* 하단 = 직능 */}
+                  <div className="flex flex-1 flex-col bg-gradient-to-b from-stone-50/20 to-stone-50/50 px-3 pb-3 pt-2.5 sm:px-4 sm:pt-3 lg:px-5 lg:pb-4 lg:pt-4">
+                    <p className="text-3xs font-semibold uppercase tracking-[0.16em] text-stone-400">
+                      Main Role
+                    </p>
+                    <p className="mt-0.5 text-sm font-extrabold tracking-tight text-stone-900 sm:text-base lg:text-lg">
                       {p.roles[0]}
-                    </span>
-                  )}
-                  {p.roles.slice(1).map((r) => (
-                    <span
-                      key={r}
-                      className="border border-stone-200 bg-stone-50 px-3 py-1 text-xs text-stone-500"
-                    >
-                      {r}
-                    </span>
-                  ))}
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {p.skills.map((s) => (
-                    <span
-                      key={s}
-                      className="bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
-                    >
-                      {s}
-                    </span>
-                  ))}
-                </div>
-              </article>
+                    </p>
+                    {subRoles.length > 0 && (
+                      <p className="mt-0.5 text-2xs text-stone-500">
+                        + {subRoles.slice(0, 2).join(' · ')}
+                        {subRoles.length > 2 ? ` · +${subRoles.length - 2}` : ''}
+                      </p>
+                    )}
+
+                    <div className="mt-2 flex flex-1 flex-wrap content-start gap-x-2.5 gap-y-0.5 font-mono text-2xs text-stone-700 sm:mt-2.5 sm:gap-x-3">
+                      {p.skills.slice(0, 4).map((skill) => (
+                        <span
+                          key={skill}
+                          className="before:mr-0.5 before:text-stone-400 before:content-['—']"
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                      {p.skills.length > 4 && (
+                        <span className="text-stone-400">+{p.skills.length - 4}</span>
+                      )}
+                    </div>
+
+                    <div className="mt-2.5 flex gap-1.5 sm:mt-3">
+                      <div
+                        className="flex-1 border border-stone-300 bg-white px-2 py-1.5 text-2xs text-center font-medium tracking-[0.05em] text-stone-700 transition-all hover:border-stone-700 hover:bg-stone-700 hover:text-white"
+                      >
+                        스카우트
+                      </div>
+                                            
+                      <div  className="flex-1 border border-stone-900 bg-stone-900 px-2 py-1.5 text-center text-2xs font-medium tracking-[0.05em] text-white transition-all hover:bg-stone-800">
+                        프로필
+                      </div>
+                    </div>
+                  </div>
+                </article>
               );
             })}
           </div>

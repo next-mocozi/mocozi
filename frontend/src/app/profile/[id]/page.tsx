@@ -4,6 +4,7 @@ import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ScoutModal } from '@/components/chat/ScoutModal';
+import { UserIcon } from '@/components/icons/ChatIcons';
 import api from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -160,8 +161,8 @@ export default function UserProfilePage({
 
       {/* 프로필 요약 */}
       <div className="mb-6 flex items-start gap-6">
-        <div className="flex h-31 w-31 items-center justify-center bg-primary-100 text-4xl font-bold text-primary-600">
-          {profile.name[0]}
+        <div className="flex h-31 w-31 items-center justify-center bg-primary-100 text-primary-600">
+          <UserIcon className="h-14 w-14" />
         </div>
         <div className="flex-1">
           <div className="flex flex-wrap items-center gap-2">

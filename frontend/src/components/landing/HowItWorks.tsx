@@ -80,13 +80,12 @@ function Step1Preview() {
         <span className="text-sm text-stone-400">student@</span>
         <span className="text-sm font-medium text-stone-700">yourschool.ac.kr</span>
       </div>
-      <button
-        type="button"
+      <div
         aria-hidden="true"
-        className="mt-2 w-full bg-primary-600 px-3 py-2 text-sm font-medium text-white"
+        className="mt-3 w-full bg-primary-600 py-1.5 text-center text-xs font-medium text-white"
       >
         인증 메일 보내기
-      </button>
+      </div>
       <p className="mt-3 flex items-center gap-1.5 text-2xs text-stone-500">
         <span className="text-emerald-600">✓</span>
         학교 메일로 본인 인증

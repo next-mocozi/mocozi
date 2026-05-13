@@ -4,8 +4,8 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useMyPortfolio } from '@/hooks/useMyPortfolio';
-import api from '@/lib/api';
 import { UserIcon } from '@/components/icons/ChatIcons';
+import api from '@/lib/api';
 import {
   PlatformIcon,
   PLATFORM_META,
