@@ -4,6 +4,7 @@ import { TYPE_META } from '@/app/portfolio/_lib';
 import { UserIcon } from '@/components/icons/ChatIcons';
 import type { FeedPost } from '@/lib/feed/types';
 import { timeAgo } from '@/lib/timeAgo';
+import { getMaskedName } from '@/lib/utils';
 
 const KIND_LABEL: Record<FeedPost['kind'], { label: string; bg: string; text: string }> = {
   item: { label: '항목', bg: 'bg-purple-100', text: 'text-purple-700' },
@@ -82,7 +83,7 @@ export default function FeedPostCard({
             </span>
             <span className="min-w-0">
               <span className="block text-sm font-semibold text-gray-800 group-hover:text-blue-600">
-                {post.author.name}
+                {getMaskedName(post.author)}
               </span>
               <span className="block truncate text-xs text-gray-500">
                 {post.author.university} · {post.author.department}
@@ -214,7 +215,7 @@ function PostTitleAndBody({ post }: { post: FeedPost }) {
       return (
         <>
           <h3 className="text-lg font-bold leading-snug text-gray-900">
-            {post.author.name} 님이 포트폴리오를 시작했습니다
+            {getMaskedName(post.author)} 님이 포트폴리오를 시작했습니다
           </h3>
           {post.intro && (
             <p className="mt-2 text-sm leading-relaxed text-gray-600 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:4] overflow-hidden">

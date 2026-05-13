@@ -13,6 +13,7 @@ import api from '@/lib/api';
 import { getPortfolioByUserId, type BackendPortfolio } from '@/lib/portfolio-api';
 import type { FeedPost } from '@/lib/feed/types';
 import { timeAgo } from '@/lib/timeAgo';
+import { getMaskedName } from '@/lib/utils';
 
 /** 작성자 종합 미리보기 패널에서 사용. backend GET /api/users/:id + /portfolios/users/:id 로
  *  필요한 필드만 채운 가벼운 형태. */
@@ -262,7 +263,7 @@ function PostDetail({ post }: { post: FeedPost }) {
           </span>
           <span>
             <span className="block text-sm font-semibold text-gray-800 group-hover:text-blue-600">
-              {post.author.name}
+              {getMaskedName(post.author)}
             </span>
             <span className="block text-xs text-gray-500">
               {post.author.university} · {post.author.department}
@@ -323,7 +324,7 @@ function PostBody({ post }: { post: Exclude<FeedPost, { kind: 'item' }> }) {
       return (
         <div>
           <h2 className="text-lg font-bold leading-snug text-gray-900">
-            {post.author.name} 님이 포트폴리오를 시작했습니다
+            {getMaskedName(post.author)} 님이 포트폴리오를 시작했습니다
           </h2>
           <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-gray-700">
             {post.intro}
@@ -441,7 +442,7 @@ function AuthorDetail({ userId }: { userId: string }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <h2 className="min-w-0 truncate text-lg font-bold text-gray-900">
-              {data.lastName + data.firstName}
+              {getMaskedName(data)}
             </h2>
             <Link
               href={`/portfolio/${userId}`}

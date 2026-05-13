@@ -423,7 +423,8 @@ const DAY = 86_400_000;
 function makeAuthor(user: FeedUser): FeedAuthor {
   return {
     userId: user.userId,
-    name: user.name,
+    lastName: user.name[0] ?? '',
+    firstName: user.name.slice(1),
     university: user.university,
     department: user.department,
     grade: user.grade,

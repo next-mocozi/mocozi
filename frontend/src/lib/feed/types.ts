@@ -10,7 +10,8 @@ import type {
 
 export type FeedAuthor = {
   userId: string;
-  name: string;
+  lastName: string;
+  firstName: string;
   university: string;
   department: string;
   grade: string;
