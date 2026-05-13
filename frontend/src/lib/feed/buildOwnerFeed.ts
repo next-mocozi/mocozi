@@ -57,7 +57,7 @@ function loadNumber(key: string): number | null {
 function makeAuthor(user: AuthUser, mainRole?: string): FeedAuthor {
   return {
     userId: user.id,
-    name: user.name,
+    name: user.lastName + user.firstName,
     university: user.university,
     department: user.department,
     grade: user.grade ?? '',

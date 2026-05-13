@@ -407,10 +407,10 @@ export default function TeamDetailPage({
                         : 'bg-stone-100 text-stone-600'
                     }`}
                   >
-                    {m.user.name[0]}
+                    {m.user.lastName[0]}
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-stone-800">{m.user.name}</p>
+                    <p className="text-sm font-medium text-stone-800">{m.user.lastName + m.user.firstName}</p>
                     <p className={`text-xs ${m.role === 'LEADER' ? 'text-indigo-500' : 'text-stone-400'}`}>
                       {m.role === 'LEADER' ? '팀장' : '팀원'}
                     </p>

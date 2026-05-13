@@ -735,7 +735,8 @@ export default function PortfolioDetailPage({
   // 페이지든 본인 정보가 표시되는 버그였음. viewer 일 때는 viewer 정보만.)
   const displayUser = isOwner
     ? {
-        name: user.name,
+        lastName: user.lastName,
+        firstName: user.firstName,
         university: user.university,
         department: user.department,
         grade: user.grade ?? '',
@@ -745,7 +746,8 @@ export default function PortfolioDetailPage({
       }
     : viewerUser
       ? {
-          name: viewerUser.name,
+          lastName: viewerUser.lastName,
+          firstName: viewerUser.firstName,
           university: viewerUser.university,
           department: viewerUser.department,
           grade: viewerUser.grade ?? '',
@@ -754,7 +756,8 @@ export default function PortfolioDetailPage({
           bannerColor: viewerUser.bannerColor,
         }
       : {
-          name: '',
+          lastName: '',
+          firstName: '',
           university: '',
           department: '',
           grade: '',
@@ -816,7 +819,7 @@ export default function PortfolioDetailPage({
           </div>
           <div className="flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold">{displayUser.name}</h1>
+              <h1 className="text-2xl font-bold">{displayUser.lastName + displayUser.firstName}</h1>
             </div>
             <p className="text-gray-600">
               {displayUser.university} {displayUser.department}

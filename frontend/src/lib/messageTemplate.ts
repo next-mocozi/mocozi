@@ -41,24 +41,25 @@ export function renderTemplate(content: string, vars: TemplateVars): string {
  */
 export function buildDefaultTemplate(
   context: MessageContext,
-  user: { name: string; roles: string[]; careerSummary: string | null },
+  user: { lastName: string; firstName: string; roles: string[]; careerSummary: string | null },
 ): string {
+  const fullName = user.lastName + user.firstName;
   const careerLine = user.careerSummary ? `\n${user.careerSummary}\n` : '';
 
   switch (context) {
     case 'RECRUIT_INDIVIDUAL':
-      return `안녕하세요, {recipientName}님!\n${user.name}입니다.\n${careerLine}\n프로필 보고 관심이 생겨 연락드렸습니다.\n자세한 소개는 아래 프로필을 참고해주시면 감사하겠습니다.\n\n[[link:profile:{senderId}|${user.name}의 프로필 보기]]`;
+      return `안녕하세요, {recipientName}님!\n${fullName}입니다.\n${careerLine}\n프로필 보고 관심이 생겨 연락드렸습니다.\n자세한 소개는 아래 프로필을 참고해주시면 감사하겠습니다.\n\n[[link:profile:{senderId}|${fullName}의 프로필 보기]]`;
 
     case 'RECRUIT_TEAM':
-      return `안녕하세요, {recipientName}님!\n${user.name}입니다.\n{teamName} 팀에 {role} 분야로 지원하고 싶어 연락드렸습니다.\n${careerLine}\n자세한 소개는 아래 프로필을 참고해주시면 감사하겠습니다.\n\n[[link:profile:{senderId}|${user.name}의 프로필 보기]]`;
+      return `안녕하세요, {recipientName}님!\n${fullName}입니다.\n{teamName} 팀에 {role} 분야로 지원하고 싶어 연락드렸습니다.\n${careerLine}\n자세한 소개는 아래 프로필을 참고해주시면 감사하겠습니다.\n\n[[link:profile:{senderId}|${fullName}의 프로필 보기]]`;
 
     case 'SCOUT_FROM_TEAM':
       // 보내는 사람 = 팀 leader, 받는 사람 = 영입 후보. 핵심 정보는 sender 프로필이 아닌
       // **팀 기획서** (사용자 의견). teamId는 vars로 채워짐.
-      return `안녕하세요, {recipientName}님!\n${user.name}입니다. 저희 팀에서 함께 할 분을 찾고 있어 연락드렸습니다.\n저희가 진행 중인 프로젝트는 아래 기획서를 참고해주세요.\n\n[[link:team:{teamId}|팀 기획서 보기]]`;
+      return `안녕하세요, {recipientName}님!\n${fullName}입니다. 저희 팀에서 함께 할 분을 찾고 있어 연락드렸습니다.\n저희가 진행 중인 프로젝트는 아래 기획서를 참고해주세요.\n\n[[link:team:{teamId}|팀 기획서 보기]]`;
 
     default:
-      return `안녕하세요, {recipientName}님!\n${user.name}입니다.\n\n[[link:profile:{senderId}|${user.name}의 프로필 보기]]`;
+      return `안녕하세요, {recipientName}님!\n${fullName}입니다.\n\n[[link:profile:{senderId}|${fullName}의 프로필 보기]]`;
   }
 }
 

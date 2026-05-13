@@ -613,9 +613,9 @@ export class ChatService {
 
     const sender = await this.prisma.user.findUnique({
       where: { id: senderId },
-      select: { name: true },
+      select: { lastName: true, firstName: true },
     });
-    const senderName = sender?.name ?? '누군가';
+    const senderName = sender ? sender.lastName + sender.firstName : '누군가';
     const labelByContext: Partial<Record<MessageContext, string>> = {
       SCOUT_FROM_TEAM: '스카우트 메시지',
       RECRUIT_INDIVIDUAL: '구인 메시지',

@@ -11,7 +11,8 @@ export default function RegisterPage() {
     email: '',
     password: '',
     passwordConfirm: '',
-    name: '',
+    lastName: '',
+    firstName: '',
     university: '',
     department: '',
     grade: '',
@@ -52,7 +53,8 @@ export default function RegisterPage() {
       await api.post('/api/auth/register', {
         email: form.email,
         password: form.password,
-        name: form.name,
+        lastName: form.lastName,
+        firstName: form.firstName,
         university: form.university,
         department: form.department,
         grade: form.grade,
@@ -167,19 +169,31 @@ export default function RegisterPage() {
             />
           </div>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              이름
-            </label>
-            <input
-              type="text"
-              name="name"
-              value={form.name}
-              onChange={handleChange}
-              placeholder="이름을 입력하세요"
-              className="input-field"
-              required
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">성</label>
+              <input
+                type="text"
+                name="lastName"
+                value={form.lastName}
+                onChange={handleChange}
+                placeholder="홍"
+                className="input-field"
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">이름</label>
+              <input
+                type="text"
+                name="firstName"
+                value={form.firstName}
+                onChange={handleChange}
+                placeholder="길동"
+                className="input-field"
+                required
+              />
+            </div>
           </div>
 
           <div ref={uniRef} className="relative">

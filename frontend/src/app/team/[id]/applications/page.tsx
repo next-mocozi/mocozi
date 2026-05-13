@@ -170,10 +170,10 @@ function ApplicationCard({
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center bg-indigo-50 text-sm font-semibold text-indigo-600">
-            {app.user.name[0]}
+            {app.user.lastName[0]}
           </div>
           <div>
-            <p className="font-semibold text-stone-800">{app.user.name}</p>
+            <p className="font-semibold text-stone-800">{app.user.lastName + app.user.firstName}</p>
             <p className="text-xs text-stone-400">{app.user.university} · {app.user.department}</p>
           </div>
         </div>

@@ -216,7 +216,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // 2) 멤버별 글로벌 broadcast (인앱 알림)
     const notifications = await this.chatService.buildNewMessageNotifications(
       dto.roomId,
-      message.sender.name,
+      message.sender.lastName + message.sender.firstName,
       message.content,
       message.createdAt,
     );

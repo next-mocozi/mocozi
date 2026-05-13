@@ -418,7 +418,7 @@ function ChatRoomPageContent({ params }: PageProps) {
     if (!room || !user) return '';
     const others = room.members
       .filter((m) => m.userId !== user.id)
-      .map((m) => m.user?.name)
+      .map((m) => m.user ? m.user.lastName + m.user.firstName : null)
       .filter((n): n is string => !!n);
     if (others.length === 0) return room.name ?? '';
     if (room.type === 'GROUP') return room.name ?? others.join(', ');
@@ -436,7 +436,7 @@ function ChatRoomPageContent({ params }: PageProps) {
     const teamIdForVars =
       room?.contextTargetId ?? teamIdParam ?? undefined;
     const vars: TemplateVars = {
-      senderName: user.name,
+      senderName: user.lastName + user.firstName,
       senderId: user.id,
       recipientName,
       role: selectedRole ?? undefined,
@@ -471,7 +471,7 @@ function ChatRoomPageContent({ params }: PageProps) {
       context: room.context,
       contextTargetId: room.contextTargetId,
       senderId: user.id,
-      senderName: user.name,
+      senderName: user.lastName + user.firstName,
     });
     await sendMessage({ roomId: room.id, content: finalContent });
     setPanelOpen(false);
@@ -939,7 +939,7 @@ function ChatRoomPageContent({ params }: PageProps) {
       editedAt: null,
       deletedAt: null,
       createdAt: new Date().toISOString(),
-      sender: { id: user.id, name: user.name, profileImage: null },
+      sender: { id: user.id, lastName: user.lastName, firstName: user.firstName, profileImage: null },
       reactions: [],
       parent: replyTo
         ? {
@@ -1269,7 +1269,7 @@ function ChatRoomPageContent({ params }: PageProps) {
               const names = Array.from(typingUserIds)
                 .map(
                   (uid) =>
-                    room.members.find((m) => m.userId === uid)?.user?.name ?? '상대방',
+                    (() => { const u = room.members.find((m) => m.userId === uid)?.user; return u ? u.lastName + u.firstName : '상대방'; })(),
                 )
                 .filter(Boolean);
               if (names.length === 1) return `${names[0]}님이 입력 중...`;
@@ -1285,7 +1285,7 @@ function ChatRoomPageContent({ params }: PageProps) {
         <div className="flex items-start gap-2 border-t border-gray-200 bg-gray-50 px-4 py-2 text-sm">
           <div className="min-w-0 flex-1 border-l-2 border-primary-400 pl-2">
             <p className="text-xs text-gray-500">
-              {replyTo.sender.name}님에게 답글
+              {replyTo.sender.lastName + replyTo.sender.firstName}님에게 답글
             </p>
             <p className="truncate text-gray-700">
               {replyTo.deletedAt ? '(삭제된 메시지)' : replyTo.content}
@@ -1395,7 +1395,7 @@ function ChatRoomPageContent({ params }: PageProps) {
           }}
           placeholder={
             replyTo
-              ? `${replyTo.sender.name}님에게 답글 작성…`
+              ? `${replyTo.sender.lastName + replyTo.sender.firstName}님에게 답글 작성…`
               : isConnected
                 ? '메시지를 입력하세요... (Shift+Enter로 줄바꿈)'
                 : '연결 대기 중…'
@@ -1766,7 +1766,7 @@ function MessageItem({
         {/* 타인일 때 발신자 이름 — 그룹 첫 메시지에만 (말풍선 위 왼쪽) */}
         {!isMine && showName && (
           <p className="ml-1 text-xs font-medium text-gray-500">
-            {message.sender.name}
+            {message.sender.lastName + message.sender.firstName}
           </p>
         )}
 
@@ -1947,8 +1947,8 @@ function roomTitle(
   if (room.name) return room.name;
   if (room.type === 'DIRECT') {
     const others = room.members.filter((m) => m.userId !== myId);
-    const name = others[0]?.user?.name ?? room.members[0]?.user?.name;
-    if (name) return name;
+    const u = others[0]?.user ?? room.members[0]?.user;
+    if (u) return u.lastName + u.firstName;
   }
   return '대화방';
 }

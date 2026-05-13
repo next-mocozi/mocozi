@@ -120,7 +120,7 @@ export class AuthService {
   }
 
   async register(registerDto: RegisterDto) {
-    const { email, password, name, university, department, grade } = registerDto;
+    const { email, password, lastName, firstName, university, department, grade } = registerDto;
 
     if (!email.endsWith('.ac.kr')) {
       throw new BadRequestException('학교 이메일을 사용해주세요.');
@@ -139,7 +139,8 @@ export class AuthService {
       data: {
         email,
         password: hashedPassword,
-        name,
+        lastName,
+        firstName,
         university,
         department,
         grade,
@@ -148,7 +149,7 @@ export class AuthService {
       },
     });
 
-    await this.sendVerificationEmail(email, name, verificationToken);
+    await this.sendVerificationEmail(email, lastName + firstName, verificationToken);
 
     return {
       message: '회원가입이 완료되었습니다. 이메일을 확인해주세요.',
@@ -186,7 +187,8 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
-        name: user.name,
+        lastName: user.lastName,
+        firstName: user.firstName,
         university: user.university,
         department: user.department,
         grade: user.grade,
@@ -256,7 +258,7 @@ export class AuthService {
       data: { verificationToken, verificationTokenExpiry },
     });
 
-    await this.sendVerificationEmail(email, user.name, verificationToken);
+    await this.sendVerificationEmail(email, user.lastName + user.firstName, verificationToken);
 
     return { message: '인증 메일을 발송했습니다. 메일함을 확인해주세요.' };
   }

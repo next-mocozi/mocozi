@@ -38,13 +38,13 @@ export class TemplateService {
     // default 합성 — 사용자 정보로 자연스러운 인사 양식
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { name: true, roles: true, careerSummary: true },
+      select: { lastName: true, firstName: true, roles: true, careerSummary: true },
     });
     if (!user) throw new NotFoundException('사용자를 찾을 수 없습니다.');
 
     return {
       context,
-      content: this.buildDefault(context, user.name, user.roles, user.careerSummary),
+      content: this.buildDefault(context, user.lastName + user.firstName, user.roles, user.careerSummary),
       isPersisted: false,
     };
   }

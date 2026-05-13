@@ -156,7 +156,7 @@ export default function Header() {
                   {user && (
                     <div className="border-b border-gray-100 px-4 py-3">
                       <p className="truncate text-sm font-medium text-gray-900">
-                        {user.name}
+                        {user.lastName + user.firstName}
                       </p>
                       <p className="truncate text-xs text-gray-500">
                         {user.email}

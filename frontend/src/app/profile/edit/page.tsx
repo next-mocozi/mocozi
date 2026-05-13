@@ -73,7 +73,8 @@ export default function ProfileEditPage() {
   const router = useRouter();
   const { user, loading, refreshUser } = useAuth();
 
-  const [name, setName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [firstName, setFirstName] = useState('');
   const [university, setUniversity] = useState('');
   const [department, setDepartment] = useState('');
   const [grade, setGrade] = useState('');
@@ -97,7 +98,8 @@ export default function ProfileEditPage() {
   // API에서 초기값 로드
   useEffect(() => {
     if (!user) return;
-    setName(user.name ?? '');
+    setLastName(user.lastName ?? '');
+    setFirstName(user.firstName ?? '');
     setUniversity(user.university ?? '');
     setDepartment(user.department ?? '');
     setGrade(user.grade ?? '');
@@ -210,7 +212,8 @@ export default function ProfileEditPage() {
       // mainRole 미설정이면 빈 배열로 보내 backend도 초기화.
       const roles = mainRole ? [mainRole, ...subRoles] : [];
       await api.put('/api/users/me', {
-        name,
+        lastName,
+        firstName,
         university,
         department,
         grade,
@@ -250,15 +253,28 @@ export default function ProfileEditPage() {
       </div>
 
       <div className="card space-y-6">
-        {/* 이름 */}
-        <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">이름</label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-          />
+        {/* 성 / 이름 */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">성</label>
+            <input
+              type="text"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              placeholder="홍"
+              className="w-full border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">이름</label>
+            <input
+              type="text"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              placeholder="길동"
+              className="w-full border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+            />
+          </div>
         </div>
 
         {/* 학교 / 학과 / 학년 */}

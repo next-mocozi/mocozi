@@ -876,7 +876,7 @@ function roomDisplayName(
   if (room.type === 'DIRECT' && room.members.length > 0) {
     if (myId) {
       const other = room.members.find((m) => m.userId !== myId);
-      if (other?.user?.name) return other.user.name;
+      if (other?.user) return other.user.lastName + other.user.firstName;
       // myId 명시됐는데 상대방 없음 — backend `roomInclude()`가 `leftAt: null` 필터링하므로
       // 상대방이 leaveRoom한 DIRECT 방은 본인 멤버만 들어옴.
       // 본인 이름으로 fallback하면 "자기 자신과 대화"처럼 보여 혼란 → 명시 문구.

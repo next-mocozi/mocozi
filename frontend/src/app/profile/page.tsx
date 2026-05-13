@@ -381,7 +381,7 @@ export default function MyProfilePage() {
           </div>
           <div className="flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold">{user.name}</h1>
+              <h1 className="text-2xl font-bold">{user.lastName + user.firstName}</h1>
             </div>
             <p className="text-gray-600">
               {user.university} {user.department}

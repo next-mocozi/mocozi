@@ -2,10 +2,13 @@ import { IsOptional, IsString, IsArray } from 'class-validator';
 
 /** 프로필 수정 요청 DTO */
 export class UpdateProfileDto {
-  /** 이름 */
   @IsOptional()
   @IsString()
-  name?: string;
+  lastName?: string;
+
+  @IsOptional()
+  @IsString()
+  firstName?: string;
 
   /** 학교 */
   @IsOptional()

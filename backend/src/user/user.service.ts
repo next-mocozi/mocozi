@@ -19,7 +19,8 @@ export class UserService {
       select: {
         id: true,
         email: true,
-        name: true,
+        lastName: true,
+        firstName: true,
         university: true,
         department: true,
         grade: true,
@@ -50,7 +51,8 @@ export class UserService {
       select: {
         id: true,
         email: true,
-        name: true,
+        lastName: true,
+        firstName: true,
         university: true,
         department: true,
         profileImage: true,

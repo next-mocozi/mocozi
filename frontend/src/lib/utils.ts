@@ -1,3 +1,13 @@
+/** 성+이름 합치기 */
+export function getFullName(user: { lastName: string; firstName: string }): string {
+  return user.lastName + user.firstName;
+}
+
+/** 이름 마스킹 (예: 홍OO). firstName 글자 수만큼 O로 대체 */
+export function getMaskedName(user: { lastName: string; firstName: string }): string {
+  return user.lastName + 'O'.repeat(user.firstName.length || 1);
+}
+
 /** 날짜 포맷팅 (YYYY.MM.DD) */
 export function formatDate(date: Date | string): string {
   const d = new Date(date);

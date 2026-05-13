@@ -171,7 +171,8 @@ function PortfolioOnboardingPageInner() {
       // 1) 자기소개(bio) + skills 백엔드 저장. 기존엔 user.bio(옛 값)를 그대로 보내서
       //    새로 입력한 intro 가 백엔드에 반영되지 않는 버그가 있었음 → trimmed 로 변경.
       await api.put('/api/users/me', {
-        name: user.name,
+        lastName: user.lastName,
+        firstName: user.firstName,
         university: user.university,
         department: user.department,
         grade: user.grade,

@@ -184,7 +184,7 @@ function WelcomeDashboard({ user }: { user: AuthUser }) {
             다시 오신 것을 환영해요
           </span>
           <h1 className="mt-4 text-3xl font-bold leading-tight text-gray-900 sm:text-4xl">
-            <span className="text-primary-600">{user.name}</span>님, 오늘은 무엇부터 할까요?
+            <span className="text-primary-600">{user.lastName + user.firstName}</span>님, 오늘은 무엇부터 할까요?
           </h1>
           <p className="mt-3 text-base text-gray-600">
             지원, 팀 운영, 채팅 — 한 화면에서 바로 이어가세요.

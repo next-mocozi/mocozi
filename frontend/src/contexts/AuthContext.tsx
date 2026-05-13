@@ -8,7 +8,8 @@ import { notifyAuthChanged } from '@/providers/SocketProvider';
 export interface AuthUser {
   id: string;
   email: string;
-  name: string;
+  lastName: string;
+  firstName: string;
   university: string;
   department: string;
   grade: string | null;

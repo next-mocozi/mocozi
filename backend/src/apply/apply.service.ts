@@ -54,9 +54,9 @@ export class ApplyService {
   ): Promise<void> {
     const applicant = await this.prisma.user.findUnique({
       where: { id: applicantId },
-      select: { name: true },
+      select: { lastName: true, firstName: true },
     });
-    const applicantName = applicant?.name ?? '누군가';
+    const applicantName = applicant ? applicant.lastName + applicant.firstName : '누군가';
     await this.notifications.create({
       userId: leaderId,
       type: 'APPLICATION_RECEIVED',
