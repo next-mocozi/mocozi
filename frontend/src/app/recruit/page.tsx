@@ -536,7 +536,7 @@ export default function RecruitListPage() {
                         )}
                         <Link
                           href={`/profile/${person.id}`}
-                          className="flex-1 border border-stone-900 bg-stone-900 px-2 py-1.5 text-center text-2xs font-medium tracking-[0.05em] text-white transition-all hover:bg-stone-800"
+                          className="flex-1 border border-stone-600 bg-stone-600 px-2 py-1.5 text-center text-2xs font-medium tracking-[0.05em] text-white transition-all hover:bg-stone-800"
                         >
                           프로필
                         </Link>

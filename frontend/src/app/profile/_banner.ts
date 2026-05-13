@@ -22,7 +22,7 @@ export const BANNER_GRADIENTS: {
   { key: 'amber',   label: '앰버',     class: 'from-amber-400 via-orange-500 to-rose-600' },
   { key: 'sky',     label: '스카이',   class: 'from-sky-400 via-sky-600 to-blue-700' },
   { key: 'fuchsia', label: '푸시아',   class: 'from-fuchsia-500 via-purple-600 to-violet-700' },
-  { key: 'stone',   label: '스톤',     class: 'from-stone-500 via-stone-600 to-stone-700' },
+  { key: 'stone',   label: '스톤',     class: 'from-stone-400 via-stone-500 to-stone-600' },
   { key: 'slate',   label: '슬레이트', class: 'from-slate-700 via-slate-800 to-slate-900' },
 ];
 
