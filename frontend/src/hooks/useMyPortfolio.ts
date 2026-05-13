@@ -11,8 +11,14 @@ export function useMyPortfolio(): {
   isLoading: boolean;
 } {
   const { user, loading } = useAuth();
+  const shouldFetch =
+    (typeof window !== 'undefined' &&
+      !!(
+        localStorage.getItem('accessToken') || localStorage.getItem('refreshToken')
+      )) ||
+    !!user;
   const { data, isLoading } = useSWR<BackendPortfolio>(
-    user && !loading ? KEY : null,
+    shouldFetch ? KEY : null,
     getMyPortfolio,
     {
       revalidateOnFocus: false,
@@ -22,7 +28,7 @@ export function useMyPortfolio(): {
   return {
     portfolio: data ?? null,
     // 데이터가 한 번도 안 온 첫 로딩만 true — 이후 방문은 캐시를 즉시 반환
-    isLoading: loading || (!!user && isLoading && !data),
+    isLoading: loading || (shouldFetch && isLoading && !data),
   };
 }
 
