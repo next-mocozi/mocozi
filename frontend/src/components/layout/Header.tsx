@@ -88,12 +88,7 @@ export default function Header() {
           >
             포트폴리오
           </Link>
-          <Link
-            href="/community"
-            className="text-gray-600 transition-colors hover:text-primary-600"
-          >
-            커뮤니티
-          </Link>
+
           <Link
             href="/chat"
             className="relative text-gray-600 transition-colors hover:text-primary-600"
@@ -110,6 +105,12 @@ export default function Header() {
                 aria-hidden
               />
             )}
+          </Link>
+                    <Link
+            href="/community"
+            className="text-gray-600 transition-colors hover:text-primary-600"
+          >
+            커뮤니티
           </Link>
         </nav>
 
@@ -288,19 +289,20 @@ export default function Header() {
           >
             포트폴리오
           </Link>
-          <Link
-            href="/community"
-            onClick={() => setIsSidebarOpen(false)}
-            className="rounded-md px-3 py-3 text-gray-700 transition-colors hover:bg-gray-100 hover:text-primary-600"
-          >
-            커뮤니티
-          </Link>
+
           <Link
             href="/chat"
             onClick={() => setIsSidebarOpen(false)}
             className="px-3 py-3 text-gray-700 transition-colors hover:bg-gray-100 hover:text-primary-600"
           >
             채팅
+          </Link>
+                    <Link
+            href="/community"
+            onClick={() => setIsSidebarOpen(false)}
+            className="rounded-md px-3 py-3 text-gray-700 transition-colors hover:bg-gray-100 hover:text-primary-600"
+          >
+            커뮤니티
           </Link>
           {/* §B-DM-8 알림센터 자리 — 모바일 사이드바 (현 phase는 /chat link로 placeholder). */}
           {!loading && isAuthenticated && (
