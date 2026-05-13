@@ -20,7 +20,8 @@ import type { ChatRoomWithMembers } from '@/types/chat';
 
 interface UserCard {
   id: string;
-  name: string;
+  lastName: string;
+  firstName: string;
   university: string;
   department: string;
   profileImage: string | null;
@@ -176,7 +177,7 @@ export function NewChatModal({ open, onClose, onCreated, myId }: Props) {
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium">{u.name}</div>
+                    <div className="truncate text-sm font-medium">{u.lastName + u.firstName}</div>
                     <div className="truncate text-xs text-gray-500">
                       {u.university} · {u.department}
                     </div>

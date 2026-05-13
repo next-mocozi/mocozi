@@ -122,7 +122,8 @@ export async function getPortfolioByUserId(
 /** 메인 피드용 사용자 메타 (백엔드에서 select 한 필드와 동일) */
 export type FeedUserMeta = {
   id: string;
-  name: string;
+  lastName: string;
+  firstName: string;
   university: string;
   department: string;
   grade: string | null;

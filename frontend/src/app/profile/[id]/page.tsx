@@ -66,7 +66,8 @@ interface PortfolioItem {
 
 interface UserProfile {
   id: string;
-  name: string;
+  lastName: string;
+  firstName: string;
   university: string;
   department: string;
   grade: string | null;
@@ -166,7 +167,7 @@ export default function UserProfilePage({
         </div>
         <div className="flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold">{profile.name}</h1>
+            <h1 className="text-2xl font-bold">{profile.lastName + profile.firstName}</h1>
           </div>
           <p className="text-gray-600">
             {profile.university} {profile.department}
@@ -222,7 +223,7 @@ export default function UserProfilePage({
       </div>
       <ScoutModal
         targetUser={
-          scoutOpen && profile ? { id: profile.id, name: profile.name } : null
+          scoutOpen && profile ? { id: profile.id, lastName: profile.lastName, firstName: profile.firstName } : null
         }
         onClose={() => setScoutOpen(false)}
       />
@@ -269,7 +270,7 @@ export default function UserProfilePage({
         <div className="mb-4">
           <h2 className="text-2xl font-bold text-gray-900">포트폴리오</h2>
           <p className="mt-1 text-sm text-gray-500">
-            {profile.name}님이 등록한 포트폴리오 항목입니다.
+            {profile.lastName + profile.firstName}님이 등록한 포트폴리오 항목입니다.
           </p>
         </div>
 

@@ -27,7 +27,7 @@ interface MyTeam {
 
 interface ScoutModalProps {
   /** 스카우트 대상 사용자. null이면 모달 닫힘. */
-  targetUser: { id: string; name: string } | null;
+  targetUser: { id: string; lastName: string; firstName: string } | null;
   /** 모달 닫기 — 사용자가 X / 배경 / 성공 후 자동 호출 */
   onClose: () => void;
 }
@@ -146,7 +146,7 @@ export function ScoutModal({ targetUser, onClose }: ScoutModalProps) {
           </button>
         </div>
         <p className="mb-5 text-sm text-stone-500">
-          <span className="font-semibold text-stone-800">{targetUser.name}</span>
+          <span className="font-semibold text-stone-800">{targetUser.lastName + targetUser.firstName}</span>
           님에게 팀 합류를 제안합니다.
         </p>
 

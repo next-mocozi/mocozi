@@ -14,7 +14,8 @@ interface Application {
   createdAt: string;
   user: {
     id: string;
-    name: string;
+    lastName: string;
+    firstName: string;
     university: string;
     department: string;
     skills: string[];

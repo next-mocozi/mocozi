@@ -17,7 +17,8 @@ import { timeAgo } from '@/lib/timeAgo';
 /** 작성자 종합 미리보기 패널에서 사용. backend GET /api/users/:id + /portfolios/users/:id 로
  *  필요한 필드만 채운 가벼운 형태. */
 type AuthorDetailData = {
-  name: string;
+  lastName: string;
+  firstName: string;
   university: string;
   department: string;
   grade: string | null;
@@ -358,7 +359,8 @@ async function fetchAuthorDetail(userId: string): Promise<AuthorDetailData> {
     | null;
   if (!u) throw new Error('not found');
   return {
-    name: u.name,
+    lastName: u.lastName ?? '',
+    firstName: u.firstName ?? '',
     university: u.university,
     department: u.department,
     grade: u.grade ?? null,
@@ -439,7 +441,7 @@ function AuthorDetail({ userId }: { userId: string }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <h2 className="min-w-0 truncate text-lg font-bold text-gray-900">
-              {data.name}
+              {data.lastName + data.firstName}
             </h2>
             <Link
               href={`/portfolio/${userId}`}
