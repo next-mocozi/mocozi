@@ -89,6 +89,12 @@ export default function Header() {
             포트폴리오
           </Link>
           <Link
+            href="/community"
+            className="text-gray-600 transition-colors hover:text-primary-600"
+          >
+            커뮤니티
+          </Link>
+          <Link
             href="/chat"
             className="relative text-gray-600 transition-colors hover:text-primary-600"
             aria-label={
@@ -281,6 +287,13 @@ export default function Header() {
             className="px-3 py-3 text-gray-700 transition-colors hover:bg-gray-100 hover:text-primary-600"
           >
             포트폴리오
+          </Link>
+          <Link
+            href="/community"
+            onClick={() => setIsSidebarOpen(false)}
+            className="rounded-md px-3 py-3 text-gray-700 transition-colors hover:bg-gray-100 hover:text-primary-600"
+          >
+            커뮤니티
           </Link>
           <Link
             href="/chat"
