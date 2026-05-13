@@ -1373,7 +1373,7 @@ export class ChatService {
       members: {
         where: { leftAt: null },
         include: {
-          user: { select: { id: true, name: true, profileImage: true } },
+          user: { select: { id: true, lastName: true, firstName: true, profileImage: true } },
         },
       },
     } satisfies Prisma.ChatRoomInclude;
@@ -1381,7 +1381,7 @@ export class ChatService {
 
   private messageInclude() {
     return {
-      sender: { select: { id: true, name: true, profileImage: true } },
+      sender: { select: { id: true, lastName: true, firstName: true, profileImage: true } },
       reactions: true,
       parent: {
         select: {

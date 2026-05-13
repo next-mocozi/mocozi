@@ -51,7 +51,8 @@ export interface ChatRoomMember {
   mutedAt: string | null;
   user?: {
     id: string;
-    name: string;
+    lastName: string;
+    firstName: string;
     profileImage: string | null;
   };
 }
@@ -92,7 +93,8 @@ export interface ChatRoomWithMembers extends ChatRoom {
 export interface ChatMessageWithSender extends ChatMessage {
   sender: {
     id: string;
-    name: string;
+    lastName: string;
+    firstName: string;
     profileImage: string | null;
   };
   reactions: MessageReaction[];
