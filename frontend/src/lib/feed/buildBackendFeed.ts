@@ -25,7 +25,7 @@ function makeAuthor(p: FeedPortfolio): FeedAuthor {
   const u = p.user;
   return {
     userId: u.id,
-    name: u.name,
+    name: u.lastName + u.firstName,
     university: u.university,
     department: u.department,
     grade: u.grade ?? '',

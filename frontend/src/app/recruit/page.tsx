@@ -9,6 +9,7 @@ import api from '@/lib/api';
 import { AlertTriangleIcon } from '@/components/icons/ChatIcons';
 import { SchoolIcon, SearchIcon } from '@/components/icons/CommonIcons';
 import { getBannerGradientClass } from '@/app/profile/_banner';
+import { getMaskedName } from '@/lib/utils';
 
 const PAGE_SIZE = 12;
 
@@ -30,7 +31,8 @@ const SKILL_GROUPS: { label: string; skills: string[] }[] = [
 
 interface UserProfile {
   id: string;
-  name: string;
+  lastName: string;
+  firstName: string;
   university: string;
   department: string;
   skills: string[];
@@ -106,7 +108,7 @@ export default function RecruitListPage() {
     return profiles.filter((p) => {
       if (appliedKeyword) {
         const q = appliedKeyword.toLowerCase();
-        const haystack = [p.name, p.department, p.bio ?? '', ...p.roles, ...p.skills].join(' ').toLowerCase();
+        const haystack = [p.lastName + p.firstName, p.department, p.bio ?? '', ...p.roles, ...p.skills].join(' ').toLowerCase();
         if (!haystack.includes(q)) return false;
       }
 
@@ -466,16 +468,16 @@ export default function RecruitListPage() {
                         {person.profileImage ? (
                           <img
                             src={person.profileImage}
-                            alt={person.name}
+                            alt={getMaskedName(person)}
                             className="h-8 w-8 object-cover sm:h-9 sm:w-9"
                           />
                         ) : (
                           <div className="flex h-8 w-8 items-center justify-center bg-stone-100 text-xs font-bold text-stone-500 sm:h-9 sm:w-9 sm:text-sm">
-                            {person.name[0]}
+                            {person.lastName[0]}
                           </div>
                         )}
                         <p className="text-base font-bold tracking-tight text-stone-900 sm:text-lg lg:text-xl">
-                          {person.name}
+                          {getMaskedName(person)}
                         </p>
                       </div>
                       <p className="mt-2 text-2xs leading-relaxed text-stone-600 sm:mt-3 sm:text-xs lg:text-sm">
@@ -642,7 +644,7 @@ export default function RecruitListPage() {
               </button>
             </div>
             <p className="mb-5 text-sm text-stone-500">
-              <span className="font-semibold text-stone-800">{scoutModal.targetUser.name}</span>님에게 팀 합류를 제안합니다.
+              <span className="font-semibold text-stone-800">{getMaskedName(scoutModal.targetUser)}</span>님에게 팀 합류를 제안합니다.
             </p>
             {scoutModal.teams.length === 0 ? (
               <p className="text-sm text-stone-400">팀장으로 등록된 팀이 없습니다. 먼저 팀을 만들어주세요.</p>

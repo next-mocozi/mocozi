@@ -16,7 +16,7 @@ import { ClockIcon } from '@/components/icons/CommonIcons';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import { summarizePreview } from '@/lib/messageTemplate';
-import { timeAgo } from '@/lib/utils';
+import { getMaskedName, timeAgo } from '@/lib/utils';
 import {
   useChatNotifications,
   useChatSocket,
@@ -876,15 +876,15 @@ function roomDisplayName(
   if (room.type === 'DIRECT' && room.members.length > 0) {
     if (myId) {
       const other = room.members.find((m) => m.userId !== myId);
-      if (other?.user) return other.user.lastName + other.user.firstName;
+      if (other?.user) return getMaskedName(other.user);
       // myId 명시됐는데 상대방 없음 — backend `roomInclude()`가 `leftAt: null` 필터링하므로
       // 상대방이 leaveRoom한 DIRECT 방은 본인 멤버만 들어옴.
       // 본인 이름으로 fallback하면 "자기 자신과 대화"처럼 보여 혼란 → 명시 문구.
       return '(나간 사용자)';
     }
     // myId 미로드 — 첫 멤버 이름이라도 표시 (useAuth.user 완성되면 자동 교체)
-    const fallback = room.members[0]?.user?.name;
-    if (fallback) return fallback;
+    const fallbackUser = room.members[0]?.user;
+    if (fallbackUser) return getMaskedName(fallbackUser);
   }
   return '대화방';
 }

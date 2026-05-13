@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import api from '@/lib/api';
+import { getMaskedName } from '@/lib/utils';
 
 /**
  * §B-DM-8 RoomList 인라인 액션 — 기획서/프로필 미리보기 패널.
@@ -29,7 +30,7 @@ interface TeamPreview {
   id: string;
   name: string;
   description?: string | null;
-  leader?: { name: string };
+  leader?: { lastName: string; firstName: string };
   proposal?: {
     title?: string | null;
     summary?: string | null;
@@ -41,7 +42,8 @@ interface TeamPreview {
 
 interface UserPreview {
   id: string;
-  name: string;
+  lastName: string;
+  firstName: string;
   university?: string | null;
   department?: string | null;
   bio?: string | null;
@@ -164,10 +166,10 @@ export function RoomPreviewPanel({
                 <p className="text-xs text-stone-500">팀 이름</p>
                 <p className="text-base font-semibold text-stone-900">{team.name}</p>
               </div>
-              {team.leader?.name && (
+              {team.leader && (
                 <div>
                   <p className="text-xs text-stone-500">팀장</p>
-                  <p>{team.leader.name}</p>
+                  <p>{getMaskedName(team.leader)}</p>
                 </div>
               )}
               {typeof team._count?.members === 'number' && (
@@ -218,11 +220,11 @@ export function RoomPreviewPanel({
                   />
                 ) : (
                   <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 text-base font-semibold text-indigo-600">
-                    {profile.name.charAt(0)}
+                    {profile.lastName.charAt(0)}
                   </div>
                 )}
                 <div>
-                  <p className="text-base font-semibold text-stone-900">{profile.name}</p>
+                  <p className="text-base font-semibold text-stone-900">{getMaskedName(profile)}</p>
                   {(profile.university || profile.department) && (
                     <p className="text-xs text-stone-500">
                       {[profile.university, profile.department].filter(Boolean).join(' · ')}

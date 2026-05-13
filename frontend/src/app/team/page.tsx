@@ -143,7 +143,7 @@ export default function TeamListPage() {
           t.name,
           t.description ?? '',
           t.proposal?.overview ?? '',
-          t.leader.name,
+          t.leader.lastName + t.leader.firstName,
           ...(t.proposal?.recruitingRoles ?? []),
           ...(t.proposal?.requiredSkills ?? []),
         ]
@@ -546,7 +546,7 @@ export default function TeamListPage() {
 
                       <div className="mt-2 flex justify-between border-t border-stone-200 pt-2 text-3xs text-stone-500 sm:mt-2.5 sm:pt-2.5 sm:text-2xs">
                         <span>
-                          팀장 <span className="font-semibold text-stone-800">{team.leader.name}</span>
+                          팀장 <span className="font-semibold text-stone-800">{team.leader.lastName + team.leader.firstName}</span>
                         </span>
                         <span>
                           인원{' '}

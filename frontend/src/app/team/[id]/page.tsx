@@ -242,7 +242,7 @@ export default function TeamDetailPage({
           {team.description && (
             <p className="mt-2 text-white/75 text-sm leading-relaxed">{team.description}</p>
           )}
-          <p className="mt-3 text-xs text-white/50">팀장 · {team.leader.name}</p>
+          <p className="mt-3 text-xs text-white/50">팀장 · {team.leader.lastName + team.leader.firstName}</p>
         </div>
       </div>
 
