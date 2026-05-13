@@ -304,10 +304,11 @@ export default function Header() {
           >
             커뮤니티
           </Link>
-          {/* §B-DM-8 알림센터 자리 — 모바일 사이드바 (현 phase는 /chat link로 placeholder). */}
+          {/* §B-DM-9 알림센터 — 모바일 사이드바. 데스크톱 NotificationCenter 아이콘이 hidden md:flex라
+              모바일에선 dropdown 접근 X → 풀 페이지(/notifications)로 진입. */}
           {!loading && isAuthenticated && (
             <Link
-              href="/chat"
+              href="/notifications"
               onClick={() => setIsSidebarOpen(false)}
               className="flex items-center justify-between rounded-md px-3 py-3 text-gray-700 transition-colors hover:bg-gray-100 hover:text-primary-600"
             >

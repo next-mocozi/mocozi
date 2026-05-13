@@ -136,15 +136,13 @@ export default function NotificationCenter() {
               </ul>
             )}
           </div>
-          {items.length > 0 && (
-            <Link
-              href="/chat"
-              onClick={() => setOpen(false)}
-              className="block border-t border-gray-100 px-4 py-2 text-center text-xs text-gray-500 transition-colors hover:bg-gray-50"
-            >
-              채팅으로 이동
-            </Link>
-          )}
+          <Link
+            href="/notifications"
+            onClick={() => setOpen(false)}
+            className="block border-t border-gray-100 px-4 py-2 text-center text-xs text-gray-500 transition-colors hover:bg-gray-50"
+          >
+            전체 보기
+          </Link>
         </div>
       )}
     </div>
