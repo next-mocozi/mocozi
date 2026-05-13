@@ -816,15 +816,17 @@ export default function PortfolioDetailPage({
           </div>
         )}
 
-        <div className="flex items-start gap-6 pr-32">
-          <div className="flex h-24 w-24 items-center justify-center bg-primary-100 text-primary-600">
-            <UserIcon className="h-12 w-12" />
+        {/* 모바일: 세로 스택(아이콘 위, 텍스트 아래) + 우측 패딩 축소 (설정 버튼만 피하면 됨).
+            md+: 기존 가로 레이아웃 유지. */}
+        <div className="flex flex-col items-start gap-4 pr-10 md:flex-row md:items-start md:gap-6 md:pr-32">
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center bg-primary-100 text-primary-600 md:h-24 md:w-24">
+            <UserIcon className="h-10 w-10 md:h-12 md:w-12" />
           </div>
-          <div className="flex-1">
+          <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold">{displayUser.lastName + displayUser.firstName}</h1>
+              <h1 className="break-keep text-2xl font-bold">{displayUser.lastName + displayUser.firstName}</h1>
             </div>
-            <p className="text-gray-600">
+            <p className="break-keep text-gray-600">
               {displayUser.university} {displayUser.department}
               {displayUser.grade && (
                 <span className="ml-1 text-sm text-gray-400">
@@ -836,7 +838,7 @@ export default function PortfolioDetailPage({
               )}
             </p>
             {displayUser.bio && (
-              <p className="mt-2 text-sm text-gray-500">{displayUser.bio}</p>
+              <p className="mt-2 break-keep text-sm text-gray-500">{displayUser.bio}</p>
             )}
 
             {/* 직군 */}
