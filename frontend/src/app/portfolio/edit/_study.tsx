@@ -203,11 +203,11 @@ export default function StudyForm() {
   const labelClass = 'block text-sm font-medium text-gray-700';
   const subHintClass = 'text-xs text-gray-400';
   const inputClass =
-    'w-full rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100';
+    'w-full border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100';
   const textareaClass =
-    'w-full resize-none rounded-lg border border-gray-200 px-4 py-2 text-sm leading-7 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100';
+    'w-full resize-none border border-gray-200 px-4 py-2 text-sm leading-7 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100';
   const chipBase =
-    'rounded-full border px-3 py-1.5 text-xs leading-relaxed transition-all';
+    'border px-3 py-1.5 text-xs leading-relaxed transition-all';
   const chipOff =
     'border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50';
   const chipOn = 'border-blue-500 bg-blue-500 text-white';
@@ -232,7 +232,7 @@ export default function StudyForm() {
         </div>
       </div>
 
-      <div className="space-y-6 rounded-2xl bg-white p-8 shadow-sm sm:p-6">
+      <div className="space-y-6 bg-white p-8 shadow-sm sm:p-6">
         <h2
           style={{ marginBottom: '1rem' }}
           className="text-xl font-bold text-gray-900"
@@ -446,7 +446,7 @@ export default function StudyForm() {
           <button
             onClick={handleDelete}
             disabled={isSubmitting}
-            className="rounded-full border border-red-200 px-6 py-2.5 text-sm text-red-500 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+            className="border border-red-200 px-6 py-2.5 text-sm text-red-500 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
             삭제
           </button>
@@ -456,14 +456,14 @@ export default function StudyForm() {
         <div className="flex gap-2">
           <Link
             href="/portfolio"
-            className="rounded-full border border-gray-200 px-6 py-2.5 text-sm text-gray-600 hover:bg-gray-50"
+            className="border border-gray-200 px-6 py-2.5 text-sm text-gray-600 hover:bg-gray-50"
           >
             취소
           </Link>
           <button
             onClick={handleSave}
             disabled={isSubmitting}
-            className="rounded-full bg-blue-600 px-6 py-2.5 text-sm text-white shadow-md hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="bg-blue-600 px-6 py-2.5 text-sm text-white shadow-md hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSubmitting ? '저장 중…' : isEdit ? '수정 완료' : '저장'}
           </button>

@@ -1104,7 +1104,7 @@ function ChatRoomPageContent({ params }: PageProps) {
       {/* 좌측 사이드바 — xl(1280px)+ 에서만 노출. 패널 열리면 왼쪽으로 슬라이드 아웃 + 페이드.
           overflow-hidden(부모) 덕에 -translate-x-full로 화면 밖으로 빠져나가도 clip됨. */}
       <aside
-        className={`absolute right-[calc(50%+21rem)] top-0 hidden h-full w-72 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-300 ease-out xl:flex ${
+        className={`absolute right-[calc(50%+21rem)] top-0 hidden h-full w-72 flex-col overflow-hidden border border-gray-200 bg-white transition-all duration-300 ease-out xl:flex ${
           anyPanelOpen
             ? 'xl:pointer-events-none xl:-translate-x-[150%] xl:opacity-0'
             : ''
@@ -1116,7 +1116,7 @@ function ChatRoomPageContent({ params }: PageProps) {
       {/* 채팅창 — 패널 열리면 xl에서 좌측으로 -12rem(=-translate-x-48) 이동.
           xl viewport 1280px에서 chat right edge가 정확히 panel xl:w-[32rem] left edge에 닿게 됨 → 가림 방지. */}
       <div
-        className={`mx-auto flex h-full max-w-[40rem] flex-col overflow-hidden rounded-xl border border-gray-200 bg-white transition-transform duration-300 ease-out ${
+        className={`mx-auto flex h-full max-w-[40rem] flex-col overflow-hidden border border-gray-200 bg-white transition-transform duration-300 ease-out ${
           anyPanelOpen ? 'xl:-translate-x-48' : ''
         }`}
       >
@@ -1130,7 +1130,7 @@ function ChatRoomPageContent({ params }: PageProps) {
           <ArrowLeftIcon className="h-4 w-4" />
           <span>뒤로</span>
         </Link>
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-100 text-primary-600">
+        <div className="flex h-8 w-8 items-center justify-center bg-primary-100 text-primary-600">
           {room?.type === 'DIRECT' ? (
             <UserIcon className="h-4 w-4" />
           ) : (
@@ -1184,7 +1184,7 @@ function ChatRoomPageContent({ params }: PageProps) {
           )}
 
           {error && (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            <div className="border border-red-200 bg-red-50 p-3 text-sm text-red-700">
               {error}
             </div>
           )}
@@ -1230,7 +1230,7 @@ function ChatRoomPageContent({ params }: PageProps) {
           onClick={scrollToBottom}
           aria-label="맨 아래로 가기"
           title="맨 아래로 가기"
-          className={`absolute bottom-4 right-4 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 shadow-lg transition-all duration-200 hover:bg-gray-50 hover:text-gray-900 ${
+          className={`absolute bottom-4 right-4 z-10 flex h-10 w-10 items-center justify-center border border-gray-200 bg-white text-gray-600 shadow-lg transition-all duration-200 hover:bg-gray-50 hover:text-gray-900 ${
             showScrollToBottom
               ? 'pointer-events-auto opacity-100'
               : 'pointer-events-none opacity-0'
@@ -1258,9 +1258,9 @@ function ChatRoomPageContent({ params }: PageProps) {
       {typingUserIds.size > 0 && room && (
         <div className="flex items-center gap-1 border-t border-gray-200 bg-gray-50 px-4 py-1 text-xs text-gray-500">
           <span className="inline-flex items-center gap-0.5">
-            <span className="h-1 w-1 animate-pulse rounded-full bg-gray-400" />
-            <span className="h-1 w-1 animate-pulse rounded-full bg-gray-400 [animation-delay:150ms]" />
-            <span className="h-1 w-1 animate-pulse rounded-full bg-gray-400 [animation-delay:300ms]" />
+            <span className="h-1 w-1 animate-pulse bg-gray-400" />
+            <span className="h-1 w-1 animate-pulse bg-gray-400 [animation-delay:150ms]" />
+            <span className="h-1 w-1 animate-pulse bg-gray-400 [animation-delay:300ms]" />
           </span>
           <span>
             {(() => {
@@ -1292,7 +1292,7 @@ function ChatRoomPageContent({ params }: PageProps) {
           <button
             type="button"
             onClick={cancelReply}
-            className="rounded p-1 text-xs text-gray-500 hover:bg-gray-200"
+            className="p-1 text-xs text-gray-500 hover:bg-gray-200"
             aria-label="답글 취소"
           >
             ×
@@ -1415,7 +1415,7 @@ function ChatRoomPageContent({ params }: PageProps) {
           aria-label={previewOpen ? '미리보기 닫기' : '입력 미리보기'}
           aria-pressed={previewOpen}
           title={previewOpen ? '미리보기 닫기' : '마크다운 미리보기'}
-          className={`rounded-md p-2 transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${
+          className={`p-2 transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${
             previewOpen
               ? 'bg-primary-100 text-primary-700 hover:bg-primary-200'
               : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
@@ -1562,7 +1562,7 @@ function MessageItem({
     // 삭제된 메시지 — 시스템 라인 (그룹/이름 무관, 가운데 정렬)
     return (
       <div className="flex justify-center">
-        <div className="rounded-full bg-gray-100 px-3 py-1 text-xs italic text-gray-400">
+        <div className="bg-gray-100 px-3 py-1 text-xs italic text-gray-400">
           삭제된 메시지입니다
         </div>
       </div>
@@ -1573,12 +1573,12 @@ function MessageItem({
   if (isEditing) {
     return (
       <div className="flex justify-end">
-        <div className="w-full max-w-[70%] rounded-2xl border border-primary-300 bg-primary-50 p-2">
+        <div className="w-full max-w-[70%] border border-primary-300 bg-primary-50 p-2">
           <textarea
             value={editDraft}
             onChange={(e) => onEditDraftChange(e.target.value)}
             rows={2}
-            className="w-full resize-none rounded border border-gray-200 bg-white p-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
+            className="w-full resize-none border border-gray-200 bg-white p-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
             autoFocus
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
@@ -1595,7 +1595,7 @@ function MessageItem({
             <button
               type="button"
               onClick={onCancelEdit}
-              className="rounded px-2 py-1 text-gray-600 hover:bg-gray-100"
+              className="px-2 py-1 text-gray-600 hover:bg-gray-100"
             >
               취소 (Esc)
             </button>
@@ -1603,7 +1603,7 @@ function MessageItem({
               type="button"
               onClick={onSubmitEdit}
               disabled={editDraft.trim().length === 0}
-              className="rounded bg-primary-600 px-2 py-1 font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+              className="bg-primary-600 px-2 py-1 font-medium text-white hover:bg-primary-700 disabled:opacity-50"
             >
               저장 (Enter)
             </button>
@@ -1614,8 +1614,8 @@ function MessageItem({
   }
 
   // 낙관적 UI 상태에 따른 시각 변형 — 말풍선/첨부 모두에 적용
-  // ring은 element의 자체 border-radius를 따르므로, 적용 대상이 rounded 클래스를 갖고 있어야 함.
-  // 말풍선(rounded-2xl), 첨부 wrapper(rounded-xl)에 각각 적용.
+  // ring은 element의 자체 border-radius를 따르므로, 적용 대상이 클래스를 갖고 있어야 함.
+  // 말풍선(), 첨부 wrapper()에 각각 적용.
   const stateClass = message.__pending
     ? 'opacity-60'
     : message.__failed
@@ -1650,7 +1650,7 @@ function MessageItem({
       <button
         type="button"
         onClick={onReply}
-        className="rounded p-[3px] text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+        className="p-[3px] text-gray-400 hover:bg-gray-100 hover:text-gray-700"
         aria-label="답글"
         title="답글"
       >
@@ -1659,7 +1659,7 @@ function MessageItem({
       <button
         type="button"
         onClick={handleCopyRaw}
-        className="rounded p-[3px] text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+        className="p-[3px] text-gray-400 hover:bg-gray-100 hover:text-gray-700"
         aria-label="원문 복사 (마크다운 그대로)"
         title={copied ? '복사됨!' : '원문 복사 (마크다운 그대로)'}
       >
@@ -1674,7 +1674,7 @@ function MessageItem({
           <button
             type="button"
             onClick={onStartEdit}
-            className="rounded p-[3px] text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+            className="p-[3px] text-gray-400 hover:bg-gray-100 hover:text-gray-700"
             aria-label="메시지 편집"
             title="편집"
           >
@@ -1683,7 +1683,7 @@ function MessageItem({
           <button
             type="button"
             onClick={onDelete}
-            className="rounded p-[3px] text-gray-400 hover:bg-gray-100 hover:text-red-600"
+            className="p-[3px] text-gray-400 hover:bg-gray-100 hover:text-red-600"
             aria-label="메시지 삭제"
             title="삭제"
           >
@@ -1716,7 +1716,7 @@ function MessageItem({
         >
           {isMine && !stateLabel && unreadBy > 0 && (
             <span
-              className="rounded-full bg-primary-100 px-1.5 py-0.5 text-[0.6rem] font-semibold leading-none text-primary-700"
+              className="bg-primary-100 px-1.5 py-0.5 text-[0.6rem] font-semibold leading-none text-primary-700"
               aria-label={`안 읽은 사람 ${unreadBy}명`}
               title={`${unreadBy}명 안 읽음`}
             >
@@ -1775,7 +1775,7 @@ function MessageItem({
             긴 heading 등)으로 자라 컬럼 max-w-[70%] cap을 시각적으로 뚫고 나간다. */}
         {hasTextBubble && (
           <div
-            className={`min-w-0 max-w-full rounded-2xl px-4 py-2 ${
+            className={`min-w-0 max-w-full px-4 py-2 ${
               isMine ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-900'
             } ${stateClass}`}
           >
@@ -1818,14 +1818,14 @@ function MessageItem({
           const key = `${a.type}-${a.target}-${i}`;
           if (a.type === 'image') {
             return (
-              <div key={key} className={`min-w-0 max-w-full rounded-xl ${stateClass}`}>
+              <div key={key} className={`min-w-0 max-w-full ${stateClass}`}>
                 <ImageAttachment attachment={a} isMine={isMine} />
               </div>
             );
           }
           if (a.type === 'file') {
             return (
-              <div key={key} className={`min-w-0 max-w-full rounded-xl ${stateClass}`}>
+              <div key={key} className={`min-w-0 max-w-full ${stateClass}`}>
                 <FileAttachmentCard attachment={a} isMine={isMine} />
               </div>
             );
@@ -1846,7 +1846,7 @@ function MessageItem({
                 key={r.emoji}
                 type="button"
                 onClick={() => onToggleReaction(r.emoji)}
-                className={`rounded-full px-2 py-0.5 text-xs ${
+                className={`px-2 py-0.5 text-xs ${
                   r.mine
                     ? 'bg-primary-100 text-primary-700'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -1874,14 +1874,14 @@ function ReactionPicker({ onPick }: { onPick: (emoji: string) => void }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="rounded p-[3px] text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+        className="p-[3px] text-gray-400 hover:bg-gray-100 hover:text-gray-700"
         aria-label="반응 추가"
         title="반응"
       >
         <SmilePlusIcon className="h-3 w-3" />
       </button>
       {open && (
-        <div className="absolute bottom-full left-1/2 z-10 mb-1 flex -translate-x-1/2 gap-0.5 rounded-full border border-gray-200 bg-white p-1 shadow-md">
+        <div className="absolute bottom-full left-1/2 z-10 mb-1 flex -translate-x-1/2 gap-0.5 border border-gray-200 bg-white p-1 shadow-md">
           {QUICK_EMOJIS.map((e) => (
             <button
               key={e}
@@ -1890,7 +1890,7 @@ function ReactionPicker({ onPick }: { onPick: (emoji: string) => void }) {
                 onPick(e);
                 setOpen(false);
               }}
-              className="rounded p-[3px] text-xs hover:bg-gray-100"
+              className="p-[3px] text-xs hover:bg-gray-100"
               aria-label={`${e} 반응 추가`}
             >
               {e}

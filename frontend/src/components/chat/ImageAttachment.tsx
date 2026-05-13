@@ -50,7 +50,7 @@ export function ImageAttachment({ attachment, isMine }: ImageAttachmentProps) {
   if (loading) {
     return (
       <div
-        className={`flex h-32 w-64 items-center justify-center rounded-xl border ${
+        className={`flex h-32 w-64 items-center justify-center border ${
           isMine
             ? 'border-primary-300 bg-white/95 text-primary-300'
             : 'border-stone-300 bg-white text-stone-300'
@@ -64,7 +64,7 @@ export function ImageAttachment({ attachment, isMine }: ImageAttachmentProps) {
   if (!url) {
     return (
       <div
-        className={`flex h-32 w-64 flex-col items-center justify-center rounded-xl border ${
+        className={`flex h-32 w-64 flex-col items-center justify-center border ${
           isMine ? 'border-primary-300 bg-white/95' : 'border-stone-300 bg-white'
         } text-stone-500`}
         role="img"
@@ -82,7 +82,7 @@ export function ImageAttachment({ attachment, isMine }: ImageAttachmentProps) {
       <button
         type="button"
         onClick={() => setZoomed(true)}
-        className="block max-w-64 overflow-hidden rounded-xl border border-stone-300 transition-shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary-400"
+        className="block max-w-64 overflow-hidden border border-stone-300 transition-shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary-400"
         aria-label={`${attachment.label} 확대 보기`}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -109,7 +109,7 @@ export function ImageAttachment({ attachment, isMine }: ImageAttachmentProps) {
               e.stopPropagation();
               setZoomed(false);
             }}
-            className="absolute right-4 top-4 rounded-full bg-white/20 p-2 text-white backdrop-blur-sm hover:bg-white/30"
+            className="absolute right-4 top-4 bg-white/20 p-2 text-white backdrop-blur-sm hover:bg-white/30"
             aria-label="닫기"
           >
             <XIcon className="h-5 w-5" />

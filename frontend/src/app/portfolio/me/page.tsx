@@ -106,7 +106,7 @@ export default function MyFeedPage() {
               </p>
               <Link
                 href={user ? `/portfolio/${user.id}` : '/portfolio'}
-                className="mt-3 inline-flex items-center gap-1 rounded-full border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+                className="mt-3 inline-flex items-center gap-1 border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
               >
                 내 포트폴리오에서 항목 추가하기 →
               </Link>

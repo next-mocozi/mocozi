@@ -130,7 +130,7 @@ export default function FeedDetailPanel({
       : [];
 
   return (
-    <aside className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-lg">
+    <aside className="flex h-full flex-col overflow-hidden border border-gray-200 bg-white shadow-lg">
       <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-5 py-3">
         <p className="text-sm font-semibold text-gray-700">
           {target.mode === 'post'
@@ -148,7 +148,7 @@ export default function FeedDetailPanel({
                 aria-label="수정·관리 메뉴"
                 aria-expanded={menuOpen}
                 aria-haspopup="menu"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition-all hover:bg-gray-100 hover:text-gray-700"
+                className="inline-flex h-8 w-8 items-center justify-center text-gray-400 transition-all hover:bg-gray-100 hover:text-gray-700"
               >
                 <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
                   <circle cx="5" cy="12" r="2" />
@@ -165,7 +165,7 @@ export default function FeedDetailPanel({
                   />
                   <div
                     role="menu"
-                    className="absolute right-0 top-full z-20 mt-1 w-40 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg"
+                    className="absolute right-0 top-full z-20 mt-1 w-40 overflow-hidden border border-gray-200 bg-white shadow-lg"
                   >
                     {ownerMenuLinks.map((link) => (
                       <Link
@@ -191,7 +191,7 @@ export default function FeedDetailPanel({
             type="button"
             onClick={onClose}
             aria-label="패널 닫기"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition-all hover:bg-gray-100 hover:text-gray-700"
+            className="inline-flex h-8 w-8 items-center justify-center text-gray-400 transition-all hover:bg-gray-100 hover:text-gray-700"
           >
             ✕
           </button>
@@ -246,13 +246,13 @@ function PostDetail({ post }: { post: FeedPost }) {
           href={`/portfolio/${post.author.userId}`}
           className="group flex items-center gap-2"
         >
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-100 text-sm text-primary-600">
+          <span className="flex h-8 w-8 items-center justify-center bg-primary-100 text-sm text-primary-600">
             {post.author.profileImage ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={post.author.profileImage}
                 alt=""
-                className="h-full w-full rounded-full object-cover"
+                className="h-full w-full object-cover"
               />
             ) : (
               '👤'
@@ -331,7 +331,7 @@ function PostBody({ post }: { post: Exclude<FeedPost, { kind: 'item' }> }) {
               {post.skills.map((s) => (
                 <span
                   key={s}
-                  className="rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-600"
+                  className="bg-blue-50 px-2 py-0.5 text-xs text-blue-600"
                 >
                   {s}
                 </span>
@@ -423,13 +423,13 @@ function AuthorDetail({ userId }: { userId: string }) {
     <div className="space-y-5">
       {/* 프로필 헤더 — 이름 오른쪽에 [포트폴리오로 →] 버튼 */}
       <div className="flex items-start gap-3">
-        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary-100 text-2xl text-primary-600">
+        <div className="flex h-14 w-14 shrink-0 items-center justify-center bg-primary-100 text-2xl text-primary-600">
           {data.profileImage ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={data.profileImage}
               alt=""
-              className="h-full w-full rounded-full object-cover"
+              className="h-full w-full object-cover"
             />
           ) : (
             '👤'
@@ -442,7 +442,7 @@ function AuthorDetail({ userId }: { userId: string }) {
             </h2>
             <Link
               href={`/portfolio/${userId}`}
-              className="inline-flex shrink-0 items-center gap-1 rounded-full border border-gray-200 px-3 py-1 text-xs text-gray-700 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+              className="inline-flex shrink-0 items-center gap-1 border border-gray-200 px-3 py-1 text-xs text-gray-700 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
             >
               포트폴리오로 →
             </Link>
@@ -459,14 +459,14 @@ function AuthorDetail({ userId }: { userId: string }) {
       {(mainRole || subRoles.length > 0) && (
         <div className="flex flex-wrap items-center gap-1">
           {mainRole && (
-            <span className="rounded-full bg-blue-600 px-3 py-1 text-xs leading-none text-white">
+            <span className="bg-blue-600 px-3 py-1 text-xs leading-none text-white">
               {mainRole}
             </span>
           )}
           {subRoles.map((r) => (
             <span
               key={r}
-              className="rounded-full border border-blue-200 px-3 py-1 text-xs leading-none text-blue-600"
+              className="border border-blue-200 px-3 py-1 text-xs leading-none text-blue-600"
             >
               {r}
             </span>
@@ -482,7 +482,7 @@ function AuthorDetail({ userId }: { userId: string }) {
             {data.skills.map((s) => (
               <span
                 key={s}
-                className="rounded bg-blue-50 px-2 py-1 text-xs text-blue-600"
+                className="bg-blue-50 px-2 py-1 text-xs text-blue-600"
               >
                 {s}
               </span>
@@ -495,7 +495,7 @@ function AuthorDetail({ userId }: { userId: string }) {
       {data.bio && (
         <div>
           <h3 className="mb-2 text-xs font-semibold text-gray-500">자기소개</h3>
-          <p className="whitespace-pre-wrap rounded-lg border border-gray-100 bg-gray-50/50 px-4 py-3 text-sm leading-relaxed text-gray-700">
+          <p className="whitespace-pre-wrap border border-gray-100 bg-gray-50/50 px-4 py-3 text-sm leading-relaxed text-gray-700">
             {data.bio}
           </p>
         </div>
@@ -513,11 +513,11 @@ function AuthorDetail({ userId }: { userId: string }) {
               return (
                 <li
                   key={item.id}
-                  className="rounded-lg border border-gray-100 px-3 py-2"
+                  className="border border-gray-100 px-3 py-2"
                 >
                   <div className="mb-1 flex flex-wrap items-center gap-2">
                     <span
-                      className={`rounded px-2 py-0.5 text-3xs ${meta.bg} ${meta.text}`}
+                      className={`px-2 py-0.5 text-3xs ${meta.bg} ${meta.text}`}
                     >
                       {meta.label}
                     </span>

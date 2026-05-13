@@ -56,13 +56,11 @@
   background-color: rgb(30 30 30);
   color: rgb(212 212 212);
   padding: 0.125rem 0.3rem;
-  border-radius: 0.25rem;
   font-size: 0.85em;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 .markdown-content pre {
   margin: 0.5rem 0;
-  border-radius: 0.5rem;
   overflow-x: auto;
   /* fallback: prism inline style이 어떤 사유로 적용 안 됐을 때 흰 배경 → 어두운 배경 보장.
      prism의 style={vsDark}가 적용되면 inline > class라 이 값은 자동으로 override됨. */
@@ -80,11 +78,9 @@
 }
 .markdown-content pre::-webkit-scrollbar-track {
   background: rgb(30 30 30);
-  border-radius: 0 0 0.5rem 0.5rem;
 }
 .markdown-content pre::-webkit-scrollbar-thumb {
   background: rgb(107 114 128);
-  border-radius: 0.25rem;
   border: 2px solid rgb(30 30 30);
 }
 .markdown-content pre::-webkit-scrollbar-thumb:hover {
@@ -173,50 +169,145 @@
   --breakpoint-xl: 1280px;
   --breakpoint-2xl: 1536px;
 
-  /* Indigo primary */
-  --color-primary-50:  #eef2ff;
-  --color-primary-100: #e0e7ff;
-  --color-primary-200: #c7d2fe;
-  --color-primary-300: #a5b4fc;
-  --color-primary-400: #818cf8;
-  --color-primary-500: #6366f1;
-  --color-primary-600: #4f46e5;
-  --color-primary-700: #4338ca;
-  --color-primary-800: #3730a3;
-  --color-primary-900: #312e81;
+  /* ===== Brand — Verified Teal (한 단계 진하게 shift) =====
+     청록은 SaaS에서 거의 안 쓰이는 hue. 신뢰(은행·의료) + 신선함(자연·청춘) 두 의미가
+     mocozi 정체성에 매핑됨. 각 step을 한 단계 darker로 shift해 전반적으로 진한 톤. */
+  --color-primary-50:  #ccefe9;
+  --color-primary-100: #9adfd2;
+  --color-primary-200: #5fcdbb;
+  --color-primary-300: #2bb8a3;
+  --color-primary-400: #12a594;
+  --color-primary-500: #0d9488;
+  --color-primary-600: #0f766e;
+  --color-primary-700: #115e59;
+  --color-primary-800: #134e4a;
+  --color-primary-900: #0a3835;
 
-  /* Neutral — stone 기반. body가 이미 bg-stone-50 사용 중. */
-  --color-neutral-50:  #fafaf9;
-  --color-neutral-100: #f5f5f4;
-  --color-neutral-200: #e7e5e4;
-  --color-neutral-300: #d6d3d1;
-  --color-neutral-400: #a8a29e;
-  --color-neutral-500: #78716c;
-  --color-neutral-600: #57534e;
-  --color-neutral-700: #44403c;
-  --color-neutral-800: #292524;
-  --color-neutral-900: #1c1917;
+  /* Tailwind built-in cool hues (indigo·violet·blue) → teal redefine. */
+  --color-indigo-50:  #ccefe9;
+  --color-indigo-100: #9adfd2;
+  --color-indigo-200: #5fcdbb;
+  --color-indigo-300: #2bb8a3;
+  --color-indigo-400: #12a594;
+  --color-indigo-500: #0d9488;
+  --color-indigo-600: #0f766e;
+  --color-indigo-700: #115e59;
+  --color-indigo-800: #134e4a;
+  --color-indigo-900: #0a3835;
 
-  /* Success — emerald 기반 */
+  --color-violet-50:  #ccefe9;
+  --color-violet-100: #9adfd2;
+  --color-violet-200: #5fcdbb;
+  --color-violet-300: #2bb8a3;
+  --color-violet-400: #12a594;
+  --color-violet-500: #0d9488;
+  --color-violet-600: #0f766e;
+  --color-violet-700: #115e59;
+  --color-violet-800: #134e4a;
+  --color-violet-900: #0a3835;
+
+  --color-blue-50:  #ccefe9;
+  --color-blue-100: #9adfd2;
+  --color-blue-200: #5fcdbb;
+  --color-blue-300: #2bb8a3;
+  --color-blue-400: #12a594;
+  --color-blue-500: #0d9488;
+  --color-blue-600: #0f766e;
+  --color-blue-700: #115e59;
+  --color-blue-800: #134e4a;
+  --color-blue-900: #0a3835;
+
+  /* ===== Neutral — Sage (한 단계 진하게 shift) ===== */
+  --color-neutral-50:  #eef3ee;
+  --color-neutral-100: #dfe6df;
+  --color-neutral-200: #c6d0c6;
+  --color-neutral-300: #93a193;
+  --color-neutral-400: #607060;
+  --color-neutral-500: #4a5a4a;
+  --color-neutral-600: #3a4a3a;
+  --color-neutral-700: #243024;
+  --color-neutral-800: #0f1f0f;
+  --color-neutral-900: #060c06;
+
+  --color-stone-50:  #eef3ee;
+  --color-stone-100: #dfe6df;
+  --color-stone-200: #c6d0c6;
+  --color-stone-300: #93a193;
+  --color-stone-400: #607060;
+  --color-stone-500: #4a5a4a;
+  --color-stone-600: #3a4a3a;
+  --color-stone-700: #243024;
+  --color-stone-800: #0f1f0f;
+  --color-stone-900: #060c06;
+
+  --color-gray-50:  #eef3ee;
+  --color-gray-100: #dfe6df;
+  --color-gray-200: #c6d0c6;
+  --color-gray-300: #93a193;
+  --color-gray-400: #607060;
+  --color-gray-500: #4a5a4a;
+  --color-gray-600: #3a4a3a;
+  --color-gray-700: #243024;
+  --color-gray-800: #0f1f0f;
+  --color-gray-900: #060c06;
+
+  --color-slate-50:  #eef3ee;
+  --color-slate-100: #dfe6df;
+  --color-slate-200: #c6d0c6;
+  --color-slate-300: #93a193;
+  --color-slate-400: #607060;
+  --color-slate-500: #4a5a4a;
+  --color-slate-600: #3a4a3a;
+  --color-slate-700: #243024;
+  --color-slate-800: #0f1f0f;
+  --color-slate-900: #060c06;
+
+  --color-zinc-50:  #eef3ee;
+  --color-zinc-100: #dfe6df;
+  --color-zinc-200: #c6d0c6;
+  --color-zinc-300: #93a193;
+  --color-zinc-400: #607060;
+  --color-zinc-500: #4a5a4a;
+  --color-zinc-600: #3a4a3a;
+  --color-zinc-700: #243024;
+  --color-zinc-800: #0f1f0f;
+  --color-zinc-900: #060c06;
+
+  /* ===== Accent — Amber (한 단계 진하게 shift) ===== */
+  --color-amber-50:  #fef3c7;
+  --color-amber-100: #fde68a;
+  --color-amber-200: #fcd34d;
+  --color-amber-300: #fbbf24;
+  --color-amber-400: #f59e0b;
+  --color-amber-500: #d97706;
+  --color-amber-600: #b45309;
+  --color-amber-700: #92400e;
+  --color-amber-800: #6b3a08;
+  --color-amber-900: #4a2806;
+
+  /* ===== Semantic ===== */
   --color-success-50:  #ecfdf5;
   --color-success-100: #d1fae5;
-  --color-success-500: #10b981;
-  --color-success-600: #059669;
-  --color-success-700: #047857;
+  --color-success-500: #16a34a;
+  --color-success-600: #15803d;
+  --color-success-700: #166534;
 
-  /* Warning — amber 기반 */
-  --color-warning-50:  #fffbeb;
-  --color-warning-100: #fef3c7;
-  --color-warning-500: #f59e0b;
-  --color-warning-600: #d97706;
-  --color-warning-700: #b45309;
+  --color-warning-50:  #fff7ed;
+  --color-warning-100: #ffedd5;
+  --color-warning-500: #f97316;
+  --color-warning-600: #ea580c;
+  --color-warning-700: #c2410c;
 
-  /* Danger — red 기반 */
-  --color-danger-50:   #fef2f2;
-  --color-danger-100:  #fee2e2;
-  --color-danger-500:  #ef4444;
-  --color-danger-600:  #dc2626;
-  --color-danger-700:  #b91c1c;
+  --color-danger-50:  #fef2f2;
+  --color-danger-100: #fee2e2;
+  --color-danger-500: #dc2626;
+  --color-danger-600: #b91c1c;
+  --color-danger-700: #991b1b;
+
+  /* ===== Paper & ink (document tone) ===== */
+  --color-paper: #f4f1e8;
+  --color-paper-sage: #eef1e8;
+  --color-ink: #13201a;
 
   /* Extra small typography — chip-density meta / eyebrow uppercase.
      line-height는 inherit 유지 — 강제 1rem(16px)을 주면 chip 박스가 부풀어
@@ -227,6 +318,18 @@
 
 html {
   scrollbar-gutter: stable;
+}
+
+/* 종이 룰드 라인 — 노트북/기획서 페이지 텍스처용. 22px 간격 가로 선.
+   기획서 카드(/team)의 paper 메타포에 사용. background-color와 동시 사용 가능. */
+.paper-rules {
+  background-image: repeating-linear-gradient(
+    180deg,
+    transparent 0,
+    transparent 22px,
+    rgba(0, 0, 0, 0.025) 22px,
+    rgba(0, 0, 0, 0.025) 23px
+  );
 }
 
 /* Tailwind v4 preflight는 <button>에 cursor를 주지 않아 OS 기본 커서가 노출됨.
@@ -258,21 +361,21 @@ body {
 
 @layer components {
   .btn-primary {
-    @apply rounded-xl bg-primary-600 px-5 py-2.5 text-white font-medium transition-all hover:bg-primary-700 shadow-sm;
+    @apply bg-primary-600 px-5 py-2.5 text-white font-medium transition-all hover:bg-primary-700 shadow-sm;
   }
 
   .btn-secondary {
-    @apply rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-gray-700 font-medium transition-all hover:bg-gray-50;
+    @apply border border-gray-200 bg-white px-5 py-2.5 text-gray-700 font-medium transition-all hover:bg-gray-50;
   }
 
   .input-field {
-    @apply w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm transition-all
+    @apply w-full border border-gray-200 bg-white px-4 py-2.5 text-sm transition-all
            placeholder:text-gray-400
            focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100;
   }
 
   .card {
-    @apply rounded-2xl border border-gray-100 bg-white p-6
+    @apply border border-gray-100 bg-white p-6
            shadow-[0_2px_12px_-2px_rgba(0,0,0,0.07)];
   }
 }

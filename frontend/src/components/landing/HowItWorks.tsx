@@ -4,7 +4,7 @@ export default function HowItWorks() {
     <section className="bg-stone-50 py-16 md:py-24">
       <div className="mx-auto max-w-7xl px-4">
         <div className="mb-12 text-center">
-          <span className="inline-flex items-center gap-2 rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-medium text-primary-700">
+          <span className="inline-flex items-center gap-2 border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-medium text-primary-700">
             가입부터 첫 만남까지
           </span>
           <h2 className="mt-4 text-2xl font-bold text-gray-900 sm:text-3xl md:text-4xl">
@@ -57,13 +57,13 @@ function Step({
   return (
     <div className="flex flex-col">
       <div className="mb-4 flex items-center gap-3">
-        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-600 text-base font-bold text-white">
+        <span className="flex h-10 w-10 items-center justify-center bg-primary-600 text-base font-bold text-white">
           {n}
         </span>
         <p className="text-lg font-bold text-stone-900">{title}</p>
       </div>
       <p className="mb-4 text-sm leading-relaxed text-stone-600">{caption}</p>
-      <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-[0_2px_12px_-2px_rgba(0,0,0,0.07)]">
+      <div className="border border-gray-100 bg-white p-4 shadow-[0_2px_12px_-2px_rgba(0,0,0,0.07)]">
         {children}
       </div>
     </div>
@@ -74,16 +74,16 @@ function Step({
 
 function Step1Preview() {
   return (
-    <div className="rounded-xl border border-gray-100 bg-white p-4">
+    <div className="border border-gray-100 bg-white p-4">
       <p className="text-xs font-medium text-stone-500">학교 이메일</p>
-      <div className="mt-1.5 flex items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2">
+      <div className="mt-1.5 flex items-center gap-2 border border-stone-200 bg-white px-3 py-2">
         <span className="text-sm text-stone-400">student@</span>
         <span className="text-sm font-medium text-stone-700">yourschool.ac.kr</span>
       </div>
       <button
         type="button"
         aria-hidden="true"
-        className="mt-2 w-full rounded-lg bg-primary-600 px-3 py-2 text-sm font-medium text-white"
+        className="mt-2 w-full bg-primary-600 px-3 py-2 text-sm font-medium text-white"
       >
         인증 메일 보내기
       </button>
@@ -98,9 +98,9 @@ function Step1Preview() {
 function Step2Preview() {
   return (
     <div>
-      <div className="rounded-xl border border-gray-100 bg-white p-4">
+      <div className="border border-gray-100 bg-white p-4">
         <div className="flex items-center gap-1.5">
-          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-3xs font-semibold text-emerald-700">
+          <span className="bg-emerald-100 px-2 py-0.5 text-3xs font-semibold text-emerald-700">
             모집 중
           </span>
           <span className="text-3xs text-stone-400">8주 · 11월 데모데이</span>
@@ -114,13 +114,13 @@ function Step2Preview() {
           모집 직군
         </p>
         <div className="mt-1 flex flex-wrap gap-1">
-          <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-3xs font-medium text-indigo-700">
+          <span className="border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-3xs font-medium text-indigo-700">
             ML/AI
           </span>
-          <span className="rounded-full border border-stone-200 bg-stone-50 px-2 py-0.5 text-3xs text-stone-500">
+          <span className="border border-stone-200 bg-stone-50 px-2 py-0.5 text-3xs text-stone-500">
             백엔드
           </span>
-          <span className="rounded-full border border-stone-200 bg-stone-50 px-2 py-0.5 text-3xs text-stone-500">
+          <span className="border border-stone-200 bg-stone-50 px-2 py-0.5 text-3xs text-stone-500">
             디자인
           </span>
         </div>
@@ -129,7 +129,7 @@ function Step2Preview() {
           {['Python', 'PyTorch', 'React'].map((s) => (
             <span
               key={s}
-              className="rounded-md bg-stone-100 px-1.5 py-0.5 text-3xs text-stone-600"
+              className="bg-stone-100 px-1.5 py-0.5 text-3xs text-stone-600"
             >
               {s}
             </span>
@@ -138,7 +138,7 @@ function Step2Preview() {
 
         <div
           aria-hidden="true"
-          className="mt-3 w-full rounded-lg bg-primary-600 py-1.5 text-center text-xs font-medium text-white"
+          className="mt-3 w-full bg-primary-600 py-1.5 text-center text-xs font-medium text-white"
         >
           지원하기
         </div>
@@ -152,43 +152,43 @@ function Step2Preview() {
 
 function Step3Preview() {
   return (
-    <div className="rounded-xl border border-gray-100 bg-white">
+    <div className="border border-gray-100 bg-white">
       <div className="flex items-center gap-2 border-b border-gray-100 px-3 py-2">
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700">
+        <span className="flex h-7 w-7 items-center justify-center bg-primary-100 text-xs font-semibold text-primary-700">
           김
         </span>
         <div>
           <p className="text-xs font-semibold text-stone-900">김태윤</p>
           <p className="text-3xs text-stone-400">고려대 · 백엔드</p>
         </div>
-        <span className="ml-auto h-1.5 w-1.5 rounded-full bg-emerald-500" />
+        <span className="ml-auto h-1.5 w-1.5 bg-emerald-500" />
       </div>
 
       <div className="flex flex-col gap-2 px-3 py-3">
         <div className="flex justify-start">
-          <span className="max-w-[80%] rounded-2xl rounded-tl-sm bg-stone-100 px-3 py-1.5 text-xs text-stone-700">
+          <span className="max-w-[80%] bg-stone-100 px-3 py-1.5 text-xs text-stone-700">
             안녕하세요! 지원 잘 봤어요 :)
           </span>
         </div>
         <div className="flex justify-end">
-          <span className="max-w-[80%] rounded-2xl rounded-tr-sm bg-primary-600 px-3 py-1.5 text-xs text-white">
+          <span className="max-w-[80%] bg-primary-600 px-3 py-1.5 text-xs text-white">
             내일 7시 학교 카페 어떠세요?
           </span>
         </div>
         <div className="flex justify-start">
-          <span className="rounded-2xl rounded-tl-sm bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700">
+          <span className="bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700">
             ☕ 커피 기프티콘 도착
           </span>
         </div>
       </div>
 
       <div className="flex items-center gap-2 border-t border-gray-100 px-3 py-2">
-        <span className="flex-1 rounded-full bg-stone-50 px-3 py-1 text-2xs text-stone-400">
+        <span className="flex-1 bg-stone-50 px-3 py-1 text-2xs text-stone-400">
           메시지 입력...
         </span>
         <span
           aria-hidden="true"
-          className="flex h-6 w-6 items-center justify-center rounded-full bg-primary-600 text-white"
+          className="flex h-6 w-6 items-center justify-center bg-primary-600 text-white"
         >
           <svg
             className="h-3 w-3"

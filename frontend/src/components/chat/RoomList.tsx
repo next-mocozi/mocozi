@@ -390,7 +390,7 @@ export default function RoomList() {
                 e.stopPropagation();
                 setLegendOpen((v) => !v);
               }}
-              className="flex h-5 w-5 items-center justify-center rounded-full bg-stone-100 text-[10px] font-bold text-stone-500 hover:bg-stone-200 hover:text-stone-700"
+              className="flex h-5 w-5 items-center justify-center bg-stone-100 text-[10px] font-bold text-stone-500 hover:bg-stone-200 hover:text-stone-700"
               aria-label="색 점 의미 보기"
               aria-expanded={legendOpen}
               title="색 점 의미"
@@ -405,7 +405,7 @@ export default function RoomList() {
                   onClick={() => setLegendOpen(false)}
                 />
                 <div
-                  className="absolute left-0 top-7 z-20 w-44 rounded-lg border border-stone-200 bg-white p-3 shadow-lg"
+                  className="absolute left-0 top-7 z-20 w-44 border border-stone-200 bg-white p-3 shadow-lg"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <p className="mb-2 text-[11px] font-semibold text-stone-700">
@@ -413,15 +413,15 @@ export default function RoomList() {
                   </p>
                   <ul className="space-y-3 text-xs text-stone-600">
                     <li className="flex items-center gap-3">
-                      <span className="h-1 w-1 animate-neon-pulse rounded-full bg-blue-500 shadow-[0_0_4px_rgb(59_130_246/0.95),0_0_12px_rgb(59_130_246/0.6),0_0_24px_rgb(59_130_246/0.3)]" />
+                      <span className="h-1 w-1 animate-neon-pulse bg-blue-500 shadow-[0_0_4px_rgb(59_130_246/0.95),0_0_12px_rgb(59_130_246/0.6),0_0_24px_rgb(59_130_246/0.3)]" />
                       구인 (recruit)
                     </li>
                     <li className="flex items-center gap-3">
-                      <span className="h-1 w-1 animate-neon-pulse rounded-full bg-amber-500 shadow-[0_0_4px_rgb(245_158_11/0.95),0_0_12px_rgb(245_158_11/0.6),0_0_24px_rgb(245_158_11/0.3)]" />
+                      <span className="h-1 w-1 animate-neon-pulse bg-amber-500 shadow-[0_0_4px_rgb(245_158_11/0.95),0_0_12px_rgb(245_158_11/0.6),0_0_24px_rgb(245_158_11/0.3)]" />
                       팀 합류
                     </li>
                     <li className="flex items-center gap-3">
-                      <span className="h-1 w-1 animate-neon-pulse rounded-full bg-emerald-500 shadow-[0_0_4px_rgb(16_185_129/0.95),0_0_12px_rgb(16_185_129/0.6),0_0_24px_rgb(16_185_129/0.3)]" />
+                      <span className="h-1 w-1 animate-neon-pulse bg-emerald-500 shadow-[0_0_4px_rgb(16_185_129/0.95),0_0_12px_rgb(16_185_129/0.6),0_0_24px_rgb(16_185_129/0.3)]" />
                       포트폴리오
                     </li>
                   </ul>
@@ -464,7 +464,7 @@ export default function RoomList() {
       />
 
       {error && (
-        <div className="m-3 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">
+        <div className="m-3 border border-red-200 bg-red-50 p-2 text-xs text-red-700">
           {error}
         </div>
       )}
@@ -545,7 +545,7 @@ export default function RoomList() {
                       className="flex min-w-0 flex-1 items-center gap-3 p-3 transition-colors"
                     >
                       <div className="relative shrink-0">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
+                        <div className="flex h-10 w-10 items-center justify-center bg-indigo-100 text-indigo-600">
                           {room.type === 'DIRECT' ? (
                             <UserIcon className="h-5 w-5" />
                           ) : (
@@ -556,7 +556,7 @@ export default function RoomList() {
                         {/* §B-DM-8 응답 만료 — 아바타 우하단 ⏰ overlay */}
                         {room.responseExpired && (
                           <span
-                            className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-100 text-[10px] leading-none ring-2 ring-white"
+                            className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center bg-amber-100 text-[10px] leading-none ring-2 ring-white"
                             title="3일 동안 응답 없음"
                             aria-label="응답 시간 만료"
                           >
@@ -575,7 +575,7 @@ export default function RoomList() {
                                 핀포인트 LED 같은 네온 비율. */}
                             {room.context && (
                               <span
-                                className={`h-1 w-1 shrink-0 rounded-full animate-neon-pulse ${contextNeonClasses(room.context)}`}
+                                className={`h-1 w-1 shrink-0 animate-neon-pulse ${contextNeonClasses(room.context)}`}
                                 title={contextLabel(room.context)}
                                 aria-label={`진입: ${contextLabel(room.context)}`}
                               />
@@ -603,7 +603,7 @@ export default function RoomList() {
                         </p>
                       </div>
                       {unread > 0 && (
-                        <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-indigo-600 px-1.5 text-xs text-white">
+                        <span className="flex h-5 min-w-5 shrink-0 items-center justify-center bg-indigo-600 px-1.5 text-xs text-white">
                           {unread}
                         </span>
                       )}
@@ -663,7 +663,7 @@ export default function RoomList() {
                                   targetId: teamTargetId,
                                 });
                               }}
-                              className="rounded-full p-1 text-stone-400 hover:bg-stone-200 hover:text-indigo-600"
+                              className="p-1 text-stone-400 hover:bg-stone-200 hover:text-indigo-600"
                               aria-label="기획서 보기"
                               title="기획서 보기"
                             >
@@ -680,7 +680,7 @@ export default function RoomList() {
                                   targetId: profileTargetId,
                                 });
                               }}
-                              className="rounded-full p-1 text-stone-400 hover:bg-stone-200 hover:text-indigo-600"
+                              className="p-1 text-stone-400 hover:bg-stone-200 hover:text-indigo-600"
                               aria-label="프로필 보기"
                               title="프로필 보기"
                             >
@@ -698,7 +698,7 @@ export default function RoomList() {
                         e.stopPropagation();
                         setOpenMenuRoomId(menuOpen ? null : room.id);
                       }}
-                      className="mr-2 rounded-full p-1 text-stone-400 hover:bg-stone-200 hover:text-stone-700"
+                      className="mr-2 p-1 text-stone-400 hover:bg-stone-200 hover:text-stone-700"
                       aria-label="채팅방 메뉴"
                     >
                       <svg
@@ -715,7 +715,7 @@ export default function RoomList() {
 
                     {menuOpen && (
                       <div
-                        className="absolute right-2 top-12 z-10 w-36 rounded-lg border border-stone-200 bg-white py-1 shadow-lg"
+                        className="absolute right-2 top-12 z-10 w-36 border border-stone-200 bg-white py-1 shadow-lg"
                         onClick={(e) => e.stopPropagation()}
                       >
                         {/* 알림 끄기/켜기 — 가벼운 액션이라 다이얼로그 없이 즉시 적용 */}
@@ -811,7 +811,7 @@ export default function RoomList() {
           onClick={() => setConfirmAction(null)}
         >
           <div
-            className="w-full max-w-sm rounded-xl bg-white p-5 shadow-xl"
+            className="w-full max-w-sm bg-white p-5 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-base font-semibold text-stone-900">
@@ -828,7 +828,7 @@ export default function RoomList() {
               <button
                 type="button"
                 onClick={() => setConfirmAction(null)}
-                className="rounded-lg border border-stone-300 bg-white px-4 py-1.5 text-sm text-stone-700 hover:bg-stone-50"
+                className="border border-stone-300 bg-white px-4 py-1.5 text-sm text-stone-700 hover:bg-stone-50"
               >
                 취소
               </button>
@@ -839,7 +839,7 @@ export default function RoomList() {
                     ? void handleHide(confirmAction.room.id)
                     : void handleLeave(confirmAction.room.id)
                 }
-                className={`rounded-lg px-4 py-1.5 text-sm text-white ${
+                className={`px-4 py-1.5 text-sm text-white ${
                   confirmAction.type === 'hide'
                     ? 'bg-indigo-600 hover:bg-indigo-700'
                     : 'bg-red-600 hover:bg-red-700'

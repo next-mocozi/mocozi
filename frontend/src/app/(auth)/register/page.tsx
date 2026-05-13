@@ -201,7 +201,7 @@ export default function RegisterPage() {
               autoComplete="off"
             />
             {uniOpen && filteredUnis.length > 0 && (
-              <ul className="absolute z-10 mt-1 max-h-52 w-full overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg">
+              <ul className="absolute z-10 mt-1 max-h-52 w-full overflow-y-auto border border-gray-200 bg-white shadow-lg">
                 {filteredUnis.map((u) => (
                   <li
                     key={u}

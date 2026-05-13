@@ -275,11 +275,11 @@ export default function ResearchForm() {
   const labelClass = 'block text-sm font-medium text-gray-700';
   const subHintClass = 'text-xs text-gray-400';
   const inputClass =
-    'w-full rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100';
+    'w-full border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100';
   const textareaClass =
-    'w-full resize-none rounded-lg border border-gray-200 px-4 py-2 text-sm leading-7 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100';
+    'w-full resize-none border border-gray-200 px-4 py-2 text-sm leading-7 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100';
   const chipBase =
-    'rounded-full border px-3 py-1.5 text-xs leading-relaxed transition-all';
+    'border px-3 py-1.5 text-xs leading-relaxed transition-all';
   const chipOff =
     'border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50';
   const chipOn = 'border-blue-500 bg-blue-500 text-white';
@@ -304,7 +304,7 @@ export default function ResearchForm() {
         </div>
       </div>
 
-      <div className="space-y-6 rounded-2xl bg-white p-8 shadow-sm sm:p-6">
+      <div className="space-y-6 bg-white p-8 shadow-sm sm:p-6">
         <h2
           style={{ marginBottom: '1rem' }}
           className="text-xl font-bold text-gray-900"
@@ -455,7 +455,7 @@ export default function ResearchForm() {
         </div>
 
         {/* 5. 도메인 */}
-        <div className="rounded-xl border border-gray-100 p-4">
+        <div className="border border-gray-100 p-4">
           <p className={`mb-2 ${labelClass}`}>
             5. 도메인{' '}
             <span className="text-xs font-normal text-gray-400">(선택)</span>
@@ -540,12 +540,12 @@ export default function ResearchForm() {
                       }
                     }}
                     placeholder="기타 도메인 직접 입력"
-                    className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                    className="flex-1 border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
                   />
                   <button
                     type="button"
                     onClick={addCustomDomain}
-                    className="rounded-lg bg-gray-900 px-3 py-2 text-sm text-white hover:bg-gray-700"
+                    className="bg-gray-900 px-3 py-2 text-sm text-white hover:bg-gray-700"
                   >
                     추가
                   </button>
@@ -598,7 +598,7 @@ export default function ResearchForm() {
         </div>
 
         {/* 6. 논문 첨부 */}
-        <div className="rounded-xl border border-gray-100 p-4">
+        <div className="border border-gray-100 p-4">
           <label className={`mb-2 ${labelClass}`}>
             6. 논문 첨부{' '}
             <span className="text-xs font-normal text-gray-400">(선택)</span>
@@ -617,7 +617,7 @@ export default function ResearchForm() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+              className="border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
             >
               {d.paperFile ? '파일 변경' : '+ 파일 첨부'}
             </button>
@@ -633,7 +633,7 @@ export default function ResearchForm() {
                 <button
                   type="button"
                   onClick={() => update('paperFile', null)}
-                  className="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-400 hover:bg-red-50 hover:text-red-500"
+                  className="border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-400 hover:bg-red-50 hover:text-red-500"
                 >
                   제거
                 </button>
@@ -691,7 +691,7 @@ export default function ResearchForm() {
           <button
             onClick={handleDelete}
             disabled={isSubmitting}
-            className="rounded-full border border-red-200 px-6 py-2.5 text-sm text-red-500 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+            className="border border-red-200 px-6 py-2.5 text-sm text-red-500 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
             삭제
           </button>
@@ -701,14 +701,14 @@ export default function ResearchForm() {
         <div className="flex gap-2">
           <Link
             href="/portfolio"
-            className="rounded-full border border-gray-200 px-6 py-2.5 text-sm text-gray-600 hover:bg-gray-50"
+            className="border border-gray-200 px-6 py-2.5 text-sm text-gray-600 hover:bg-gray-50"
           >
             취소
           </Link>
           <button
             onClick={handleSave}
             disabled={isSubmitting}
-            className="rounded-full bg-blue-600 px-6 py-2.5 text-sm text-white shadow-md hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="bg-blue-600 px-6 py-2.5 text-sm text-white shadow-md hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSubmitting ? '저장 중…' : isEdit ? '수정 완료' : '저장'}
           </button>

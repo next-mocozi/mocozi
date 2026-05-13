@@ -1,7 +1,7 @@
 'use client';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { ScoutModal } from '@/components/chat/ScoutModal';
+import { useRouter } from 'next/navigation';
 import { usePagination } from '@/hooks/usePagination';
 import { Pagination } from '@/components/ui/Pagination';
 import { useAuth } from '@/hooks/useAuth';
@@ -39,11 +39,23 @@ interface UserProfile {
   bannerColor?: string | null;
 }
 
-// Phase B-DM-8 Scout C — 모달 동작은 @/components/chat/ScoutModal로 추출됨.
-// 이 페이지는 단순히 카드 "스카우트" 클릭 시 모달의 targetUser만 셋하면 됨.
+interface MyTeam {
+  id: string;
+  name: string;
+  teamType: string;
+}
+
+interface ScoutModalState {
+  targetUser: UserProfile;
+  teams: MyTeam[];
+  selectedTeamId: string;
+  message: string;
+  loading: boolean;
+}
 
 export default function RecruitListPage() {
   const { user, isAuthenticated } = useAuth();
+  const router = useRouter();
 
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [fetchLoading, setFetchLoading] = useState(true);
@@ -56,8 +68,9 @@ export default function RecruitListPage() {
   const [keyword, setKeyword] = useState('');
   const [appliedKeyword, setAppliedKeyword] = useState('');
 
-  /** 스카우트 대상 사용자 — null이면 모달 닫힘. 카드 "스카우트" 클릭 시 셋. */
-  const [scoutTarget, setScoutTarget] = useState<{ id: string; name: string } | null>(null);
+  const [scoutModal, setScoutModal] = useState<ScoutModalState | null>(null);
+  const [scoutError, setScoutError] = useState<string | null>(null);
+  const [scoutSuccess, setScoutSuccess] = useState(false);
 
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
@@ -143,6 +156,56 @@ export default function RecruitListPage() {
     }
   }, [appliedKeyword, appliedRoles, appliedSkills, appliedSameSchool]);
 
+  const openScoutModal = async (target: UserProfile) => {
+    setScoutError(null);
+    setScoutSuccess(false);
+    const res = await api.get('/api/teams/my');
+    const teams: MyTeam[] = res.data?.data ?? res.data ?? [];
+    // 본인 소속 팀 없으면 modal 안 열고 안내 alert (B-DM-1 정책)
+    if (teams.length === 0) {
+      window.alert(
+        '스카우트 채팅을 시작하려면 먼저 본인의 팀을 만들어주세요.\n팀 메뉴에서 새 팀을 생성할 수 있습니다.',
+      );
+      return;
+    }
+    setScoutModal({ targetUser: target, teams, selectedTeamId: teams[0]?.id ?? '', message: '', loading: false });
+  };
+
+  const submitScout = async () => {
+    if (!scoutModal) return;
+    if (!scoutModal.selectedTeamId) { setScoutError('팀을 선택해주세요.'); return; }
+    if (!scoutModal.message.trim()) { setScoutError('메시지를 입력해주세요.'); return; }
+
+    setScoutModal((prev) => prev && { ...prev, loading: true });
+    setScoutError(null);
+    try {
+      // B-DM-1 정책 통합 — 별도 Scout 제안 대신 채팅방 시작 + 첫 메시지 전송.
+      // 본문 + 팀 link 마커 자동 첨부 → 받는 사람의 채팅창에서 팀 정보 인지 가능.
+      const team = scoutModal.teams.find((t) => t.id === scoutModal.selectedTeamId);
+      const teamMarker = team
+        ? `\n\n[[link:team:${team.id}|${team.name} 팀 보기]]`
+        : '';
+      const firstMessage = `${scoutModal.message.trim()}${teamMarker}`;
+
+      const res = await api.post<{ data: { id: string } }>('/api/chat/rooms', {
+        type: 'DIRECT',
+        memberIds: [scoutModal.targetUser.id],
+        context: 'SCOUT_FROM_TEAM',
+        firstMessage,
+      });
+      const roomId = res.data.data.id;
+      setScoutSuccess(true);
+      // 모달 닫고 채팅방으로 이동
+      setTimeout(() => {
+        setScoutModal(null);
+        router.push(`/chat/${roomId}?context=SCOUT_FROM_TEAM&teamId=${scoutModal.selectedTeamId}`);
+      }, 800);
+    } catch (e: any) {
+      setScoutError(e?.response?.data?.message ?? '스카우트 채팅 시작에 실패했습니다.');
+      setScoutModal((prev) => prev && { ...prev, loading: false });
+    }
+  };
+
   const clearAll = () => {
     setAppliedKeyword('');
     setKeyword('');
@@ -156,7 +219,7 @@ export default function RecruitListPage() {
     <>
       {/* 검색 */}
       <p className="mb-2 text-sm font-semibold text-stone-700">검색</p>
-      <div className="flex items-center gap-2 rounded-xl border border-stone-200 bg-white px-3 py-2 transition-all focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100">
+      <div className="flex items-center gap-2 border border-stone-200 bg-white px-3 py-2 transition-all focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100">
         <svg className="h-4 w-4 flex-shrink-0 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
@@ -184,7 +247,7 @@ export default function RecruitListPage() {
       <button
         type="button"
         onClick={applySearch}
-        className="mt-2 w-full rounded-lg bg-indigo-600 py-1.5 text-xs font-medium text-white transition-colors hover:bg-indigo-700"
+        className="mt-2 w-full bg-indigo-600 py-1.5 text-xs font-medium text-white transition-colors hover:bg-indigo-700"
       >
         검색
       </button>
@@ -193,7 +256,7 @@ export default function RecruitListPage() {
       {isAuthenticated && (
         <button
           onClick={() => setAppliedSameSchool(!appliedSameSchool)}
-          className={`mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl border px-4 py-1.5 text-sm font-medium transition-all ${
+          className={`mt-3 inline-flex w-full items-center justify-center gap-1.5 border px-4 py-1.5 text-sm font-medium transition-all ${
             appliedSameSchool
               ? 'border-indigo-600 bg-indigo-600 text-white'
               : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-50'
@@ -205,12 +268,12 @@ export default function RecruitListPage() {
 
       {/* 직군 */}
       <p className="mb-2 mt-5 text-sm font-semibold text-stone-700">직군</p>
-      <div className="flex flex-wrap gap-1.5 rounded-xl border border-stone-100 bg-stone-50/50 p-2.5">
+      <div className="flex flex-wrap gap-1.5 border border-stone-100 bg-stone-50/50 p-2.5">
         {ROLE_OPTIONS.map((role) => (
           <button
             key={role}
             onClick={() => toggleItem(role, appliedRoles, setAppliedRoles)}
-            className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-all ${
+            className={`border px-2.5 py-1 text-xs font-medium transition-all ${
               appliedRoles.includes(role)
                 ? 'border-indigo-600 bg-indigo-600 text-white'
                 : 'border-indigo-200 text-indigo-600 hover:bg-indigo-50'
@@ -228,9 +291,9 @@ export default function RecruitListPage() {
         value={skillSearch}
         onChange={(e) => setSkillSearch(e.target.value)}
         placeholder="스킬 검색..."
-        className="mb-2 w-full rounded-xl border border-stone-200 bg-white px-3 py-1.5 text-sm transition-all placeholder:text-stone-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+        className="mb-2 w-full border border-stone-200 bg-white px-3 py-1.5 text-sm transition-all placeholder:text-stone-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
       />
-      <div className="flex max-h-72 flex-col gap-3 overflow-y-auto rounded-xl border border-stone-100 p-2.5">
+      <div className="flex max-h-72 flex-col gap-3 overflow-y-auto border border-stone-100 p-2.5">
         {SKILL_GROUPS.map(({ label, skills }) => {
           const filtered = skills.filter((s) => s.toLowerCase().includes(skillSearch.toLowerCase()));
           if (filtered.length === 0) return null;
@@ -242,7 +305,7 @@ export default function RecruitListPage() {
                   <button
                     key={skill}
                     onClick={() => toggleItem(skill, appliedSkills, setAppliedSkills)}
-                    className={`rounded-full border px-2.5 py-1 text-xs transition-all ${
+                    className={`border px-2.5 py-1 text-xs transition-all ${
                       appliedSkills.includes(skill)
                         ? 'border-stone-700 bg-stone-700 text-white'
                         : 'border-stone-200 text-stone-600 hover:bg-stone-100'
@@ -270,12 +333,12 @@ export default function RecruitListPage() {
       <div className="lg:flex lg:gap-6">
         {/* 좌 사이드바 — lg 이상에서만 인라인 노출 (모바일은 바텀시트로) */}
         <aside className="hidden w-[280px] flex-shrink-0 lg:block">
-          <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
+          <div className="border border-stone-200 bg-white p-4 shadow-sm">
             {filterControls}
             {hasActiveFilters && (
               <button
                 onClick={clearAll}
-                className="mt-4 w-full rounded-lg border border-stone-200 bg-white py-1.5 text-xs font-medium text-stone-500 transition-all hover:border-stone-300 hover:bg-stone-50 hover:text-stone-700"
+                className="mt-4 w-full border border-stone-200 bg-white py-1.5 text-xs font-medium text-stone-500 transition-all hover:border-stone-300 hover:bg-stone-50 hover:text-stone-700"
               >
                 전체 초기화
               </button>
@@ -297,7 +360,7 @@ export default function RecruitListPage() {
                 <button
                   type="button"
                   onClick={() => setMobileFilterOpen(true)}
-                  className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700 transition-colors hover:bg-indigo-100 lg:hidden"
+                  className="inline-flex items-center gap-1 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700 transition-colors hover:bg-indigo-100 lg:hidden"
                 >
                   필터 {activeFilterCount}개
                   <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -307,7 +370,7 @@ export default function RecruitListPage() {
                 {/* lg+: 개별 칩 (즉시 제거 가능) */}
                 <div className="hidden flex-wrap items-center gap-2 lg:flex">
                   {appliedKeyword && (
-                    <span className="flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1 text-stone-600">
+                    <span className="flex items-center gap-1.5 border border-stone-200 bg-white px-3 py-1 text-stone-600">
                       <span className="text-xs text-stone-400">키워드</span>
                       {appliedKeyword}
                       <button onClick={() => { setAppliedKeyword(''); setKeyword(''); }} className="text-stone-300 hover:text-stone-600" aria-label="키워드 제거">
@@ -318,7 +381,7 @@ export default function RecruitListPage() {
                     </span>
                   )}
                   {appliedSameSchool && (
-                    <span className="flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-indigo-700">
+                    <span className="flex items-center gap-1.5 border border-indigo-200 bg-indigo-50 px-3 py-1 text-indigo-700">
                       🏫 같은 학교
                       <button onClick={() => setAppliedSameSchool(false)} className="text-indigo-300 hover:text-indigo-600" aria-label="같은 학교 필터 제거">
                         <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -328,7 +391,7 @@ export default function RecruitListPage() {
                     </span>
                   )}
                   {appliedRoles.map((role) => (
-                    <span key={role} className="flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-indigo-700">
+                    <span key={role} className="flex items-center gap-1.5 border border-indigo-200 bg-indigo-50 px-3 py-1 text-indigo-700">
                       {role}
                       <button onClick={() => setAppliedRoles(appliedRoles.filter((r) => r !== role))} className="text-indigo-300 hover:text-indigo-600" aria-label={`${role} 필터 제거`}>
                         <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -338,7 +401,7 @@ export default function RecruitListPage() {
                     </span>
                   ))}
                   {appliedSkills.map((skill) => (
-                    <span key={skill} className="flex items-center gap-1.5 rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-stone-600">
+                    <span key={skill} className="flex items-center gap-1.5 border border-stone-200 bg-stone-50 px-3 py-1 text-stone-600">
                       {skill}
                       <button onClick={() => setAppliedSkills(appliedSkills.filter((s) => s !== skill))} className="text-stone-300 hover:text-stone-600" aria-label={`${skill} 필터 제거`}>
                         <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -362,111 +425,112 @@ export default function RecruitListPage() {
             </div>
           ) : fetchError ? (
             <div className="card flex h-[320px] flex-col items-center justify-center gap-3 text-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-2xl">⚠️</div>
+              <div className="flex h-14 w-14 items-center justify-center bg-red-50 text-2xl">⚠️</div>
               <p className="text-sm font-semibold text-stone-700">{fetchError}</p>
             </div>
           ) : filteredProfiles.length === 0 ? (
             <div className="card flex h-[320px] flex-col items-center justify-center gap-3 text-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-stone-100 text-2xl">🔍</div>
+              <div className="flex h-14 w-14 items-center justify-center bg-stone-100 text-2xl">🔍</div>
               <p className="text-base font-semibold text-stone-700">검색 결과가 없습니다</p>
               <p className="text-sm text-stone-400">키워드나 필터를 변경해 보세요.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-3">
               {pageItems.map((person) => {
                 const roles = person.roles ?? [];
                 const mainRole = roles[0] ?? null;
                 const subRoles = roles.slice(1);
+                const skills = person.skills ?? [];
                 return (
                   <div
                     key={person.id}
-                    className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_2px_12px_-2px_rgba(0,0,0,0.07)] transition-all hover:shadow-[0_8px_24px_-4px_rgba(99,102,241,0.12)] hover:-translate-y-0.5"
+                    className="group relative flex aspect-[3/5] flex-col overflow-hidden border border-stone-100 bg-white shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.12)] lg:aspect-[17/20]"
                   >
-                    {/* 그라데이션 헤더 — 사용자가 /profile 에서 선택한 banner 색상.
-                        bannerColor 미설정이면 default 그라데이션. /profile 등 다른 페이지와
-                        동일한 색상이 보이도록 통일. */}
-                    <div
-                      className={`relative h-16 overflow-hidden bg-gradient-to-br ${getBannerGradientClass(person.bannerColor)} z-10`}
-                      aria-hidden="true"
-                    >
-                      <div className="pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/5" />
-                      <div className="pointer-events-none absolute -bottom-4 right-10 h-16 w-16 rounded-full bg-white/5" />
-                      <div className="absolute inset-x-0 bottom-0 h-px bg-white/10" />
+                    {/* 상단 — 정체성: 학교 strip + 이름 + 학교 정보 (+ bio @ lg) */}
+                    <div className="relative flex flex-col border-b border-stone-200 px-3 pb-2.5 pt-3.5 sm:px-4 sm:pt-4 lg:px-5 lg:pt-5">
+                      <div
+                        className={`absolute inset-x-3 top-0 h-[3px] bg-gradient-to-r ${getBannerGradientClass(person.bannerColor)} sm:inset-x-4 lg:inset-x-5`}
+                        aria-hidden="true"
+                      />
+                      <div className="mt-1 flex items-center gap-2 sm:gap-2.5">
+                        {person.profileImage ? (
+                          <img
+                            src={person.profileImage}
+                            alt={person.name}
+                            className="h-8 w-8 object-cover sm:h-9 sm:w-9"
+                          />
+                        ) : (
+                          <div className="flex h-8 w-8 items-center justify-center bg-stone-100 text-xs font-bold text-stone-500 sm:h-9 sm:w-9 sm:text-sm">
+                            {person.name[0]}
+                          </div>
+                        )}
+                        <p className="text-base font-bold tracking-tight text-stone-900 sm:text-lg lg:text-xl">
+                          {person.name}
+                        </p>
+                      </div>
+                      <p className="mt-2 text-2xs leading-relaxed text-stone-600 sm:mt-3 sm:text-xs lg:text-sm">
+                        <span className="font-semibold text-stone-900">{person.university}</span>
+                        <span className="text-stone-400"> · </span>
+                        <span>{person.department}</span>
+                      </p>
+                      {person.bio?.trim() && (
+                        <p className="mt-2 hidden border-l-2 border-stone-200 pl-2 text-2xs italic leading-snug text-stone-500 line-clamp-2 lg:block lg:line-clamp-3">
+                          {person.bio.trim()}
+                        </p>
+                      )}
                     </div>
 
-                    {/* 아바타 + 버튼 */}
-                    <div className="-mt-8 flex items-end justify-between px-4 z-20">
-                      <div className="flex h-16 w-16 items-center justify-center rounded-full border-[3px] border-white bg-stone-100 text-xl font-bold text-stone-500 shadow-md">
-                        {person.profileImage ? (
-                          <img src={person.profileImage} alt={person.name} className="h-full w-full rounded-full object-cover z-30" />
+                    {/* 하단 — 직능: Main Role + 직군 + 스킬 + 액션 */}
+                    <div className="flex flex-1 flex-col bg-gradient-to-b from-stone-50/20 to-stone-50/50 px-3 pb-3 pt-2.5 sm:px-4 sm:pt-3 lg:px-5 lg:pb-4 lg:pt-4">
+                      <p className="text-3xs font-semibold uppercase tracking-[0.16em] text-stone-400">
+                        Main Role
+                      </p>
+                      <p className="mt-0.5 text-sm font-extrabold tracking-tight text-stone-900 sm:text-base lg:text-lg">
+                        {mainRole ?? <span className="font-bold text-stone-300">직군 미등록</span>}
+                      </p>
+                      {subRoles.length > 0 && (
+                        <p className="mt-0.5 text-2xs text-stone-500">
+                          + {subRoles.slice(0, 2).join(' · ')}
+                          {subRoles.length > 2 ? ` · +${subRoles.length - 2}` : ''}
+                        </p>
+                      )}
+
+                      <div className="mt-2 flex flex-1 flex-wrap content-start gap-x-2.5 gap-y-0.5 font-mono text-2xs text-stone-700 sm:mt-2.5 sm:gap-x-3">
+                        {skills.length > 0 ? (
+                          <>
+                            {skills.slice(0, 4).map((skill) => (
+                              <span
+                                key={skill}
+                                className="before:mr-0.5 before:text-stone-400 before:content-['—']"
+                              >
+                                {skill}
+                              </span>
+                            ))}
+                            {skills.length > 4 && (
+                              <span className="text-stone-400">+{skills.length - 4}</span>
+                            )}
+                          </>
                         ) : (
-                          person.name[0]
+                          <span className="text-stone-300">스킬 미등록</span>
                         )}
                       </div>
-                      <div className="flex translate-y-[8px] gap-1.5">
+
+                      <div className="mt-2.5 flex gap-1.5 sm:mt-3">
                         {isAuthenticated && (
                           <button
-                            onClick={() => setScoutTarget({ id: person.id, name: person.name })}
-                            className="rounded-lg border border-stone-200 px-3 py-1.5 text-sm font-medium text-stone-600 transition-all hover:border-stone-700 hover:bg-stone-700 hover:text-white sm:px-2.5 sm:py-1 sm:text-xs"
+                            onClick={() => openScoutModal(person)}
+                            className="flex-1 border border-stone-300 bg-white px-2 py-1.5 text-2xs font-medium tracking-[0.05em] text-stone-700 transition-all hover:border-stone-700 hover:bg-stone-700 hover:text-white"
                           >
                             스카우트
                           </button>
                         )}
                         <Link
                           href={`/profile/${person.id}`}
-                          className="rounded-lg border border-indigo-200 px-3 py-1.5 text-sm font-medium text-indigo-600 transition-all hover:bg-indigo-600 hover:text-white sm:px-2.5 sm:py-1 sm:text-xs"
+                          className="flex-1 border border-stone-900 bg-stone-900 px-2 py-1.5 text-center text-2xs font-medium tracking-[0.05em] text-white transition-all hover:bg-stone-800"
                         >
                           프로필
                         </Link>
                       </div>
-                    </div>
-
-                    {/* 카드 바디 */}
-                    <div className="flex flex-1 flex-col px-4 pb-4 pt-2.5">
-                      <p className="text-base font-bold text-stone-900">{person.name}</p>
-                      <p className="mb-1 text-xs text-stone-400">{person.university} · {person.department}</p>
-
-                      <div className="mb-2 flex min-h-[1.75rem] flex-wrap items-center gap-1">
-                        {mainRole ? (
-                          <>
-                            <span className="inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white px-2.5 py-0.5 text-2xs font-medium text-stone-700">
-                              <span className="h-1.5 w-1.5 rounded-full bg-[#ff6e2a]" aria-hidden="true" />
-                              {mainRole}
-                            </span>
-                            {subRoles.slice(0, 2).map((role) => (
-                              <span key={role} className="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-0.5 text-2xs text-stone-500">
-                                {role}
-                              </span>
-                            ))}
-                            {subRoles.length > 2 && (
-                              <span className="rounded-full border border-stone-200 px-2.5 py-0.5 text-2xs text-stone-400">
-                                +{subRoles.length - 2}
-                              </span>
-                            )}
-                          </>
-                        ) : (
-                          <span className="rounded-full border border-dotted border-stone-200 px-2.5 py-0.5 text-2xs font-medium text-stone-300">
-                            직군 미등록
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="mb-2 flex min-h-[1.25rem] flex-wrap gap-1">
-                        {(person.skills ?? []).length > 0 ? (
-                          <>
-                            {(person.skills ?? []).slice(0, 4).map((skill) => (
-                              <span key={skill} className="rounded-md bg-stone-100 px-2 py-0.5 text-2xs text-stone-600">{skill}</span>
-                            ))}
-                            {(person.skills ?? []).length > 4 && (
-                              <span className="rounded-md bg-stone-100 px-2 py-0.5 text-2xs text-stone-400">+{person.skills.length - 4}</span>
-                            )}
-                          </>
-                        ) : (
-                          <span className="rounded-md border border-dotted border-stone-200 px-2 py-0.5 text-2xs text-stone-300">스킬 미등록</span>
-                        )}
-                      </div>
-
-                      <p className="line-clamp-3 min-h-[3.75rem] text-xs leading-relaxed text-stone-500">{person.bio?.trim() || '소개가 없습니다.'}</p>
                     </div>
                   </div>
                 );
@@ -484,7 +548,7 @@ export default function RecruitListPage() {
       <button
         type="button"
         onClick={() => setMobileFilterOpen(true)}
-        className="fixed bottom-6 right-4 z-30 flex items-center gap-2 rounded-full bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-md shadow-indigo-200 transition-all hover:bg-indigo-700 hover:shadow-lg active:scale-95 lg:hidden"
+        className="fixed bottom-6 right-4 z-30 flex items-center gap-2 bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-md shadow-indigo-200 transition-all hover:bg-indigo-700 hover:shadow-lg active:scale-95 lg:hidden"
         aria-label="필터 열기"
       >
         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -492,7 +556,7 @@ export default function RecruitListPage() {
         </svg>
         필터
         {activeFilterCount > 0 && (
-          <span className="ml-0.5 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white/20 px-1.5 text-2xs font-bold">
+          <span className="ml-0.5 inline-flex h-5 min-w-[20px] items-center justify-center bg-white/20 px-1.5 text-2xs font-bold">
             {activeFilterCount}
           </span>
         )}
@@ -510,19 +574,19 @@ export default function RecruitListPage() {
         role="dialog"
         aria-modal="true"
         aria-label="필터"
-        className={`fixed inset-x-0 bottom-0 z-50 flex max-h-[85vh] flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl transition-transform duration-300 ease-out lg:hidden ${
+        className={`fixed inset-x-0 bottom-0 z-50 flex max-h-[85vh] flex-col overflow-hidden bg-white shadow-2xl transition-transform duration-300 ease-out lg:hidden ${
           mobileFilterOpen ? 'translate-y-0' : 'translate-y-full'
         }`}
       >
         {/* 핸들 + 헤더 */}
         <div className="flex flex-col items-center border-b border-stone-100 pb-3 pt-3">
-          <span className="h-1.5 w-10 rounded-full bg-stone-200" aria-hidden="true" />
+          <span className="h-1.5 w-10 bg-stone-200" aria-hidden="true" />
           <div className="mt-3 flex w-full items-center justify-between px-5">
             <h2 className="text-base font-bold text-stone-900">필터</h2>
             <button
               type="button"
               onClick={() => setMobileFilterOpen(false)}
-              className="rounded-full p-1 text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-600"
+              className="p-1 text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-600"
               aria-label="필터 닫기"
             >
               <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -541,25 +605,78 @@ export default function RecruitListPage() {
             type="button"
             onClick={clearAll}
             disabled={!hasActiveFilters}
-            className="flex-1 rounded-xl border border-stone-200 bg-white py-2.5 text-sm font-medium text-stone-600 transition-colors hover:bg-stone-50 disabled:opacity-50"
+            className="flex-1 border border-stone-200 bg-white py-2.5 text-sm font-medium text-stone-600 transition-colors hover:bg-stone-50 disabled:opacity-50"
           >
             초기화
           </button>
           <button
             type="button"
             onClick={() => setMobileFilterOpen(false)}
-            className="flex-[2] rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700"
+            className="flex-[2] bg-indigo-600 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700"
           >
             결과 보기 ({filteredProfiles.length}명)
           </button>
         </div>
       </div>
 
-      {/* 스카우트 모달 — 공유 컴포넌트. 카드 "스카우트" 클릭 시 setScoutTarget으로 열림 */}
-      <ScoutModal
-        targetUser={scoutTarget}
-        onClose={() => setScoutTarget(null)}
-      />
+      {/* 스카우트 모달 */}
+      {scoutModal && (
+        <div onClick={() => setScoutModal(null)} className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm">
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-[440px] bg-white p-7 shadow-2xl">
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-stone-900">스카우트 채팅 시작</h2>
+              <button onClick={() => setScoutModal(null)} className="p-1 text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-600">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <p className="mb-5 text-sm text-stone-500">
+              <span className="font-semibold text-stone-800">{scoutModal.targetUser.name}</span>님에게 팀 합류를 제안합니다.
+            </p>
+            {scoutModal.teams.length === 0 ? (
+              <p className="text-sm text-stone-400">팀장으로 등록된 팀이 없습니다. 먼저 팀을 만들어주세요.</p>
+            ) : (
+              <>
+                <div className="mb-3">
+                  <label className="mb-1.5 block text-sm font-semibold text-stone-700">팀 선택</label>
+                  <select
+                    value={scoutModal.selectedTeamId}
+                    onChange={(e) => setScoutModal((prev) => prev && { ...prev, selectedTeamId: e.target.value })}
+                    className="input-field"
+                  >
+                    {scoutModal.teams.map((t) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="mb-4">
+                  <label className="mb-1.5 block text-sm font-semibold text-stone-700">메시지</label>
+                  <textarea
+                    value={scoutModal.message}
+                    onChange={(e) => setScoutModal((prev) => prev && { ...prev, message: e.target.value })}
+                    placeholder="합류 제안 메시지를 작성해주세요."
+                    rows={4}
+                    className="input-field resize-none"
+                  />
+                </div>
+                {scoutError && <p className="mb-3 text-xs text-red-500">{scoutError}</p>}
+                {scoutSuccess ? (
+                  <p className="text-center text-sm font-semibold text-emerald-600">채팅을 시작했습니다! 잠시 후 이동합니다…</p>
+                ) : (
+                  <button
+                    onClick={submitScout}
+                    disabled={scoutModal.loading}
+                    className="w-full bg-gradient-to-r from-primary-600 to-primary-700 py-3 text-sm font-semibold text-white shadow-md shadow-primary-200 transition-all hover:shadow-lg disabled:opacity-60"
+                  >
+                    {scoutModal.loading ? '전송 중...' : '제안 보내기'}
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

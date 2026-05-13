@@ -143,7 +143,7 @@ export default function TemplatesPage() {
       <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           {loading ? (
-            <div className="rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-500">
+            <div className="border border-gray-200 bg-white p-4 text-sm text-gray-500">
               불러오는 중…
             </div>
           ) : (
@@ -152,7 +152,7 @@ export default function TemplatesPage() {
               value={content}
               onChange={(e) => setContent(e.target.value)}
               rows={14}
-              className="w-full rounded-lg border border-gray-300 bg-white p-3 text-sm font-mono leading-relaxed focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              className="w-full border border-gray-300 bg-white p-3 text-sm font-mono leading-relaxed focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
               placeholder="양식을 입력하세요…"
             />
           )}
@@ -170,7 +170,7 @@ export default function TemplatesPage() {
               type="button"
               onClick={handleReset}
               disabled={saving || loading}
-              className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              className="border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
               기본값으로 초기화
             </button>
@@ -184,7 +184,7 @@ export default function TemplatesPage() {
         </div>
 
         {/* placeholder 가이드 */}
-        <aside className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+        <aside className="border border-gray-200 bg-gray-50 p-4">
           <h3 className="text-sm font-semibold text-gray-800">사용 가능한 변수</h3>
           <p className="mt-1 text-xs text-gray-500">
             클릭하면 커서 위치에 삽입됩니다.
@@ -195,7 +195,7 @@ export default function TemplatesPage() {
                 <button
                   type="button"
                   onClick={() => insertPlaceholder(p.token)}
-                  className="rounded bg-white px-2 py-1 text-xs font-mono text-primary-700 shadow-sm hover:bg-primary-50"
+                  className="bg-white px-2 py-1 text-xs font-mono text-primary-700 shadow-sm hover:bg-primary-50"
                 >
                   {p.token}
                 </button>
@@ -213,7 +213,7 @@ export default function TemplatesPage() {
           <button
             type="button"
             onClick={() => insertPlaceholder(`\n\n${ATTACHMENT_HINT}`)}
-            className="mt-2 rounded bg-white px-2 py-1 text-xs font-mono text-primary-700 shadow-sm hover:bg-primary-50"
+            className="mt-2 bg-white px-2 py-1 text-xs font-mono text-primary-700 shadow-sm hover:bg-primary-50"
           >
             프로필 첨부
           </button>

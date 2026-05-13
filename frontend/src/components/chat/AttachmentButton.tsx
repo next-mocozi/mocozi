@@ -32,7 +32,7 @@ export function AttachmentButton({ attachment, isMine }: AttachmentButtonProps) 
     <Link
       href={href}
       className={`
-        flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-xs transition-colors
+        flex items-center justify-between gap-2 border px-3 py-2 text-xs transition-colors
         ${
           isMine
             ? 'border-primary-300 bg-white/95 text-primary-900 hover:bg-white'

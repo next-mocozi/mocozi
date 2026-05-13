@@ -90,7 +90,7 @@ export function MessageMarkdown({ content }: { content: string }) {
                   getTokenProps,
                 }) => (
                   <pre
-                    className={`${cls} overflow-x-auto rounded-lg text-xs`}
+                    className={`${cls} overflow-x-auto text-xs`}
                     // 패딩을 inline style로 — Tailwind class는 prism cls/style와 cascade 충돌 가능.
                     // 인라인이 무조건 이김. 좌측 32px(눈에 띄게 넓게)·우 12px·상하 12px.
                     style={{

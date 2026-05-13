@@ -21,7 +21,7 @@ export function TemplateTrigger({ onClick }: TemplateTriggerProps) {
       <button
         type="button"
         onClick={onClick}
-        className="flex w-full items-center justify-center gap-2 rounded-lg border border-primary-300 bg-white px-4 py-2.5 text-sm font-medium text-primary-700 shadow-sm transition-colors hover:bg-primary-100"
+        className="flex w-full items-center justify-center gap-2 border border-primary-300 bg-white px-4 py-2.5 text-sm font-medium text-primary-700 shadow-sm transition-colors hover:bg-primary-100"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"

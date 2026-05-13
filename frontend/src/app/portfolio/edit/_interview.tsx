@@ -673,7 +673,7 @@ export function renderInlineMd(text: string): ReactNode {
             key={key++}
             src={im[2]}
             alt={im[1]}
-            className="my-2 max-w-full rounded-lg border border-gray-200"
+            className="my-2 max-w-full border border-gray-200"
           />,
         );
       }
@@ -714,7 +714,7 @@ export function renderInlineMd(text: string): ReactNode {
         tokens.push(
           <code
             key={key++}
-            className="rounded bg-gray-100 px-1 font-mono text-[0.9em] text-gray-800"
+            className="bg-gray-100 px-1 font-mono text-[0.9em] text-gray-800"
           >
             {cm[1]}
           </code>,
@@ -1356,7 +1356,7 @@ export default function ProjectInterview() {
           className="flex flex-wrap items-center justify-between gap-3 text-xs leading-relaxed"
         >
           {isEdit ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 font-medium text-amber-700">
+            <span className="inline-flex items-center gap-1.5 bg-amber-50 px-3 py-1 font-medium text-amber-700">
               ✎ 수정 중
             </span>
           ) : (
@@ -1381,9 +1381,9 @@ export default function ProjectInterview() {
               </span>
               <span className="truncate">{stepCfg.title}</span>
             </div>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
+            <div className="h-1.5 w-full overflow-hidden bg-gray-200">
               <div
-                className="h-full rounded-full bg-blue-500 transition-all duration-300"
+                className="h-full bg-blue-500 transition-all duration-300"
                 style={{ width: `${((stepIdx + 1) / steps.length) * 100}%` }}
               />
             </div>
@@ -1394,7 +1394,7 @@ export default function ProjectInterview() {
             aria-label="임시저장 목록"
             title="임시저장 목록"
             style={{ paddingLeft: '0.875rem', paddingRight: '0.875rem' }}
-            className="ml-2 inline-flex items-center gap-1.5 rounded-full bg-white py-2 text-xs leading-relaxed text-amber-700 shadow-sm hover:bg-amber-50"
+            className="ml-2 inline-flex items-center gap-1.5 bg-white py-2 text-xs leading-relaxed text-amber-700 shadow-sm hover:bg-amber-50"
           >
             <span aria-hidden>📂</span>
             <span className="whitespace-nowrap font-medium">임시저장</span>
@@ -1405,7 +1405,7 @@ export default function ProjectInterview() {
             aria-label="저장하지 않고 나가기"
             title="저장하지 않고 나가기 — 변경사항이 사라집니다"
             style={{ paddingLeft: '1.25rem', paddingRight: '1.25rem' }}
-            className="ml-2 inline-flex items-center gap-2 rounded-full bg-white py-2 text-xs leading-relaxed text-red-600 shadow-sm hover:bg-red-50 hover:text-red-700"
+            className="ml-2 inline-flex items-center gap-2 bg-white py-2 text-xs leading-relaxed text-red-600 shadow-sm hover:bg-red-50 hover:text-red-700"
           >
             <span aria-hidden>↩</span>
             <span className="whitespace-nowrap font-medium">
@@ -1419,7 +1419,7 @@ export default function ProjectInterview() {
             aria-label={isEdit ? '편집 완료' : '여기까지 저장하고 나가기'}
             title={isEdit ? '편집 완료' : '여기까지 저장하고 나가기'}
             style={{ paddingLeft: '1.25rem', paddingRight: '1.25rem' }}
-            className="ml-2 inline-flex items-center gap-2 rounded-full bg-white py-2 text-xs leading-relaxed text-gray-600 shadow-sm hover:bg-gray-100 hover:text-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
+            className="ml-2 inline-flex items-center gap-2 bg-white py-2 text-xs leading-relaxed text-gray-600 shadow-sm hover:bg-gray-100 hover:text-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <span aria-hidden>{isEdit ? '✓' : '✕'}</span>
             <span className="whitespace-nowrap font-medium">
@@ -1432,7 +1432,7 @@ export default function ProjectInterview() {
         <div
           key={stepIdx}
           style={{ minHeight: '30rem' }}
-          className="mocozi-step-in flex flex-col rounded-2xl bg-white p-8 shadow-sm sm:p-6"
+          className="mocozi-step-in flex flex-col bg-white p-8 shadow-sm sm:p-6"
           onKeyDown={(e) => {
             // Enter 로 다음 단계 이동 — 작성된 질문에서 빠르게 진행
             if (e.key !== 'Enter') return;
@@ -1509,7 +1509,7 @@ export default function ProjectInterview() {
               type="button"
               disabled={stepIdx === 0}
               onClick={prev}
-              className="rounded-full border border-gray-200 bg-white px-5 py-2 text-sm text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+              className="border border-gray-200 bg-white px-5 py-2 text-sm text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
             >
               이전
             </button>
@@ -1517,7 +1517,7 @@ export default function ProjectInterview() {
               type="button"
               disabled={!isStepValid}
               onClick={next}
-              className="rounded-full bg-blue-600 px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+              className="bg-blue-600 px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {isLastInput ? '미리보기' : '다음'}
             </button>
@@ -1530,7 +1530,7 @@ export default function ProjectInterview() {
             <button
               type="button"
               onClick={prev}
-              className="rounded-full border border-gray-200 bg-white px-5 py-2 text-sm text-gray-600 hover:bg-gray-50"
+              className="border border-gray-200 bg-white px-5 py-2 text-sm text-gray-600 hover:bg-gray-50"
             >
               질문으로 돌아가기
             </button>
@@ -1538,7 +1538,7 @@ export default function ProjectInterview() {
               type="button"
               onClick={handleSaveProject}
               disabled={isSubmitting}
-              className="rounded-full bg-blue-600 px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="bg-blue-600 px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting
                 ? '저장 중…'
@@ -1558,7 +1558,7 @@ export default function ProjectInterview() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="flex max-h-full w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
+            className="flex max-h-full w-full max-w-lg flex-col overflow-hidden bg-white shadow-xl"
           >
             <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
               <h3 className="text-lg font-bold text-gray-900">
@@ -1586,10 +1586,10 @@ export default function ProjectInterview() {
                   {draftsList.map((it) => (
                     <li
                       key={it.id}
-                      className="flex items-center gap-3 rounded-xl border border-dashed border-amber-200 bg-amber-50/40 px-4 py-3 transition-all hover:border-amber-300 hover:bg-amber-50"
+                      className="flex items-center gap-3 border border-dashed border-amber-200 bg-amber-50/40 px-4 py-3 transition-all hover:border-amber-300 hover:bg-amber-50"
                     >
                       <div
-                        className={`shrink-0 overflow-hidden rounded-lg border ${
+                        className={`shrink-0 overflow-hidden border ${
                           it.thumbnail
                             ? 'border-gray-200'
                             : 'border-dashed border-gray-200 bg-white'
@@ -1628,7 +1628,7 @@ export default function ProjectInterview() {
                         onClick={() => deleteDraftItem(it.id)}
                         aria-label="임시저장 삭제"
                         title="임시저장 삭제"
-                        className="shrink-0 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-400 hover:bg-red-50 hover:text-red-500"
+                        className="shrink-0 border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-400 hover:bg-red-50 hover:text-red-500"
                       >
                         ✕
                       </button>
@@ -1644,7 +1644,7 @@ export default function ProjectInterview() {
       {/* 토스트 — 본문과 같은 max-w 안에서 가운데 */}
       {toast && (
         <div className="pointer-events-none fixed inset-x-0 bottom-8 z-[60] flex justify-center px-6">
-          <div className="mx-auto w-fit max-w-2xl rounded-full bg-gray-900 px-5 py-2.5 text-sm leading-relaxed text-white shadow-lg">
+          <div className="mx-auto w-fit max-w-2xl bg-gray-900 px-5 py-2.5 text-sm leading-relaxed text-white shadow-lg">
             {toast}
           </div>
         </div>
@@ -1692,7 +1692,7 @@ function StepBody({
               setDraft((d) => ({ ...d, name: e.target.value }))
             }
             placeholder="예: 모코지"
-            className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+            className="w-full border border-gray-200 px-4 py-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
           />
           <ThumbnailPicker
             value={draft.thumbnail}
@@ -1835,7 +1835,7 @@ function StepBody({
           <button
             type="button"
             onClick={() => setDraft((d) => ({ ...d, hasDomain: true }))}
-            className={`flex-1 rounded-xl border px-4 py-4 text-sm font-medium transition-all ${
+            className={`flex-1 border px-4 py-4 text-sm font-medium transition-all ${
               draft.hasDomain === true
                 ? 'border-blue-500 bg-blue-50 text-blue-700'
                 : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
@@ -1855,7 +1855,7 @@ function StepBody({
                 domainLimits: '',
               }))
             }
-            className={`flex-1 rounded-xl border px-4 py-4 text-sm font-medium transition-all ${
+            className={`flex-1 border px-4 py-4 text-sm font-medium transition-all ${
               draft.hasDomain === false
                 ? 'border-blue-500 bg-blue-50 text-blue-700'
                 : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
@@ -1912,7 +1912,7 @@ function StepBody({
     case 'pitch':
       return (
         <div className="space-y-2">
-          <p className="rounded-lg bg-blue-50 px-3 py-2 text-xs leading-relaxed text-blue-700">
+          <p className="bg-blue-50 px-3 py-2 text-xs leading-relaxed text-blue-700">
             ⓘ 여기에 작성한 내용이 피드에 올라갑니다.
           </p>
           <input
@@ -1923,7 +1923,7 @@ function StepBody({
               setDraft((d) => ({ ...d, pitch: e.target.value.slice(0, 120) }))
             }
             placeholder="예: ROS2 기반 실내 자율주행 로봇 — 라이다 SLAM + 강화학습 경로 계획"
-            className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm leading-relaxed outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+            className="w-full border border-gray-200 px-4 py-3 text-sm leading-relaxed outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
           />
           <div className="flex justify-end text-xs text-gray-400">
             {draft.pitch.length} / 120
@@ -2087,7 +2087,7 @@ function PeriodPicker({
             type="button"
             onClick={toggleCurrent}
             aria-pressed={period.current}
-            className={`rounded-full border px-4 py-2.5 text-sm leading-relaxed transition-all ${
+            className={`border px-4 py-2.5 text-sm leading-relaxed transition-all ${
               period.current
                 ? 'border-blue-500 bg-blue-500 text-white'
                 : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50'
@@ -2157,7 +2157,7 @@ function ThumbnailPicker({
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-dashed border-gray-300 bg-gray-50 text-xs text-gray-400 transition-all hover:border-blue-400 hover:text-blue-500"
+          className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden border border-dashed border-gray-300 bg-gray-50 text-xs text-gray-400 transition-all hover:border-blue-400 hover:text-blue-500"
           aria-label="대표 이미지 선택"
         >
           {value ? (
@@ -2175,7 +2175,7 @@ function ThumbnailPicker({
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
-            className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+            className="border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
           >
             {value ? '이미지 변경' : '이미지 추가'}
           </button>
@@ -2183,7 +2183,7 @@ function ThumbnailPicker({
             <button
               type="button"
               onClick={() => onChange('')}
-              className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-50"
+              className="border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-50"
             >
               제거
             </button>
@@ -2209,7 +2209,7 @@ function TextExample({ text }: { text: string }) {
   return (
     <div
       style={{ marginBottom: '0.75rem' }}
-      className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3"
+      className="border border-gray-100 bg-gray-50 px-4 py-3"
     >
       <div className="mb-1 text-3xs font-semibold uppercase tracking-wider text-gray-400">
         작성 예시
@@ -2278,7 +2278,7 @@ function TagSelect({
               key={opt}
               type="button"
               onClick={() => toggle(opt)}
-              className={`rounded-full border px-4 py-2.5 text-sm leading-relaxed transition-all ${
+              className={`border px-4 py-2.5 text-sm leading-relaxed transition-all ${
                 on
                   ? 'border-blue-500 bg-blue-500 text-white'
                   : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50'
@@ -2293,7 +2293,7 @@ function TagSelect({
             key={s}
             type="button"
             onClick={() => toggle(s)}
-            className="inline-flex items-center gap-1 rounded-full border border-blue-500 bg-blue-500 px-3 py-2 text-sm text-white"
+            className="inline-flex items-center gap-1 border border-blue-500 bg-blue-500 px-3 py-2 text-sm text-white"
           >
             {s}
             <span className="text-xs opacity-80">✕</span>
@@ -2313,12 +2313,12 @@ function TagSelect({
               }
             }}
             placeholder="직접 입력 후 추가"
-            className="flex-1 rounded-lg border border-gray-200 px-4 py-2.5 text-sm leading-relaxed outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+            className="flex-1 border border-gray-200 px-4 py-2.5 text-sm leading-relaxed outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
           />
           <button
             type="button"
             onClick={addCustom}
-            className="rounded-lg bg-gray-900 px-4 py-2.5 text-sm text-white hover:bg-gray-700"
+            className="bg-gray-900 px-4 py-2.5 text-sm text-white hover:bg-gray-700"
           >
             추가
           </button>
@@ -2372,7 +2372,7 @@ function CategorizedTagSelect({
   const customs = selected.filter((s) => !knownTags.has(s));
 
   const chipBase =
-    'rounded-full border px-4 py-2.5 text-sm leading-relaxed transition-all';
+    'border px-4 py-2.5 text-sm leading-relaxed transition-all';
   const chipOn = 'border-blue-500 bg-blue-500 text-white';
   const chipOff =
     'border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50';
@@ -2429,7 +2429,7 @@ function CategorizedTagSelect({
                 key={s}
                 type="button"
                 onClick={() => toggle(s)}
-                className="inline-flex items-center gap-1 rounded-full border border-blue-500 bg-blue-500 px-3 py-2 text-sm text-white"
+                className="inline-flex items-center gap-1 border border-blue-500 bg-blue-500 px-3 py-2 text-sm text-white"
               >
                 {s}
                 <span className="text-xs opacity-80">✕</span>
@@ -2454,12 +2454,12 @@ function CategorizedTagSelect({
           }
         }}
         placeholder="목록에 없으면 직접 입력 후 추가"
-        className="flex-1 rounded-lg border border-gray-200 px-4 py-2.5 text-sm leading-relaxed outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+        className="flex-1 border border-gray-200 px-4 py-2.5 text-sm leading-relaxed outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
       />
       <button
         type="button"
         onClick={addCustom}
-        className="rounded-lg bg-gray-900 px-4 py-2.5 text-sm text-white hover:bg-gray-700"
+        className="bg-gray-900 px-4 py-2.5 text-sm text-white hover:bg-gray-700"
       >
         추가
       </button>
@@ -2602,7 +2602,7 @@ function SimpleTextarea({
       {showHint && (
         <p
           style={{ marginBottom: '1rem' }}
-          className="rounded-lg bg-amber-50 px-4 py-3 text-xs leading-7 text-amber-700"
+          className="bg-amber-50 px-4 py-3 text-xs leading-7 text-amber-700"
         >
           ⭐ {FIRST_TEXTAREA_HINT}
         </p>
@@ -2612,8 +2612,8 @@ function SimpleTextarea({
       {onAddAsset && (
         <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
           <span>
-            업로드한 자료는 풀에 보관됩니다. 본문에서 <code className="rounded bg-gray-100 px-1 font-mono">@</code>
-            를 입력하면 자료를 골라 <code className="rounded bg-gray-100 px-1 font-mono">@[A]</code>
+            업로드한 자료는 풀에 보관됩니다. 본문에서 <code className="bg-gray-100 px-1 font-mono">@</code>
+            를 입력하면 자료를 골라 <code className="bg-gray-100 px-1 font-mono">@[A]</code>
             형태로 삽입할 수 있어요.
           </span>
           <input
@@ -2629,7 +2629,7 @@ function SimpleTextarea({
           />
           <label
             htmlFor={imageInputId.current}
-            className="cursor-pointer rounded-full border border-gray-200 px-3 py-1 text-xs text-gray-600 hover:bg-gray-50"
+            className="cursor-pointer border border-gray-200 px-3 py-1 text-xs text-gray-600 hover:bg-gray-50"
           >
             🖼 이미지 추가
           </label>
@@ -2645,7 +2645,7 @@ function SimpleTextarea({
           />
           <label
             htmlFor={fileInputId.current}
-            className="cursor-pointer rounded-full border border-gray-200 px-3 py-1 text-xs text-gray-600 hover:bg-gray-50"
+            className="cursor-pointer border border-gray-200 px-3 py-1 text-xs text-gray-600 hover:bg-gray-50"
           >
             📎 파일 추가
           </label>
@@ -2663,7 +2663,7 @@ function SimpleTextarea({
             return (
               <span
                 key={a.id}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-2xs ${
+                className={`inline-flex items-center gap-1.5 border px-2 py-0.5 text-2xs ${
                   used
                     ? 'border-blue-200 bg-blue-50 text-blue-700'
                     : 'border-gray-200 bg-gray-50 text-gray-600'
@@ -2676,7 +2676,7 @@ function SimpleTextarea({
                   <img
                     src={a.dataUrl}
                     alt=""
-                    className="h-4 w-4 rounded object-cover"
+                    className="h-4 w-4 object-cover"
                   />
                 ) : (
                   <span>📎</span>
@@ -2707,12 +2707,12 @@ function SimpleTextarea({
           }}
           rows={4}
           placeholder={placeholder}
-          className="w-full resize-none rounded-lg border border-gray-200 px-4 py-4 text-sm leading-8 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 field-sizing-content"
+          className="w-full resize-none border border-gray-200 px-4 py-4 text-sm leading-8 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 field-sizing-content"
         />
         {mention && filteredPool.length > 0 && (
           <ul
             role="listbox"
-            className="absolute left-0 right-0 top-full z-50 mt-1 max-h-48 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+            className="absolute left-0 right-0 top-full z-50 mt-1 max-h-48 overflow-y-auto border border-gray-200 bg-white py-1 shadow-lg"
           >
             {filteredPool.map((a) => (
               <li key={a.id}>
@@ -2731,7 +2731,7 @@ function SimpleTextarea({
                     <img
                       src={a.dataUrl}
                       alt=""
-                      className="h-5 w-5 rounded object-cover"
+                      className="h-5 w-5 object-cover"
                     />
                   ) : (
                     <span aria-hidden>📎</span>
@@ -2743,7 +2743,7 @@ function SimpleTextarea({
           </ul>
         )}
         {mention && filteredPool.length === 0 && pool.length > 0 && (
-          <div className="absolute left-0 right-0 top-full z-50 mt-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-500 shadow-lg">
+          <div className="absolute left-0 right-0 top-full z-50 mt-1 border border-gray-200 bg-white px-3 py-2 text-xs text-gray-500 shadow-lg">
             일치하는 자료가 없어요. 위쪽 [이미지/파일 추가] 로 먼저 업로드 해주세요.
           </div>
         )}
@@ -2795,7 +2795,7 @@ function DeliverablesStep({
             setDraft((d) => ({ ...d, deliverableUrl: e.target.value }))
           }
           placeholder="https://..."
-          className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm leading-relaxed outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+          className="w-full border border-gray-200 px-4 py-2.5 text-sm leading-relaxed outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
         />
       </div>
       <div>
@@ -2808,7 +2808,7 @@ function DeliverablesStep({
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          className="rounded-full border border-dashed border-blue-300 bg-blue-50 px-4 py-2.5 text-xs font-medium text-blue-600 hover:bg-blue-100"
+          className="border border-dashed border-blue-300 bg-blue-50 px-4 py-2.5 text-xs font-medium text-blue-600 hover:bg-blue-100"
         >
           파일 선택
         </button>
@@ -2825,7 +2825,7 @@ function DeliverablesStep({
             {draft.deliverableFiles.map((f) => (
               <li
                 key={f.id}
-                className="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-1.5 text-xs"
+                className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 text-xs"
               >
                 <span className="flex-1 truncate">{f.filename}</span>
                 <button
@@ -2925,14 +2925,14 @@ function BlockTypeMenu({
         }}
         aria-label="블록 형식 / 스타일"
         title="블록 형식 / 스타일"
-        className={`flex h-5 w-5 items-center justify-center rounded text-base leading-none text-gray-400 hover:bg-white hover:text-gray-700 ${
+        className={`flex h-5 w-5 items-center justify-center text-base leading-none text-gray-400 hover:bg-white hover:text-gray-700 ${
           open ? 'bg-white text-gray-700' : ''
         }`}
       >
         +
       </button>
       {open && (
-        <div className="absolute left-0 top-full z-30 mt-1 min-w-[160px] overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+        <div className="absolute left-0 top-full z-30 mt-1 min-w-[160px] overflow-hidden border border-gray-200 bg-white py-1 shadow-lg">
           <div className="px-3 pb-0.5 pt-1 text-3xs font-semibold uppercase tracking-wider text-gray-400">
             형식
           </div>
@@ -3429,7 +3429,7 @@ function BlockEditor({
       onDragLeave={handleFileDragLeave}
       onDrop={handleFileDrop}
       onPaste={handlePaste}
-      className={`space-y-0.5 rounded-md p-1 transition-colors ${
+      className={`space-y-0.5 p-1 transition-colors ${
         fileDropActive ? 'bg-blue-50 ring-2 ring-blue-300' : ''
       }`}
     >
@@ -3437,7 +3437,7 @@ function BlockEditor({
         <div
           key={b.id}
           data-block-row
-          className={`group flex items-start gap-2 rounded-md px-1 py-0.5 transition-all ${
+          className={`group flex items-start gap-2 px-1 py-0.5 transition-all ${
             dragId === b.id
               ? 'bg-gray-100 opacity-90 shadow-md ring-1 ring-gray-300'
               : dropIdx === i && dragId !== null
@@ -3468,7 +3468,7 @@ function BlockEditor({
               aria-label="드래그해서 순서 변경"
               title="드래그해서 순서 변경"
               onPointerDown={(e) => startDrag(b.id, e)}
-              className="cursor-grab select-none rounded px-1 text-gray-400 hover:bg-white hover:text-gray-700 active:cursor-grabbing"
+              className="cursor-grab select-none px-1 text-gray-400 hover:bg-white hover:text-gray-700 active:cursor-grabbing"
               style={{ touchAction: 'none' }}
             >
               ⋮⋮
@@ -3484,20 +3484,20 @@ function BlockEditor({
                   src={b.src}
                   alt={b.alt}
                   draggable={false}
-                  className="block max-w-full rounded-lg border border-gray-200"
+                  className="block max-w-full border border-gray-200"
                 />
                 <button
                   type="button"
                   onClick={() => removeAt(i)}
                   aria-label="이미지 삭제"
                   title="삭제"
-                  className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-sm leading-none text-gray-500 shadow-sm ring-1 ring-gray-200 hover:bg-red-50 hover:text-red-500"
+                  className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center bg-white/90 text-sm leading-none text-gray-500 shadow-sm ring-1 ring-gray-200 hover:bg-red-50 hover:text-red-500"
                 >
                   ✕
                 </button>
               </div>
             ) : b.type === 'file' ? (
-              <div className="inline-flex max-w-full items-center gap-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+              <div className="inline-flex max-w-full items-center gap-1 border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
                 <a
                   href={b.src}
                   download={b.filename}
@@ -3512,7 +3512,7 @@ function BlockEditor({
                   onClick={() => removeAt(i)}
                   aria-label="파일 삭제"
                   title="삭제"
-                  className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full text-gray-400 hover:bg-red-50 hover:text-red-500"
+                  className="ml-1 inline-flex h-5 w-5 items-center justify-center text-gray-400 hover:bg-red-50 hover:text-red-500"
                 >
                   ✕
                 </button>
@@ -3533,7 +3533,7 @@ function BlockEditor({
               />
             ) : b.type === 'li' ? (
               <div className="flex items-start gap-2">
-                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-gray-400" />
+                <span className="mt-2 h-1.5 w-1.5 shrink-0 bg-gray-400" />
                 <textarea
                   ref={setTextareaRef(b.id)}
                   value={b.text}
@@ -3563,14 +3563,14 @@ function BlockEditor({
         <button
           type="button"
           onClick={() => imageInputRef.current?.click()}
-          className="rounded border border-gray-200 bg-white px-2 py-0.5 text-gray-600 hover:bg-gray-50"
+          className="border border-gray-200 bg-white px-2 py-0.5 text-gray-600 hover:bg-gray-50"
         >
           + 이미지
         </button>
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="rounded border border-gray-200 bg-white px-2 py-0.5 text-gray-600 hover:bg-gray-50"
+          className="border border-gray-200 bg-white px-2 py-0.5 text-gray-600 hover:bg-gray-50"
         >
           + 파일 첨부
         </button>
@@ -3628,7 +3628,7 @@ function BodySection({
   return (
     <section
       data-section-row
-      className={`group/sec rounded-lg p-1 transition-all ${
+      className={`group/sec p-1 transition-all ${
         isDragging
           ? 'bg-gray-100 opacity-90 shadow-lg ring-1 ring-gray-300'
           : isDropTarget
@@ -3646,7 +3646,7 @@ function BodySection({
           aria-label="섹션 드래그하여 이동"
           title="드래그해서 섹션 순서 변경"
           onPointerDown={onPointerDownHandle}
-          className="cursor-grab select-none rounded px-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 active:cursor-grabbing"
+          className="cursor-grab select-none px-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 active:cursor-grabbing"
           style={{ touchAction: 'none' }}
         >
           ⋮⋮
@@ -3908,14 +3908,14 @@ function DomainSubsectionsList({
   };
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-gray-50/40 p-4">
+    <section className="border border-gray-200 bg-gray-50/40 p-4">
       <h3 className="mb-3 text-base font-bold text-gray-900">도메인</h3>
       <div ref={containerRef} className="space-y-3">
         {order.map((k, i) => (
           <section
             key={k}
             data-domain-sub-row
-            className={`group/sec rounded-lg p-1 transition-all ${
+            className={`group/sec p-1 transition-all ${
               draggingKey === k
                 ? 'bg-gray-100 opacity-90 shadow-lg ring-1 ring-gray-300'
                 : draggingKey !== null && draggingKey !== k && dropIdx === i
@@ -3933,7 +3933,7 @@ function DomainSubsectionsList({
                 aria-label="도메인 안에서 순서 변경"
                 title="드래그해서 순서 변경 (도메인 내부)"
                 onPointerDown={(e) => startSectionDrag(k, e)}
-                className="cursor-grab select-none rounded px-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 active:cursor-grabbing"
+                className="cursor-grab select-none px-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 active:cursor-grabbing"
                 style={{ touchAction: 'none' }}
               >
                 ⋮⋮
@@ -4001,7 +4001,7 @@ function EditableMarkdownSection({
   };
 
   const toolBtnClass =
-    'rounded border border-gray-200 bg-white px-2 py-0.5 text-2xs text-gray-600 hover:bg-gray-50';
+    'border border-gray-200 bg-white px-2 py-0.5 text-2xs text-gray-600 hover:bg-gray-50';
 
   return (
     <section>
@@ -4061,12 +4061,12 @@ function EditableMarkdownSection({
         onChange={(e) => onChange(e.target.value)}
         rows={4}
         placeholder="자유롭게 작성하세요. ## 제목, **굵게**, 이미지를 사용할 수 있어요."
-        className="w-full resize-none rounded-lg border border-gray-200 px-4 py-3 text-sm leading-7 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 field-sizing-content"
+        className="w-full resize-none border border-gray-200 px-4 py-3 text-sm leading-7 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 field-sizing-content"
       />
       {value.trim() && (
         <div
           style={{ marginTop: '0.5rem' }}
-          className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3"
+          className="border border-gray-100 bg-gray-50 px-4 py-3"
         >
           <div className="mb-1 text-3xs font-semibold uppercase tracking-wider text-gray-400">
             미리보기
@@ -4101,7 +4101,7 @@ function InlineEditSection({
   const [editing, setEditing] = useState(defaultEditing);
   return (
     <div
-      className={`rounded-lg p-1 transition-colors ${
+      className={`p-1 transition-colors ${
         editing ? 'bg-blue-50/40 ring-1 ring-blue-100' : ''
       }`}
     >
@@ -4115,7 +4115,7 @@ function InlineEditSection({
         <button
           type="button"
           onClick={() => setEditing((v) => !v)}
-          className={`rounded-full px-2.5 py-0.5 text-2xs font-medium transition-all ${
+          className={`px-2.5 py-0.5 text-2xs font-medium transition-all ${
             editing
               ? 'bg-blue-600 text-white shadow-sm hover:bg-blue-700'
               : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:text-blue-600'
@@ -4236,7 +4236,7 @@ function SummaryView({
       {values.map((t) => (
         <span
           key={t}
-          className="rounded-full bg-blue-50 px-3 py-1 text-xs leading-relaxed text-blue-700"
+          className="bg-blue-50 px-3 py-1 text-xs leading-relaxed text-blue-700"
         >
           {t}
         </span>
@@ -4260,7 +4260,7 @@ function SummaryView({
                 setDraft((d) => ({ ...d, name: e.target.value }))
               }
               placeholder="(제목 없음)"
-              className="w-full rounded-lg border border-transparent bg-transparent px-2 py-1 text-2xl font-bold leading-snug text-gray-900 outline-none hover:border-gray-200 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
+              className="w-full border border-transparent bg-transparent px-2 py-1 text-2xl font-bold leading-snug text-gray-900 outline-none hover:border-gray-200 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
             />
           </div>
 
@@ -4282,7 +4282,7 @@ function SummaryView({
                 setDraft((d) => ({ ...d, pitch: e.target.value.slice(0, 120) }))
               }
               placeholder="피드 카드에 보일 한 줄 소개를 입력해주세요."
-              className="w-full rounded-lg border border-transparent bg-transparent px-2 py-1 text-sm leading-relaxed text-gray-700 outline-none hover:border-gray-200 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
+              className="w-full border border-transparent bg-transparent px-2 py-1 text-sm leading-relaxed text-gray-700 outline-none hover:border-gray-200 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
             />
           </div>
 
@@ -4295,8 +4295,8 @@ function SummaryView({
               <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
                 {periodText && <span>{periodText}</span>}
                 {draft.period.current && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                    <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                  <span className="inline-flex items-center gap-1 bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                    <span className="h-1.5 w-1.5 bg-green-500" />
                     진행중
                   </span>
                 )}
@@ -4379,13 +4379,13 @@ function SummaryView({
               <div className="flex flex-wrap items-center gap-2 text-sm text-gray-700">
                 {draft.hasDomain === true ? (
                   <>
-                    <span className="rounded-full bg-blue-50 px-3 py-1 text-xs leading-relaxed text-blue-700">
+                    <span className="bg-blue-50 px-3 py-1 text-xs leading-relaxed text-blue-700">
                       포함
                     </span>
                     {draft.domainTags.length > 0 && tagChips(draft.domainTags)}
                   </>
                 ) : draft.hasDomain === false ? (
-                  <span className="rounded-full bg-gray-100 px-3 py-1 text-xs leading-relaxed text-gray-600">
+                  <span className="bg-gray-100 px-3 py-1 text-xs leading-relaxed text-gray-600">
                     포함 안 함
                   </span>
                 ) : null}
@@ -4397,7 +4397,7 @@ function SummaryView({
                 <button
                   type="button"
                   onClick={() => setDraft((d) => ({ ...d, hasDomain: true }))}
-                  className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
+                  className={`flex-1 border px-3 py-2 text-sm font-medium transition-all ${
                     draft.hasDomain === true
                       ? 'border-blue-500 bg-blue-50 text-blue-700'
                       : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
@@ -4417,7 +4417,7 @@ function SummaryView({
                       domainLimits: '',
                     }))
                   }
-                  className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
+                  className={`flex-1 border px-3 py-2 text-sm font-medium transition-all ${
                     draft.hasDomain === false
                       ? 'border-blue-500 bg-blue-50 text-blue-700'
                       : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
@@ -4447,7 +4447,7 @@ function SummaryView({
             aria-label={
               draft.thumbnail ? '대표 이미지 변경' : '대표 이미지 추가'
             }
-            className={`block overflow-hidden rounded-xl border bg-gray-50 transition-all hover:border-blue-400 hover:shadow ${
+            className={`block overflow-hidden border bg-gray-50 transition-all hover:border-blue-400 hover:shadow ${
               draft.thumbnail ? 'border-gray-200' : 'border-dashed border-gray-300'
             }`}
             style={{ width: '11rem', height: '11rem' }}
@@ -4469,7 +4469,7 @@ function SummaryView({
             <button
               type="button"
               onClick={() => setDraft((d) => ({ ...d, thumbnail: '' }))}
-              className="mt-1.5 w-full rounded-full border border-gray-200 bg-white px-3 py-1 text-2xs text-gray-500 hover:bg-gray-50"
+              className="mt-1.5 w-full border border-gray-200 bg-white px-3 py-1 text-2xs text-gray-500 hover:bg-gray-50"
             >
               제거
             </button>
@@ -4534,7 +4534,7 @@ function SummaryView({
         <button
           type="button"
           onClick={handleCopy}
-          className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50"
+          className="border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50"
         >
           {copied ? '복사됨!' : '복사하기 (Markdown)'}
         </button>

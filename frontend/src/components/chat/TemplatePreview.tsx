@@ -43,7 +43,7 @@ export function TemplatePreview({
   return (
     <div className="space-y-4">
       {/* 미리보기 영역 — 메시지 풍선처럼 보이게 */}
-      <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+      <div className="border border-gray-200 bg-gray-50 p-4">
         <p className="mb-2 text-xs font-medium text-gray-500">메시지 미리보기</p>
         <p className="whitespace-pre-wrap text-sm text-gray-800">{rendered}</p>
       </div>

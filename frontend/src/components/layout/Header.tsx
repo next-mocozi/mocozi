@@ -100,7 +100,7 @@ export default function Header() {
             채팅
             {totalUnread > 0 && (
               <span
-                className="absolute -right-2 -top-1 h-2 w-2 rounded-full bg-red-500"
+                className="absolute -right-2 -top-1 h-2 w-2 bg-red-500"
                 aria-hidden
               />
             )}
@@ -124,7 +124,7 @@ export default function Header() {
               <button
                 type="button"
                 onClick={() => setIsProfileMenuOpen((v) => !v)}
-                className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-primary-100 text-sm font-semibold text-primary-700 ring-1 ring-inset ring-primary-200 transition hover:bg-primary-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                className="flex h-10 w-10 items-center justify-center overflow-hidden bg-primary-100 text-sm font-semibold text-primary-700 ring-1 ring-inset ring-primary-200 transition hover:bg-primary-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                 aria-label="프로필 메뉴 열기"
                 aria-haspopup="menu"
                 aria-expanded={isProfileMenuOpen}
@@ -144,7 +144,7 @@ export default function Header() {
               {isProfileMenuOpen && (
                 <div
                   role="menu"
-                  className="absolute right-0 top-full z-50 mt-2 w-44 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg"
+                  className="absolute right-0 top-full z-50 mt-2 w-44 overflow-hidden border border-gray-200 bg-white shadow-lg"
                 >
                   {user && (
                     <div className="border-b border-gray-100 px-4 py-3">
@@ -195,7 +195,7 @@ export default function Header() {
           <button
             type="button"
             onClick={() => setIsSidebarOpen(true)}
-            className="rounded-md p-2 text-gray-600 hover:bg-gray-100 hover:text-primary-600 md:hidden"
+            className="p-2 text-gray-600 hover:bg-gray-100 hover:text-primary-600 md:hidden"
             aria-label="메뉴 열기"
           >
             <svg
@@ -238,7 +238,7 @@ export default function Header() {
           <button
             type="button"
             onClick={() => setIsSidebarOpen(false)}
-            className="rounded-md p-2 text-gray-600 hover:bg-gray-100 hover:text-primary-600"
+            className="p-2 text-gray-600 hover:bg-gray-100 hover:text-primary-600"
             aria-label="메뉴 닫기"
           >
             <svg
@@ -264,28 +264,28 @@ export default function Header() {
           <Link
             href="/recruit"
             onClick={() => setIsSidebarOpen(false)}
-            className="rounded-md px-3 py-3 text-gray-700 transition-colors hover:bg-gray-100 hover:text-primary-600"
+            className="px-3 py-3 text-gray-700 transition-colors hover:bg-gray-100 hover:text-primary-600"
           >
             구인
           </Link>
           <Link
             href="/team"
             onClick={() => setIsSidebarOpen(false)}
-            className="rounded-md px-3 py-3 text-gray-700 transition-colors hover:bg-gray-100 hover:text-primary-600"
+            className="px-3 py-3 text-gray-700 transition-colors hover:bg-gray-100 hover:text-primary-600"
           >
             팀
           </Link>
           <Link
             href="/portfolio"
             onClick={() => setIsSidebarOpen(false)}
-            className="rounded-md px-3 py-3 text-gray-700 transition-colors hover:bg-gray-100 hover:text-primary-600"
+            className="px-3 py-3 text-gray-700 transition-colors hover:bg-gray-100 hover:text-primary-600"
           >
             포트폴리오
           </Link>
           <Link
             href="/chat"
             onClick={() => setIsSidebarOpen(false)}
-            className="rounded-md px-3 py-3 text-gray-700 transition-colors hover:bg-gray-100 hover:text-primary-600"
+            className="px-3 py-3 text-gray-700 transition-colors hover:bg-gray-100 hover:text-primary-600"
           >
             채팅
           </Link>
@@ -314,7 +314,7 @@ export default function Header() {
                   <Link
                     href="/profile"
                     onClick={() => setIsSidebarOpen(false)}
-                    className="rounded-md px-3 py-3 text-gray-700 transition-colors hover:bg-gray-100 hover:text-primary-600"
+                    className="px-3 py-3 text-gray-700 transition-colors hover:bg-gray-100 hover:text-primary-600"
                   >
                     프로필
                   </Link>
@@ -324,7 +324,7 @@ export default function Header() {
                       logout();
                       setIsSidebarOpen(false);
                     }}
-                    className="rounded-md px-3 py-3 text-left text-gray-700 transition-colors hover:bg-gray-100 hover:text-primary-600"
+                    className="px-3 py-3 text-left text-gray-700 transition-colors hover:bg-gray-100 hover:text-primary-600"
                   >
                     로그아웃
                   </button>
@@ -334,14 +334,14 @@ export default function Header() {
                   <Link
                     href="/login"
                     onClick={() => setIsSidebarOpen(false)}
-                    className="rounded-md px-3 py-3 text-gray-700 transition-colors hover:bg-gray-100 hover:text-primary-600"
+                    className="px-3 py-3 text-gray-700 transition-colors hover:bg-gray-100 hover:text-primary-600"
                   >
                     로그인
                   </Link>
                   <Link
                     href="/register"
                     onClick={() => setIsSidebarOpen(false)}
-                    className="rounded-md px-3 py-3 text-gray-700 transition-colors hover:bg-gray-100 hover:text-primary-600"
+                    className="px-3 py-3 text-gray-700 transition-colors hover:bg-gray-100 hover:text-primary-600"
                   >
                     회원가입
                   </Link>

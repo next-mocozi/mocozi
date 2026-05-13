@@ -78,7 +78,7 @@ function VisibilityBadge({
     <button
       onClick={() => onToggle(field)}
       disabled={isLoading}
-      className={`-mt-0.5 rounded-full border px-2 py-0.5 text-3xs font-medium transition-colors disabled:opacity-50 ${
+      className={`-mt-0.5 border px-2 py-0.5 text-3xs font-medium transition-colors disabled:opacity-50 ${
         isPublic
           ? 'border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
           : 'border-stone-200 bg-stone-50 text-stone-400 hover:bg-stone-100'
@@ -167,14 +167,14 @@ export default function TeamDetailPage({
   if (notFound || !team) {
     return (
       <div className="mx-auto flex min-h-[60vh] max-w-4xl flex-col items-center justify-center gap-4 px-4 py-8 text-center sm:px-6 lg:px-8">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-stone-100 text-3xl">
+        <div className="flex h-16 w-16 items-center justify-center bg-stone-100 text-3xl">
           🔍
         </div>
         <p className="text-lg font-semibold text-stone-800">존재하지 않는 팀입니다</p>
         <p className="text-sm text-stone-400">삭제되었거나 잘못된 주소일 수 있어요.</p>
         <Link
           href="/team"
-          className="mt-1 rounded-xl border border-indigo-200 px-6 py-2.5 text-sm font-medium text-indigo-600 transition-all hover:bg-indigo-600 hover:text-white"
+          className="mt-1 border border-indigo-200 px-6 py-2.5 text-sm font-medium text-indigo-600 transition-all hover:bg-indigo-600 hover:text-white"
         >
           팀 목록으로
         </Link>
@@ -210,24 +210,24 @@ export default function TeamDetailPage({
 
       {/* 헤더 */}
       <div
-        className={`relative overflow-hidden rounded-3xl px-6 py-8 text-white shadow-lg sm:px-8 sm:py-10 ${
+        className={`relative overflow-hidden px-6 py-8 text-white shadow-lg sm:px-8 sm:py-10 ${
           !team.isRecruiting
             ? 'bg-gradient-to-br from-stone-500 via-stone-600 to-stone-700'
             : 'bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-700'
         }`}
       >
         {/* 배경 장식 원 */}
-        <div className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full bg-white/5" />
-        <div className="pointer-events-none absolute -bottom-8 right-24 h-32 w-32 rounded-full bg-white/5" />
-        <div className="pointer-events-none absolute left-1/2 top-4 h-24 w-24 rounded-full bg-white/5" />
+        <div className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 bg-white/5" />
+        <div className="pointer-events-none absolute -bottom-8 right-24 h-32 w-32 bg-white/5" />
+        <div className="pointer-events-none absolute left-1/2 top-4 h-24 w-24 bg-white/5" />
 
         <div className="relative">
           <div className="mb-4 flex flex-wrap items-center gap-2">
-            <span className="flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium backdrop-blur-sm">
+            <span className="flex items-center gap-1.5 border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium backdrop-blur-sm">
               {TEAM_TYPE_EMOJI[team.teamType]} {TEAM_TYPE_LABEL[team.teamType]}
             </span>
             <span
-              className={`rounded-full px-3 py-1 text-xs font-medium ${
+              className={`px-3 py-1 text-xs font-medium ${
                 team.isRecruiting
                   ? 'bg-emerald-400/20 text-emerald-200 border border-emerald-400/30'
                   : 'bg-stone-400/20 text-stone-200 border border-stone-400/30'
@@ -329,7 +329,7 @@ export default function TeamDetailPage({
                         href={url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 rounded-xl border border-indigo-100 bg-indigo-50/50 px-4 py-2.5 text-sm text-indigo-600 transition-colors hover:bg-indigo-100"
+                        className="flex items-center gap-2 border border-indigo-100 bg-indigo-50/50 px-4 py-2.5 text-sm text-indigo-600 transition-colors hover:bg-indigo-100"
                       >
                         <svg className="h-3.5 w-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -348,7 +348,7 @@ export default function TeamDetailPage({
                   {team.proposal.recruitingRoles.map((role) => (
                     <span
                       key={role}
-                      className="rounded-full border border-indigo-200 bg-indigo-50 px-4 py-1.5 text-sm font-medium text-indigo-700"
+                      className="border border-indigo-200 bg-indigo-50 px-4 py-1.5 text-sm font-medium text-indigo-700"
                     >
                       {role}
                     </span>
@@ -363,7 +363,7 @@ export default function TeamDetailPage({
                   {team.proposal.requiredSkills.map((skill) => (
                     <span
                       key={skill}
-                      className="rounded-full border border-stone-200 bg-stone-50 px-3 py-1.5 text-sm text-stone-600"
+                      className="border border-stone-200 bg-stone-50 px-3 py-1.5 text-sm text-stone-600"
                     >
                       {skill}
                     </span>
@@ -387,7 +387,7 @@ export default function TeamDetailPage({
           <div className="card">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-base font-semibold text-stone-800">팀원</h2>
-              <span className="rounded-full bg-stone-100 px-2.5 py-0.5 text-xs font-medium text-stone-500">
+              <span className="bg-stone-100 px-2.5 py-0.5 text-xs font-medium text-stone-500">
                 {memberCount}{maxMembers ? `/${maxMembers}` : ''}명
               </span>
             </div>
@@ -397,10 +397,10 @@ export default function TeamDetailPage({
                 <Link
                   key={m.id}
                   href={`/profile/${m.userId}`}
-                  className="flex items-center gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-indigo-50/60"
+                  className="flex items-center gap-3 px-2 py-2 transition-colors hover:bg-indigo-50/60"
                 >
                   <div
-                    className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
+                    className={`flex h-10 w-10 flex-shrink-0 items-center justify-center text-sm font-semibold ${
                       m.role === 'LEADER'
                         ? 'bg-gradient-to-br from-indigo-500 to-violet-500 text-white'
                         : 'bg-stone-100 text-stone-600'
@@ -420,7 +420,7 @@ export default function TeamDetailPage({
               {maxMembers &&
                 Array.from({ length: maxMembers - memberCount }).map((_, i) => (
                   <div key={`empty-${i}`} className="flex items-center gap-3 px-2 py-2 opacity-40">
-                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-2 border-dashed border-stone-300 text-stone-400 text-lg">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center border-2 border-dashed border-stone-300 text-stone-400 text-lg">
                       +
                     </div>
                     <p className="text-sm text-stone-400">빈 자리</p>
@@ -434,7 +434,7 @@ export default function TeamDetailPage({
             <div className="flex flex-col gap-2">
               <Link
                 href={`/team/${id}/edit`}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-stone-200 py-3 text-sm font-medium text-stone-600 transition-all hover:bg-stone-50"
+                className="flex w-full items-center justify-center gap-2 border border-stone-200 py-3 text-sm font-medium text-stone-600 transition-all hover:bg-stone-50"
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -443,7 +443,7 @@ export default function TeamDetailPage({
               </Link>
               <Link
                 href={`/team/${id}/applications`}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-indigo-200 py-3 text-sm font-medium text-indigo-600 transition-all hover:bg-indigo-50"
+                className="flex w-full items-center justify-center gap-2 border border-indigo-200 py-3 text-sm font-medium text-indigo-600 transition-all hover:bg-indigo-50"
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -458,14 +458,14 @@ export default function TeamDetailPage({
             {applyBtn.disabled ? (
               <button
                 disabled
-                className="w-full cursor-not-allowed rounded-xl bg-stone-100 py-3.5 text-sm font-semibold text-stone-400"
+                className="w-full cursor-not-allowed bg-stone-100 py-3.5 text-sm font-semibold text-stone-400"
               >
                 {applyBtn.label}
               </button>
             ) : (
               <Link
                 href={`/chat?teamId=${team.id}&context=RECRUIT_TEAM`}
-                className="block w-full rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 py-3.5 text-center text-sm font-semibold text-white shadow-md shadow-indigo-200 transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-indigo-300"
+                className="block w-full bg-gradient-to-r from-indigo-600 to-violet-600 py-3.5 text-center text-sm font-semibold text-white shadow-md shadow-indigo-200 transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-indigo-300"
               >
                 {applyBtn.label}
               </Link>
@@ -479,14 +479,14 @@ export default function TeamDetailPage({
         {applyBtn.disabled ? (
           <button
             disabled
-            className="w-full cursor-not-allowed rounded-xl bg-stone-100 py-3.5 text-sm font-semibold text-stone-400"
+            className="w-full cursor-not-allowed bg-stone-100 py-3.5 text-sm font-semibold text-stone-400"
           >
             {applyBtn.label}
           </button>
         ) : (
           <Link
             href={`/chat?teamId=${team.id}&context=RECRUIT_TEAM`}
-            className="block w-full rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 py-3.5 text-center text-sm font-semibold text-white shadow-md shadow-indigo-200 transition-all hover:shadow-lg hover:shadow-indigo-300 active:scale-[0.99]"
+            className="block w-full bg-gradient-to-r from-indigo-600 to-violet-600 py-3.5 text-center text-sm font-semibold text-white shadow-md shadow-indigo-200 transition-all hover:shadow-lg hover:shadow-indigo-300 active:scale-[0.99]"
           >
             {applyBtn.label}
           </Link>
@@ -500,7 +500,7 @@ export default function TeamDetailPage({
           onClick={() => { setApplyOpen(false); setApplyError(''); }}
         >
           <div
-            className="w-full max-w-md rounded-3xl bg-white p-7 shadow-2xl"
+            className="w-full max-w-md bg-white p-7 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-5">
@@ -524,14 +524,14 @@ export default function TeamDetailPage({
             <div className="mt-4 flex gap-3">
               <button
                 onClick={() => { setApplyOpen(false); setApplyError(''); }}
-                className="flex-1 rounded-xl border border-stone-200 py-3 text-sm font-medium text-stone-600 transition-colors hover:bg-stone-50"
+                className="flex-1 border border-stone-200 py-3 text-sm font-medium text-stone-600 transition-colors hover:bg-stone-50"
               >
                 취소
               </button>
               <button
                 onClick={handleApply}
                 disabled={applying}
-                className="flex-1 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 py-3 text-sm font-semibold text-white shadow-md shadow-indigo-200 transition-all hover:shadow-lg disabled:opacity-60"
+                className="flex-1 bg-gradient-to-r from-indigo-600 to-violet-600 py-3 text-sm font-semibold text-white shadow-md shadow-indigo-200 transition-all hover:shadow-lg disabled:opacity-60"
               >
                 {applying ? '제출 중...' : '지원 제출'}
               </button>

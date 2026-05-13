@@ -200,7 +200,7 @@ export default function PeerDirectory() {
         </div>
 
         {filtered.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-gray-200 py-16 text-center text-sm text-gray-500">
+          <p className="border border-dashed border-gray-200 py-16 text-center text-sm text-gray-500">
             조건에 맞는 동료가 없어요. 필터를 바꿔보세요.
           </p>
         ) : (
@@ -216,7 +216,7 @@ export default function PeerDirectory() {
               <article key={p.name} className={`card flex flex-col gap-3 ${visibility}`}>
                 <div className="flex items-start gap-3">
                   <div
-                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-base font-semibold ${p.accent}`}
+                    className={`flex h-11 w-11 shrink-0 items-center justify-center text-base font-semibold ${p.accent}`}
                   >
                     {p.initial}
                   </div>
@@ -229,15 +229,15 @@ export default function PeerDirectory() {
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {p.roles[0] && (
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-medium text-stone-700">
-                      <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" aria-hidden="true" />
+                    <span className="inline-flex items-center gap-1.5 border border-stone-200 bg-white px-3 py-1 text-xs font-medium text-stone-700">
+                      <span className="h-1.5 w-1.5 bg-indigo-500" aria-hidden="true" />
                       {p.roles[0]}
                     </span>
                   )}
                   {p.roles.slice(1).map((r) => (
                     <span
                       key={r}
-                      className="rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs text-stone-500"
+                      className="border border-stone-200 bg-stone-50 px-3 py-1 text-xs text-stone-500"
                     >
                       {r}
                     </span>
@@ -247,7 +247,7 @@ export default function PeerDirectory() {
                   {p.skills.map((s) => (
                     <span
                       key={s}
-                      className="rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
+                      className="bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
                     >
                       {s}
                     </span>
@@ -266,14 +266,14 @@ export default function PeerDirectory() {
             <button
               type="button"
               onClick={() => setExpanded(true)}
-              className="rounded-full border border-gray-200 bg-white px-5 py-2 text-sm font-medium text-gray-700 transition-colors hover:border-gray-300 hover:bg-gray-50"
+              className="border border-gray-200 bg-white px-5 py-2 text-sm font-medium text-gray-700 transition-colors hover:border-gray-300 hover:bg-gray-50"
             >
               더 보기
             </button>
           </div>
         )}
 
-        <div className="mt-10 flex flex-col items-center justify-between gap-4 rounded-2xl border border-gray-100 bg-stone-50 px-6 py-5 md:flex-row">
+        <div className="mt-10 flex flex-col items-center justify-between gap-4 border border-gray-100 bg-stone-50 px-6 py-5 md:flex-row">
           <p className="text-sm text-gray-600">
             <span className="font-semibold text-gray-900">전체 1,247명</span>의
             IT 대학생이 모코지에 있어요
@@ -302,8 +302,8 @@ function FilterChip({
       onClick={onClick}
       className={
         active
-          ? 'shrink-0 whitespace-nowrap rounded-full bg-primary-600 px-3.5 py-1.5 text-sm font-medium text-white shadow-sm'
-          : 'shrink-0 whitespace-nowrap rounded-full border border-gray-200 bg-white px-3.5 py-1.5 text-sm text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50'
+          ? 'shrink-0 whitespace-nowrap bg-primary-600 px-3.5 py-1.5 text-sm font-medium text-white shadow-sm'
+          : 'shrink-0 whitespace-nowrap border border-gray-200 bg-white px-3.5 py-1.5 text-sm text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50'
       }
     >
       {label}

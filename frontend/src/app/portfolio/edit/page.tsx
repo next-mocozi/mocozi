@@ -208,7 +208,7 @@ function SimpleForm() {
         </div>
       </div>
 
-      <div className="space-y-6 rounded-2xl bg-white p-8 shadow-sm sm:p-6">
+      <div className="space-y-6 bg-white p-8 shadow-sm sm:p-6">
         {/* 제목 — 카테고리는 항목 유형별로 별도 페이지에서 구현 예정 */}
         <h2
           style={{ marginBottom: '1rem' }}
@@ -230,7 +230,7 @@ function SimpleForm() {
               if (titleError) setTitleError('');
             }}
             placeholder="예: 웹 포트폴리오 사이트"
-            className={`w-full rounded-lg border px-4 py-2 text-sm outline-none focus:ring-2 ${
+            className={`w-full border px-4 py-2 text-sm outline-none focus:ring-2 ${
               titleError
                 ? 'border-red-300 focus:border-red-400 focus:ring-red-100'
                 : 'border-gray-200 focus:border-blue-400 focus:ring-blue-100'
@@ -251,7 +251,7 @@ function SimpleForm() {
             value={domain}
             onChange={(e) => setDomain(e.target.value)}
             placeholder="예: 웹, AI, 핀테크"
-            className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+            className="w-full border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
           />
         </div>
 
@@ -266,14 +266,14 @@ function SimpleForm() {
               value={period}
               onChange={(e) => setPeriod(e.target.value)}
               placeholder="예: 2024.01 - 2024.03"
-              className="flex-1 rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+              className="flex-1 border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
             />
             <label className="inline-flex items-center gap-2 text-sm text-gray-600">
               <input
                 type="checkbox"
                 checked={current}
                 onChange={(e) => setCurrent(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300"
+                className="h-4 w-4 border-gray-300"
               />
               진행중
             </label>
@@ -290,7 +290,7 @@ function SimpleForm() {
             onChange={(e) => setDescription(e.target.value)}
             rows={5}
             placeholder="활동 내용, 역할, 성과 등을 자유롭게 작성해주세요."
-            className="w-full resize-none rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+            className="w-full resize-none border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
           />
         </div>
 
@@ -311,12 +311,12 @@ function SimpleForm() {
                 }
               }}
               placeholder="태그 입력 후 Enter (예: React)"
-              className="flex-1 rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+              className="flex-1 border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
             />
             <button
               type="button"
               onClick={addTag}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+              className="bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
             >
               추가
             </button>
@@ -326,7 +326,7 @@ function SimpleForm() {
               {tags.map((t) => (
                 <span
                   key={t}
-                  className="inline-flex items-center gap-1 rounded bg-blue-50 px-2 py-1 text-xs text-blue-600"
+                  className="inline-flex items-center gap-1 bg-blue-50 px-2 py-1 text-xs text-blue-600"
                 >
                   {t}
                   <button
@@ -350,7 +350,7 @@ function SimpleForm() {
           <button
             onClick={handleDelete}
             disabled={isSubmitting}
-            className="rounded-full border border-red-200 px-6 py-2.5 text-sm text-red-500 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+            className="border border-red-200 px-6 py-2.5 text-sm text-red-500 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
             삭제
           </button>
@@ -360,14 +360,14 @@ function SimpleForm() {
         <div className="flex gap-2">
           <Link
             href="/portfolio"
-            className="rounded-full border border-gray-200 px-6 py-2.5 text-sm text-gray-600 hover:bg-gray-50"
+            className="border border-gray-200 px-6 py-2.5 text-sm text-gray-600 hover:bg-gray-50"
           >
             취소
           </Link>
           <button
             onClick={handleSave}
             disabled={isSubmitting}
-            className="rounded-full bg-blue-600 px-6 py-2.5 text-sm text-white shadow-md hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="bg-blue-600 px-6 py-2.5 text-sm text-white shadow-md hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSubmitting ? '저장 중…' : '저장'}
           </button>

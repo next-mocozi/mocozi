@@ -105,7 +105,7 @@ export function NewChatModal({ open, onClose, onCreated, myId }: Props) {
       onClick={onClose}
     >
       <div
-        className="flex max-h-[80vh] w-full max-w-md flex-col rounded-xl bg-white shadow-xl"
+        className="flex max-h-[80vh] w-full max-w-md flex-col bg-white shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 헤더 */}
@@ -114,7 +114,7 @@ export function NewChatModal({ open, onClose, onCreated, myId }: Props) {
           <button
             type="button"
             onClick={onClose}
-            className="rounded p-1 text-gray-500 hover:bg-gray-100"
+            className="p-1 text-gray-500 hover:bg-gray-100"
             aria-label="닫기"
           >
             <XIcon className="h-5 w-5" />
@@ -132,7 +132,7 @@ export function NewChatModal({ open, onClose, onCreated, myId }: Props) {
                 onChange={(e) => setGroupName(e.target.value)}
                 placeholder="예: 디자인 팀"
                 maxLength={80}
-                className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                className="mt-1 w-full border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
               />
             </label>
           </div>
@@ -160,16 +160,16 @@ export function NewChatModal({ open, onClose, onCreated, myId }: Props) {
                   key={u.id}
                   type="button"
                   onClick={() => toggle(u.id)}
-                  className={`flex w-full items-center gap-3 rounded-lg p-2 text-left transition ${
+                  className={`flex w-full items-center gap-3 p-2 text-left transition ${
                     checked ? 'bg-primary-50' : 'hover:bg-gray-50'
                   }`}
                 >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-500">
+                  <div className="flex h-9 w-9 items-center justify-center bg-gray-100 text-gray-500">
                     {u.profileImage ? (
                       <img
                         src={u.profileImage}
                         alt=""
-                        className="h-full w-full rounded-full object-cover"
+                        className="h-full w-full object-cover"
                       />
                     ) : (
                       <UserIcon className="h-5 w-5" />
@@ -182,7 +182,7 @@ export function NewChatModal({ open, onClose, onCreated, myId }: Props) {
                     </div>
                   </div>
                   <div
-                    className={`flex h-5 w-5 items-center justify-center rounded border ${
+                    className={`flex h-5 w-5 items-center justify-center border ${
                       checked
                         ? 'border-primary-600 bg-primary-600 text-white'
                         : 'border-gray-300'
@@ -198,7 +198,7 @@ export function NewChatModal({ open, onClose, onCreated, myId }: Props) {
         {/* 푸터 */}
         <div className="border-t border-gray-200 p-4">
           {error && (
-            <div className="mb-3 rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">
+            <div className="mb-3 border border-red-200 bg-red-50 p-2 text-sm text-red-700">
               {error}
             </div>
           )}

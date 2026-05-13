@@ -67,13 +67,13 @@ export default function FeedPostCard({
             }}
             className="group flex items-center gap-2 text-left"
           >
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary-100 text-sm text-primary-600">
+            <span className="flex h-7 w-7 items-center justify-center bg-primary-100 text-sm text-primary-600">
               {post.author.profileImage ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={post.author.profileImage}
                   alt=""
-                  className="h-full w-full rounded-full object-cover"
+                  className="h-full w-full object-cover"
                 />
               ) : (
                 '👤'
@@ -107,7 +107,7 @@ function KindBadge({
     const meta = TYPE_META[post.item.type];
     return (
       <span
-        className={`rounded px-2 py-0.5 text-xs font-medium ${meta.bg} ${meta.text}`}
+        className={`px-2 py-0.5 text-xs font-medium ${meta.bg} ${meta.text}`}
       >
         {meta.label}
       </span>
@@ -116,7 +116,7 @@ function KindBadge({
   const meta = KIND_LABEL[kind];
   return (
     <span
-      className={`rounded px-2 py-0.5 text-xs font-medium ${meta.bg} ${meta.text}`}
+      className={`px-2 py-0.5 text-xs font-medium ${meta.bg} ${meta.text}`}
     >
       {meta.label}
     </span>
@@ -129,7 +129,7 @@ function PostMetaTags({ post }: { post: FeedPost }) {
       return (
         <>
           {post.item.domain && (
-            <span className="rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-600">
+            <span className="bg-blue-50 px-2 py-0.5 text-xs text-blue-600">
               {post.item.domain}
             </span>
           )}
@@ -137,8 +137,8 @@ function PostMetaTags({ post }: { post: FeedPost }) {
             <span className="text-xs text-gray-500">{post.item.period}</span>
           )}
           {post.item.current && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-              <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+            <span className="inline-flex items-center gap-1 bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+              <span className="h-1.5 w-1.5 bg-green-500" />
               진행중
             </span>
           )}
@@ -149,8 +149,8 @@ function PostMetaTags({ post }: { post: FeedPost }) {
         <>
           <span className="text-xs text-gray-500">{post.exp.period}</span>
           {post.exp.current && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-              <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+            <span className="inline-flex items-center gap-1 bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+              <span className="h-1.5 w-1.5 bg-green-500" />
               재직중
             </span>
           )}
@@ -240,13 +240,13 @@ function PostTags({ post }: { post: FeedPost }) {
       {visible.map((t) => (
         <span
           key={t}
-          className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
+          className="bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
         >
           {t}
         </span>
       ))}
       {more > 0 && (
-        <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
+        <span className="bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
           +{more}
         </span>
       )}

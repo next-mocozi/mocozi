@@ -275,7 +275,7 @@ function PortfolioOnboardingPageInner() {
             maxLength={INTRO_MAX}
             rows={4}
             placeholder="자신을 짧게 소개해주세요. (최대 500자)"
-            className="block w-full resize-none rounded-lg border border-gray-200 px-4 py-3 text-sm leading-relaxed outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+            className="block w-full resize-none border border-gray-200 px-4 py-3 text-sm leading-relaxed outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
           />
         </section>
 
@@ -306,12 +306,12 @@ function PortfolioOnboardingPageInner() {
                 }
               }}
               placeholder="예: React"
-              className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+              className="flex-1 border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
             />
             <button
               type="button"
               onClick={addSkill}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white shadow-sm hover:bg-blue-700"
+              className="bg-blue-600 px-4 py-2 text-sm text-white shadow-sm hover:bg-blue-700"
             >
               추가
             </button>
@@ -332,7 +332,7 @@ function PortfolioOnboardingPageInner() {
                         key={s}
                         type="button"
                         onClick={() => toggleSkill(s)}
-                        className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${
+                        className={`px-3 py-1 text-xs font-medium transition-all ${
                           active
                             ? 'bg-blue-600 text-white shadow-sm'
                             : 'bg-gray-100 text-gray-700 hover:bg-blue-50 hover:text-blue-600'
@@ -349,7 +349,7 @@ function PortfolioOnboardingPageInner() {
 
           {/* 선택된 칩 */}
           {skills.length > 0 && (
-            <div className="mt-4 rounded-lg bg-blue-50/40 p-3">
+            <div className="mt-4 bg-blue-50/40 p-3">
               <p className="mb-2 text-xs font-semibold text-blue-700">
                 선택된 기술 스택
               </p>
@@ -357,7 +357,7 @@ function PortfolioOnboardingPageInner() {
                 {skills.map((s) => (
                   <span
                     key={s}
-                    className="inline-flex items-center gap-1 rounded bg-white px-2 py-1 text-xs text-blue-600 shadow-sm ring-1 ring-blue-100"
+                    className="inline-flex items-center gap-1 bg-white px-2 py-1 text-xs text-blue-600 shadow-sm ring-1 ring-blue-100"
                   >
                     {s}
                     <button
@@ -376,7 +376,7 @@ function PortfolioOnboardingPageInner() {
         </section>
 
         {error && (
-          <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+          <p className="mb-4 bg-red-50 px-3 py-2 text-sm text-red-600">
             {error}
           </p>
         )}
@@ -392,7 +392,7 @@ function PortfolioOnboardingPageInner() {
             type="button"
             onClick={handleSubmit}
             disabled={saving}
-            className="rounded-full bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-md transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-md transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {saving ? '저장 중…' : '포트폴리오 만들기'}
           </button>
@@ -412,7 +412,7 @@ function PortfolioOnboardingPageInner() {
           aria-modal="true"
           aria-labelledby="onboarding-visibility-title"
         >
-          <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-xl">
+          <div className="w-full max-w-md overflow-hidden bg-white shadow-xl">
             <div className="px-6 pt-6 text-center">
               <div className="mb-2 text-3xl">🎉</div>
               <h2
@@ -432,7 +432,7 @@ function PortfolioOnboardingPageInner() {
               <button
                 type="button"
                 onClick={() => setPickedVisibility('public')}
-                className={`w-full rounded-xl border p-4 text-left transition-all ${
+                className={`w-full border p-4 text-left transition-all ${
                   pickedVisibility === 'public'
                     ? 'border-blue-400 bg-blue-50/60'
                     : 'border-gray-200 hover:bg-gray-50'
@@ -451,7 +451,7 @@ function PortfolioOnboardingPageInner() {
               <button
                 type="button"
                 onClick={() => setPickedVisibility('private')}
-                className={`w-full rounded-xl border p-4 text-left transition-all ${
+                className={`w-full border p-4 text-left transition-all ${
                   pickedVisibility === 'private'
                     ? 'border-blue-400 bg-blue-50/60'
                     : 'border-gray-200 hover:bg-gray-50'
@@ -470,7 +470,7 @@ function PortfolioOnboardingPageInner() {
             </div>
 
             {/* 유의사항 */}
-            <div className="mx-6 mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
+            <div className="mx-6 mt-4 border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
               <span className="mr-1" aria-hidden>
                 💡
               </span>
@@ -483,7 +483,7 @@ function PortfolioOnboardingPageInner() {
                 type="button"
                 onClick={handleConfirmVisibility}
                 disabled={finalizing}
-                className="w-full rounded-full bg-blue-600 py-2.5 text-sm font-medium text-white shadow-md transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full bg-blue-600 py-2.5 text-sm font-medium text-white shadow-md transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {finalizing ? '저장 중…' : '확인'}
               </button>

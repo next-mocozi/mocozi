@@ -45,7 +45,7 @@ function SectionHeader({
 }) {
   return (
     <div className="mb-5 flex items-start gap-3">
-      <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white">
+      <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center bg-indigo-600 text-xs font-bold text-white">
         {number}
       </div>
       <div>
@@ -252,13 +252,13 @@ export default function EditTeamPage({
 
             <div>
               <FieldLabel required>팀 유형</FieldLabel>
-              <div className="grid grid-cols-2 gap-1 rounded-2xl border border-stone-200 bg-stone-100 p-1 sm:inline-flex">
+              <div className="grid grid-cols-2 gap-1 border border-stone-200 bg-stone-100 p-1 sm:inline-flex">
                 {TEAM_TYPE_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
                     type="button"
                     onClick={() => setTeamType(opt.value)}
-                    className={`whitespace-nowrap rounded-xl px-3.5 py-2 text-sm font-medium transition-all ${
+                    className={`whitespace-nowrap px-3.5 py-2 text-sm font-medium transition-all ${
                       teamType === opt.value
                         ? 'bg-white text-indigo-700 shadow-sm'
                         : 'text-stone-500 hover:text-stone-700'
@@ -304,11 +304,11 @@ export default function EditTeamPage({
 
               <div>
                 <FieldLabel>모집 상태</FieldLabel>
-                <div className="inline-flex rounded-2xl border border-stone-200 bg-stone-100 p-1 gap-1">
+                <div className="inline-flex border border-stone-200 bg-stone-100 p-1 gap-1">
                   <button
                     type="button"
                     onClick={() => setIsRecruiting(true)}
-                    className={`rounded-xl px-4 py-1.5 text-sm font-medium transition-all ${
+                    className={`px-4 py-1.5 text-sm font-medium transition-all ${
                       isRecruiting
                         ? 'bg-white text-emerald-600 shadow-sm'
                         : 'text-stone-500 hover:text-stone-700'
@@ -319,7 +319,7 @@ export default function EditTeamPage({
                   <button
                     type="button"
                     onClick={() => setIsRecruiting(false)}
-                    className={`rounded-xl px-4 py-1.5 text-sm font-medium transition-all ${
+                    className={`px-4 py-1.5 text-sm font-medium transition-all ${
                       !isRecruiting
                         ? 'bg-white text-stone-600 shadow-sm'
                         : 'text-stone-500 hover:text-stone-700'
@@ -340,7 +340,7 @@ export default function EditTeamPage({
             title="기획서 — 필수 공개"
             subtitle="모든 사용자에게 공개되는 정보입니다."
             icon={
-              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-3xs font-medium text-emerald-700">
+              <span className="bg-emerald-100 px-2 py-0.5 text-3xs font-medium text-emerald-700">
                 공개
               </span>
             }
@@ -391,7 +391,7 @@ export default function EditTeamPage({
                     key={role}
                     type="button"
                     onClick={() => setRecruitingRoles(toggle(role, recruitingRoles))}
-                    className={`rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all ${
+                    className={`border px-3.5 py-1.5 text-xs font-medium transition-all ${
                       recruitingRoles.includes(role)
                         ? 'border-indigo-600 bg-indigo-600 text-white'
                         : 'border-indigo-200 text-indigo-600 hover:bg-indigo-50'
@@ -415,19 +415,19 @@ export default function EditTeamPage({
                   onChange={(e) => setSkillInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSkill(); } }}
                   placeholder="목록에 없으면 직접 입력 후 Enter"
-                  className="flex-1 rounded-xl border border-stone-200 px-4 py-2.5 text-sm outline-none transition-all placeholder:text-stone-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                  className="flex-1 border border-stone-200 px-4 py-2.5 text-sm outline-none transition-all placeholder:text-stone-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                 />
                 <button
                   type="button"
                   onClick={addSkill}
-                  className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+                  className="bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
                 >
                   추가
                 </button>
               </div>
 
               {/* 카테고리별 스킬 선택 */}
-              <div className="space-y-3 rounded-2xl border border-stone-100 bg-stone-50 p-4">
+              <div className="space-y-3 border border-stone-100 bg-stone-50 p-4">
                 {SKILL_GROUPS.map(({ label, skills }) => (
                   <div key={label}>
                     <p className="mb-1.5 text-3xs font-semibold uppercase tracking-widest text-stone-400">
@@ -439,7 +439,7 @@ export default function EditTeamPage({
                           key={skill}
                           type="button"
                           onClick={() => setRequiredSkills(toggle(skill, requiredSkills))}
-                          className={`rounded-full border px-3 py-1 text-xs font-medium transition-all ${
+                          className={`border px-3 py-1 text-xs font-medium transition-all ${
                             requiredSkills.includes(skill)
                               ? 'border-stone-800 bg-stone-800 text-white'
                               : 'border-stone-200 bg-white text-stone-600 hover:border-stone-300 hover:bg-stone-100'
@@ -459,7 +459,7 @@ export default function EditTeamPage({
                   {requiredSkills.map((s) => (
                     <span
                       key={s}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-stone-100 px-3 py-1 text-xs font-medium text-stone-700"
+                      className="inline-flex items-center gap-1.5 bg-stone-100 px-3 py-1 text-xs font-medium text-stone-700"
                     >
                       {s}
                       <button
@@ -484,7 +484,7 @@ export default function EditTeamPage({
             title="기획서 — 선택 공개"
             subtitle="공개 여부를 나중에 별도로 설정할 수 있습니다. 아이디어를 보호하세요."
             icon={
-              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-3xs font-medium text-amber-700">
+              <span className="bg-amber-100 px-2 py-0.5 text-3xs font-medium text-amber-700">
                 선택 공개
               </span>
             }
@@ -522,12 +522,12 @@ export default function EditTeamPage({
                   onChange={(e) => setReferenceInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addReference(); } }}
                   placeholder="https://..."
-                  className="flex-1 rounded-xl border border-stone-200 px-4 py-2.5 text-sm outline-none transition-all placeholder:text-stone-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                  className="flex-1 border border-stone-200 px-4 py-2.5 text-sm outline-none transition-all placeholder:text-stone-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                 />
                 <button
                   type="button"
                   onClick={addReference}
-                  className="rounded-xl bg-stone-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-stone-800"
+                  className="bg-stone-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-stone-800"
                 >
                   추가
                 </button>
@@ -537,7 +537,7 @@ export default function EditTeamPage({
                   {referenceLinks.map((url) => (
                     <span
                       key={url}
-                      className="flex items-center gap-2 rounded-xl border border-stone-100 bg-stone-50 px-4 py-2.5 text-xs"
+                      className="flex items-center gap-2 border border-stone-100 bg-stone-50 px-4 py-2.5 text-xs"
                     >
                       <svg className="h-3.5 w-3.5 flex-shrink-0 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -567,7 +567,7 @@ export default function EditTeamPage({
 
         {/* 에러 */}
         {error && (
-          <div className="flex items-center gap-2 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+          <div className="flex items-center gap-2 border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
             <svg className="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -579,14 +579,14 @@ export default function EditTeamPage({
         <div className="flex gap-3 pt-1">
           <Link
             href={`/team/${id}`}
-            className="flex-1 rounded-xl border border-stone-200 py-3.5 text-center text-sm font-medium text-stone-600 transition-colors hover:bg-stone-50"
+            className="flex-1 border border-stone-200 py-3.5 text-center text-sm font-medium text-stone-600 transition-colors hover:bg-stone-50"
           >
             취소
           </Link>
           <button
             type="submit"
             disabled={saving}
-            className="flex-1 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 py-3.5 text-sm font-semibold text-white shadow-md shadow-indigo-200 transition-all hover:shadow-lg hover:shadow-indigo-300 disabled:opacity-60"
+            className="flex-1 bg-gradient-to-r from-indigo-600 to-violet-600 py-3.5 text-sm font-semibold text-white shadow-md shadow-indigo-200 transition-all hover:shadow-lg hover:shadow-indigo-300 disabled:opacity-60"
           >
             {saving ? '저장 중...' : '저장하기'}
           </button>

@@ -36,7 +36,7 @@ export function FileAttachmentCard({ attachment, isMine }: FileAttachmentCardPro
   }, [attachment.target]);
 
   // 말풍선 밖 단독 렌더 (mt-* 제거 — 부모 flex gap이 spacing 담당)
-  const baseClasses = `flex w-full max-w-sm items-center gap-3 rounded-xl border px-3 py-2 text-xs transition-colors ${
+  const baseClasses = `flex w-full max-w-sm items-center gap-3 border px-3 py-2 text-xs transition-colors ${
     isMine
       ? 'border-primary-300 bg-white/95 text-primary-900 hover:bg-white'
       : 'border-stone-300 bg-white text-stone-800 hover:bg-stone-50'
@@ -45,7 +45,7 @@ export function FileAttachmentCard({ attachment, isMine }: FileAttachmentCardPro
   const inner = (
     <>
       <span
-        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+        className={`flex h-9 w-9 shrink-0 items-center justify-center ${
           isMine ? 'bg-primary-50 text-primary-600' : 'bg-stone-100 text-stone-600'
         }`}
       >
@@ -78,7 +78,7 @@ export function FileAttachmentCard({ attachment, isMine }: FileAttachmentCardPro
   if (!url) {
     return (
       <div className={`${baseClasses} cursor-not-allowed opacity-60`}>
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-stone-100 text-stone-400">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center bg-stone-100 text-stone-400">
           <FileIcon className="h-5 w-5" />
         </span>
         <span className="flex min-w-0 flex-1 flex-col">

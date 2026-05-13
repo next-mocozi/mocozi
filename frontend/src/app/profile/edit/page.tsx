@@ -257,7 +257,7 @@ export default function ProfileEditPage() {
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+            className="w-full border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
           />
         </div>
 
@@ -270,7 +270,7 @@ export default function ProfileEditPage() {
               value={university}
               onChange={(e) => setUniversity(e.target.value)}
               placeholder="예: 고려대학교"
-              className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+              className="w-full border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
             />
           </div>
           <div>
@@ -280,7 +280,7 @@ export default function ProfileEditPage() {
               value={department}
               onChange={(e) => setDepartment(e.target.value)}
               placeholder="예: 컴퓨터공학과"
-              className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+              className="w-full border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
             />
           </div>
           <div>
@@ -288,7 +288,7 @@ export default function ProfileEditPage() {
             <select
               value={grade}
               onChange={(e) => setGrade(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+              className="w-full border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
             >
               <option value="">선택</option>
               <option value="1">1학년</option>
@@ -308,7 +308,7 @@ export default function ProfileEditPage() {
             onChange={(e) => setBio(e.target.value.slice(0, 100))}
             maxLength={100}
             rows={3}
-            className="w-full resize-none rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+            className="w-full resize-none border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
           />
           <p className="mt-1 text-right text-xs text-gray-400">{bio.length}/100</p>
         </div>
@@ -338,7 +338,7 @@ export default function ProfileEditPage() {
                       setSubRoles((prev) => prev.filter((r) => r !== role));
                     }
                   }}
-                  className={`rounded-full border px-3 py-1.5 text-xs transition-all ${
+                  className={`border px-3 py-1.5 text-xs transition-all ${
                     isActive
                       ? isExploring
                         ? 'border-amber-500 bg-amber-500 text-white'
@@ -368,7 +368,7 @@ export default function ProfileEditPage() {
                   key={role}
                   type="button"
                   onClick={() => toggleSubRole(role)}
-                  className={`rounded-full border px-3 py-1.5 text-xs transition-all ${
+                  className={`border px-3 py-1.5 text-xs transition-all ${
                     subRoles.includes(role)
                       ? 'border-blue-600 bg-blue-600 text-white'
                       : 'border-gray-200 text-gray-600 hover:bg-gray-50'
@@ -391,9 +391,9 @@ export default function ProfileEditPage() {
             value={skillSearch}
             onChange={(e) => setSkillSearch(e.target.value)}
             placeholder="스킬 검색..."
-            className="mb-2 w-full rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+            className="mb-2 w-full border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
           />
-          <div className="mb-3 flex max-h-56 flex-col gap-3 overflow-y-auto rounded-xl border border-gray-100 p-3">
+          <div className="mb-3 flex max-h-56 flex-col gap-3 overflow-y-auto border border-gray-100 p-3">
             {SKILL_GROUPS.map(({ label, skills: groupSkills }) => {
               const filtered = groupSkills.filter((s) =>
                 s.toLowerCase().includes(skillSearch.toLowerCase()),
@@ -410,7 +410,7 @@ export default function ProfileEditPage() {
                           key={s}
                           type="button"
                           onClick={() => toggleSkill(s)}
-                          className={`rounded-full border px-3 py-1 text-xs transition-all ${
+                          className={`border px-3 py-1 text-xs transition-all ${
                             active
                               ? 'border-blue-600 bg-blue-600 text-white'
                               : 'border-gray-200 text-gray-600 hover:bg-gray-50'
@@ -434,12 +434,12 @@ export default function ProfileEditPage() {
               onChange={(e) => setSkillInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSkill(); } }}
               placeholder="목록에 없으면 직접 입력 후 Enter"
-              className="flex-1 rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+              className="flex-1 border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
             />
             <button
               type="button"
               onClick={addSkill}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+              className="bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
             >
               추가
             </button>
@@ -448,7 +448,7 @@ export default function ProfileEditPage() {
           {skills.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {skills.map((s) => (
-                <span key={s} className="inline-flex items-center gap-1 rounded bg-blue-50 px-2 py-1 text-xs text-blue-600">
+                <span key={s} className="inline-flex items-center gap-1 bg-blue-50 px-2 py-1 text-xs text-blue-600">
                   {s}
                   <button type="button" onClick={() => removeSkill(s)} className="text-blue-400 hover:text-blue-700" aria-label={`${s} 제거`}>✕</button>
                 </span>
@@ -464,7 +464,7 @@ export default function ProfileEditPage() {
             <button
               type="button"
               onClick={openAddModal}
-              className="rounded-full bg-blue-600 px-3 py-1 text-xs font-medium text-white shadow-sm transition-all hover:bg-blue-700"
+              className="bg-blue-600 px-3 py-1 text-xs font-medium text-white shadow-sm transition-all hover:bg-blue-700"
             >
               + 링크 추가
             </button>
@@ -477,7 +477,7 @@ export default function ProfileEditPage() {
                 const key = detectPlatform(link.url);
                 const meta = PLATFORM_META[key];
                 return (
-                  <div key={link.id} className={`group inline-flex items-center gap-2 rounded-full pl-3 pr-1 py-1 text-sm shadow-sm ${meta.bg} ${meta.text}`}>
+                  <div key={link.id} className={`group inline-flex items-center gap-2 pl-3 pr-1 py-1 text-sm shadow-sm ${meta.bg} ${meta.text}`}>
                     <span className="inline-flex items-center gap-2 py-1">
                       <PlatformIcon k={key} className="h-4 w-4" />
                       <span className="font-medium">{getDisplayLabel(link, key)}</span>
@@ -486,7 +486,7 @@ export default function ProfileEditPage() {
                       type="button"
                       onClick={() => handleRemoveLink(link.id)}
                       aria-label="링크 삭제"
-                      className="ml-1 flex h-6 w-6 items-center justify-center rounded-full transition-all hover:bg-black/20"
+                      className="ml-1 flex h-6 w-6 items-center justify-center transition-all hover:bg-black/20"
                     >
                       ✕
                     </button>
@@ -504,14 +504,14 @@ export default function ProfileEditPage() {
         <div className="flex gap-2">
           <Link
             href="/profile"
-            className="rounded-full border border-gray-200 px-6 py-2.5 text-sm text-gray-600 hover:bg-gray-50"
+            className="border border-gray-200 px-6 py-2.5 text-sm text-gray-600 hover:bg-gray-50"
           >
             취소
           </Link>
           <button
             onClick={handleSave}
             disabled={saving}
-            className="rounded-full bg-blue-600 px-6 py-2.5 text-sm text-white shadow-md hover:bg-blue-700 disabled:opacity-60"
+            className="bg-blue-600 px-6 py-2.5 text-sm text-white shadow-md hover:bg-blue-700 disabled:opacity-60"
           >
             {saving ? '저장 중...' : '저장'}
           </button>
@@ -521,7 +521,7 @@ export default function ProfileEditPage() {
       {/* 링크 추가 모달 */}
       {isAddOpen && (
         <div onClick={() => setIsAddOpen(false)} className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md bg-white p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-bold">링크 추가</h2>
               <button onClick={() => setIsAddOpen(false)} className="text-gray-400 hover:text-gray-600" aria-label="닫기">✕</button>
@@ -539,9 +539,9 @@ export default function ProfileEditPage() {
                       type="button"
                       onClick={() => handleQuickAdd(q.prefix)}
                       disabled={alreadyAdded}
-                      className={`group flex flex-1 flex-col items-center gap-1.5 rounded-xl border p-3 transition-all ${alreadyAdded ? 'cursor-not-allowed border-gray-100 opacity-40' : 'border-gray-100 hover:border-blue-300 hover:bg-blue-50'}`}
+                      className={`group flex flex-1 flex-col items-center gap-1.5 border p-3 transition-all ${alreadyAdded ? 'cursor-not-allowed border-gray-100 opacity-40' : 'border-gray-100 hover:border-blue-300 hover:bg-blue-50'}`}
                     >
-                      <span className={`flex h-10 w-10 items-center justify-center rounded-full ${meta.bg} ${meta.text}`}>
+                      <span className={`flex h-10 w-10 items-center justify-center ${meta.bg} ${meta.text}`}>
                         <PlatformIcon k={q.key} className="h-5 w-5" />
                       </span>
                       <span className="text-xs font-medium text-gray-700">{meta.label}</span>
@@ -551,7 +551,7 @@ export default function ProfileEditPage() {
               </div>
             </div>
 
-            <div className="mb-4 rounded-xl bg-gray-50 p-3">
+            <div className="mb-4 bg-gray-50 p-3">
               <p className="mb-2 text-xs text-gray-600"><span className="font-medium">기타 플랫폼</span> — 클릭하거나 URL을 붙여넣으면 자동 인식돼요</p>
               <div className="flex flex-wrap gap-1.5">
                 {OTHER_PLATFORMS.map((p) => {
@@ -563,9 +563,9 @@ export default function ProfileEditPage() {
                       type="button"
                       onClick={() => handleQuickAdd(p.prefix)}
                       disabled={alreadyAdded}
-                      className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs transition-all ${alreadyAdded ? 'cursor-not-allowed bg-gray-200 text-gray-400' : 'bg-white text-gray-700 shadow-sm ring-1 ring-gray-200 hover:scale-105 hover:shadow-md'}`}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 text-xs transition-all ${alreadyAdded ? 'cursor-not-allowed bg-gray-200 text-gray-400' : 'bg-white text-gray-700 shadow-sm ring-1 ring-gray-200 hover:scale-105 hover:shadow-md'}`}
                     >
-                      <span className={`flex h-4 w-4 items-center justify-center rounded-full ${alreadyAdded ? '' : `${meta.bg} ${meta.text}`}`}>
+                      <span className={`flex h-4 w-4 items-center justify-center ${alreadyAdded ? '' : `${meta.bg} ${meta.text}`}`}>
                         <PlatformIcon k={p.key} className="h-2.5 w-2.5" />
                       </span>
                       <span className="font-medium">{meta.label}</span>
@@ -589,15 +589,15 @@ export default function ProfileEditPage() {
               onChange={(e) => { setNewUrl(e.target.value); if (urlError) setUrlError(''); }}
               onKeyDown={(e) => { if (e.key === 'Enter') handleAddLink(); }}
               placeholder="https://github.com/your-id"
-              className={`mb-1 w-full rounded-lg border px-4 py-2 text-sm outline-none focus:ring-2 ${urlError ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : 'border-gray-200 focus:border-blue-400 focus:ring-blue-100'}`}
+              className={`mb-1 w-full border px-4 py-2 text-sm outline-none focus:ring-2 ${urlError ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : 'border-gray-200 focus:border-blue-400 focus:ring-blue-100'}`}
               autoFocus
             />
             {urlError && <p className="mb-2 text-xs text-red-500">{urlError}</p>}
 
             {previewKey && (
-              <div className="mb-4 mt-2 flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600">
+              <div className="mb-4 mt-2 flex items-center gap-2 bg-gray-50 px-3 py-2 text-xs text-gray-600">
                 <span>자동 감지:</span>
-                <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 ${PLATFORM_META[previewKey].bg} ${PLATFORM_META[previewKey].text}`}>
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 ${PLATFORM_META[previewKey].bg} ${PLATFORM_META[previewKey].text}`}>
                   <PlatformIcon k={previewKey} className="h-3.5 w-3.5" />
                   <span className="font-medium">{PLATFORM_META[previewKey].label}</span>
                 </span>
@@ -613,13 +613,13 @@ export default function ProfileEditPage() {
               onChange={(e) => setNewLabel(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') handleAddLink(); }}
               placeholder="예: 개인 포트폴리오 사이트"
-              className="mb-1 w-full rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+              className="mb-1 w-full border border-gray-200 px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
             />
             <p className="mb-4 text-xs text-gray-400">비우면 플랫폼 이름이 표시됩니다.</p>
 
             <div className="flex gap-2">
-              <button onClick={() => setIsAddOpen(false)} className="flex-1 rounded-full border border-gray-200 py-2.5 text-sm text-gray-600 hover:bg-gray-50">취소</button>
-              <button onClick={handleAddLink} className="flex-1 rounded-full bg-blue-600 py-2.5 text-sm text-white shadow-md hover:bg-blue-700">추가</button>
+              <button onClick={() => setIsAddOpen(false)} className="flex-1 border border-gray-200 py-2.5 text-sm text-gray-600 hover:bg-gray-50">취소</button>
+              <button onClick={handleAddLink} className="flex-1 bg-blue-600 py-2.5 text-sm text-white shadow-md hover:bg-blue-700">추가</button>
             </div>
           </div>
         </div>

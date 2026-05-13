@@ -146,7 +146,7 @@ export default function CreateTeamPage() {
                   key={opt.value}
                   type="button"
                   onClick={() => setTeamType(opt.value)}
-                  className={`rounded-full border px-4 py-1.5 text-sm transition-all ${
+                  className={`border px-4 py-1.5 text-sm transition-all ${
                     teamType === opt.value
                       ? 'border-indigo-600 bg-indigo-600 text-white'
                       : 'border-stone-200 text-stone-600 hover:bg-stone-50'
@@ -237,7 +237,7 @@ export default function CreateTeamPage() {
                   key={role}
                   type="button"
                   onClick={() => setRecruitingRoles(toggle(role, recruitingRoles))}
-                  className={`rounded-full border px-3 py-1.5 text-xs transition-all ${
+                  className={`border px-3 py-1.5 text-xs transition-all ${
                     recruitingRoles.includes(role)
                       ? 'border-indigo-600 bg-indigo-600 text-white'
                       : 'border-indigo-200 text-indigo-600 hover:bg-indigo-50'
@@ -258,9 +258,9 @@ export default function CreateTeamPage() {
                 onChange={(e) => setSkillInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSkill(); } }}
                 placeholder="직접 입력 후 Enter"
-                className="flex-1 rounded-lg border border-stone-200 px-4 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                className="flex-1 border border-stone-200 px-4 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
               />
-              <button type="button" onClick={addSkill} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700">추가</button>
+              <button type="button" onClick={addSkill} className="bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700">추가</button>
             </div>
             <div className="mb-3 flex flex-wrap gap-1.5">
               {SKILL_GROUPS.map(({ label, skills }) => (
@@ -272,7 +272,7 @@ export default function CreateTeamPage() {
                         key={skill}
                         type="button"
                         onClick={() => setRequiredSkills(toggle(skill, requiredSkills))}
-                        className={`rounded-full border px-3 py-1 text-xs transition-all ${
+                        className={`border px-3 py-1 text-xs transition-all ${
                           requiredSkills.includes(skill)
                             ? 'border-stone-700 bg-stone-700 text-white'
                             : 'border-stone-200 text-stone-600 hover:bg-stone-50'
@@ -288,7 +288,7 @@ export default function CreateTeamPage() {
             {requiredSkills.length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {requiredSkills.map((s) => (
-                  <span key={s} className="inline-flex items-center gap-1 rounded bg-stone-100 px-2 py-1 text-xs text-stone-700">
+                  <span key={s} className="inline-flex items-center gap-1 bg-stone-100 px-2 py-1 text-xs text-stone-700">
                     {s}
                     <button type="button" onClick={() => setRequiredSkills(requiredSkills.filter((x) => x !== s))} className="text-stone-400 hover:text-stone-700">✕</button>
                   </span>
@@ -336,14 +336,14 @@ export default function CreateTeamPage() {
                 onChange={(e) => setReferenceInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addReference(); } }}
                 placeholder="https://..."
-                className="flex-1 rounded-lg border border-stone-200 px-4 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                className="flex-1 border border-stone-200 px-4 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
               />
-              <button type="button" onClick={addReference} className="rounded-lg bg-stone-600 px-4 py-2 text-sm text-white hover:bg-stone-700">추가</button>
+              <button type="button" onClick={addReference} className="bg-stone-600 px-4 py-2 text-sm text-white hover:bg-stone-700">추가</button>
             </div>
             {referenceLinks.length > 0 && (
               <div className="flex flex-col gap-1">
                 {referenceLinks.map((url) => (
-                  <span key={url} className="inline-flex items-center gap-2 rounded-lg bg-stone-50 px-3 py-1.5 text-xs text-stone-700">
+                  <span key={url} className="inline-flex items-center gap-2 bg-stone-50 px-3 py-1.5 text-xs text-stone-700">
                     <a href={url} target="_blank" rel="noopener noreferrer" className="flex-1 truncate text-indigo-600 hover:underline">{url}</a>
                     <button type="button" onClick={() => setReferenceLinks(referenceLinks.filter((l) => l !== url))} className="text-stone-400 hover:text-stone-700">✕</button>
                   </span>
@@ -358,14 +358,14 @@ export default function CreateTeamPage() {
         <div className="flex gap-3">
           <Link
             href="/team"
-            className="flex-1 rounded-xl border border-stone-200 py-3 text-center text-sm font-medium text-stone-600 transition-colors hover:bg-stone-50"
+            className="flex-1 border border-stone-200 py-3 text-center text-sm font-medium text-stone-600 transition-colors hover:bg-stone-50"
           >
             취소
           </Link>
           <button
             type="submit"
             disabled={saving}
-            className="flex-1 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 py-3 text-sm font-semibold text-white shadow-md shadow-indigo-200 transition-all hover:shadow-lg hover:shadow-indigo-300 disabled:opacity-60"
+            className="flex-1 bg-gradient-to-r from-indigo-600 to-violet-600 py-3 text-sm font-semibold text-white shadow-md shadow-indigo-200 transition-all hover:shadow-lg hover:shadow-indigo-300 disabled:opacity-60"
           >
             {saving ? '등록 중...' : '팀 등록하기'}
           </button>

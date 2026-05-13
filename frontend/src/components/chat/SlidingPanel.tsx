@@ -126,7 +126,7 @@ export function SlidingPanel({
           open ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
-        <div className="pointer-events-auto relative flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
+        <div className="pointer-events-auto relative flex h-full flex-col overflow-hidden border border-gray-200 bg-white shadow-2xl">
           {/* 좌측 resize handle — 8px 폭. 사용자가 명확히 잡을 수 있도록 hover 시 강조.
               실제 시각 라인은 1px(left-0.5)이지만 hit area가 더 넓어 잡기 편함. */}
           <div
@@ -190,7 +190,7 @@ function PanelChrome({
         <button
           type="button"
           onClick={onClose}
-          className="rounded-full p-1.5 text-gray-500 hover:bg-gray-100"
+          className="p-1.5 text-gray-500 hover:bg-gray-100"
           aria-label="닫기"
         >
           <svg

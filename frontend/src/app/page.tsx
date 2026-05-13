@@ -74,8 +74,8 @@ function HeroSection() {
       <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 sm:px-6 md:grid-cols-2 lg:px-8">
         {/* 좌측: 카피 + CTA */}
         <div className="text-center md:text-left">
-          <span className="inline-flex items-center gap-2 rounded-full border border-primary-200 bg-white px-3 py-1 text-xs font-medium text-primary-700">
-            <span className="h-1.5 w-1.5 rounded-full bg-primary-500" />
+          <span className="inline-flex items-center gap-2 border border-primary-200 bg-white px-3 py-1 text-xs font-medium text-primary-700">
+            <span className="h-1.5 w-1.5 bg-primary-500" />
             .ac.kr 인증된 IT 대학생만
           </span>
           <h1 className="mt-5 text-3xl font-bold leading-tight text-gray-900 sm:text-4xl md:text-5xl">
@@ -115,7 +115,7 @@ function HeroSection() {
               >
                 <div className="flex items-start gap-3">
                   <div
-                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-base font-semibold ${peer.accent}`}
+                    className={`flex h-11 w-11 shrink-0 items-center justify-center text-base font-semibold ${peer.accent}`}
                   >
                     {peer.initial}
                   </div>
@@ -127,8 +127,8 @@ function HeroSection() {
                   </div>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-1.5">
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-medium text-stone-700">
-                    <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" aria-hidden="true" />
+                  <span className="inline-flex items-center gap-1.5 border border-stone-200 bg-white px-3 py-1 text-xs font-medium text-stone-700">
+                    <span className="h-1.5 w-1.5 bg-indigo-500" aria-hidden="true" />
                     {peer.role}
                   </span>
                 </div>
@@ -136,7 +136,7 @@ function HeroSection() {
                   {peer.skills.map((s) => (
                     <span
                       key={s}
-                      className="rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
+                      className="bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
                     >
                       {s}
                     </span>
@@ -163,7 +163,7 @@ function BottomCTA() {
         </p>
         <Link
           href="/register"
-          className="mt-8 inline-block rounded-lg bg-white px-8 py-3 font-semibold text-primary-600 transition-colors hover:bg-primary-50"
+          className="mt-8 inline-block bg-white px-8 py-3 font-semibold text-primary-600 transition-colors hover:bg-primary-50"
         >
           무료로 시작하기
         </Link>
@@ -179,8 +179,8 @@ function WelcomeDashboard({ user }: { user: AuthUser }) {
     <section className="bg-gradient-to-b from-primary-50 to-white py-12 sm:py-16 md:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div>
-          <span className="inline-flex items-center gap-2 rounded-full border border-primary-200 bg-white px-3 py-1 text-xs font-medium text-primary-700">
-            <span className="h-1.5 w-1.5 rounded-full bg-primary-500" />
+          <span className="inline-flex items-center gap-2 border border-primary-200 bg-white px-3 py-1 text-xs font-medium text-primary-700">
+            <span className="h-1.5 w-1.5 bg-primary-500" />
             다시 오신 것을 환영해요
           </span>
           <h1 className="mt-4 text-3xl font-bold leading-tight text-gray-900 sm:text-4xl">
@@ -239,7 +239,7 @@ function QuickAction({
       className="card group flex items-start gap-3 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-4px_rgba(0,0,0,0.12)]"
     >
       <div
-        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${accent}`}
+        className={`flex h-11 w-11 shrink-0 items-center justify-center ${accent}`}
         aria-hidden="true"
       >
         <svg

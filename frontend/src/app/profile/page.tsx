@@ -311,10 +311,10 @@ export default function MyProfilePage() {
       {/* 프로필 배너 — 사용자가 색상 선택 가능 */}
       <div className="relative mb-6 overflow-visible">
         <div
-          className={`relative h-32 overflow-hidden rounded-2xl bg-gradient-to-br ${currentGradient}`}
+          className={`relative h-32 overflow-hidden bg-gradient-to-br ${currentGradient}`}
         >
-          <div className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/5" />
-          <div className="pointer-events-none absolute -bottom-6 right-16 h-24 w-24 rounded-full bg-white/5" />
+          <div className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 bg-white/5" />
+          <div className="pointer-events-none absolute -bottom-6 right-16 h-24 w-24 bg-white/5" />
           <div className="absolute inset-x-0 bottom-0 h-px bg-white/10" />
         </div>
 
@@ -322,7 +322,7 @@ export default function MyProfilePage() {
           <button
             type="button"
             onClick={() => setColorPickerOpen((v) => !v)}
-            className="flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/25"
+            className="flex items-center gap-1.5 bg-white/15 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/25"
             aria-label="배너 색상 변경"
             aria-expanded={colorPickerOpen}
           >
@@ -339,7 +339,7 @@ export default function MyProfilePage() {
                 onClick={() => setColorPickerOpen(false)}
                 aria-hidden="true"
               />
-              <div className="absolute right-0 top-full z-20 mt-2 w-60 rounded-2xl border border-stone-200 bg-white p-3 shadow-lg">
+              <div className="absolute right-0 top-full z-20 mt-2 w-60 border border-stone-200 bg-white p-3 shadow-lg">
                 <p className="mb-2 text-xs font-semibold text-stone-700">배너 색상</p>
                 <div className="grid grid-cols-4 gap-2">
                   {BANNER_GRADIENTS.map((g) => {
@@ -349,7 +349,7 @@ export default function MyProfilePage() {
                         key={g.key}
                         type="button"
                         onClick={() => changeBannerColor(g.key)}
-                        className={`relative aspect-square overflow-hidden rounded-lg bg-gradient-to-br ${g.class} transition-transform hover:scale-105 ${
+                        className={`relative aspect-square overflow-hidden bg-gradient-to-br ${g.class} transition-transform hover:scale-105 ${
                           selected ? 'ring-2 ring-offset-2 ring-stone-900' : ''
                         }`}
                         aria-label={g.label}
@@ -375,7 +375,7 @@ export default function MyProfilePage() {
 
       {/* 프로필 요약 */}
         <div className="mb-6 flex items-start gap-6">
-          <div className="flex h-31 w-31 items-center justify-center rounded-full bg-primary-100 text-4xl text-primary-600">
+          <div className="flex h-31 w-31 items-center justify-center bg-primary-100 text-4xl text-primary-600">
             👤
           </div>
           <div className="flex-1">
@@ -395,14 +395,14 @@ export default function MyProfilePage() {
             {(mainRole || subRoles.length > 0) && (
               <div className="mt-3 flex flex-wrap items-center gap-1">
                 {mainRole && (
-                  <span className="inline-flex items-center justify-center rounded-full bg-blue-600 px-3 py-1 text-xs leading-none text-white">
+                  <span className="inline-flex items-center justify-center bg-blue-600 px-3 py-1 text-xs leading-none text-white">
                     {mainRole}
                   </span>
                 )}
                 {subRoles.map((role) => (
                   <span
                     key={role}
-                    className="inline-flex items-center justify-center rounded-full border border-blue-200 px-3 py-1 text-xs leading-none text-blue-600"
+                    className="inline-flex items-center justify-center border border-blue-200 px-3 py-1 text-xs leading-none text-blue-600"
                   >
                     {role}
                   </span>
@@ -415,7 +415,7 @@ export default function MyProfilePage() {
               {(user.skills ?? []).map((skill) => (
                 <span
                   key={skill}
-                  className="rounded bg-blue-50 px-2 py-1 text-xs text-blue-600"
+                  className="bg-blue-50 px-2 py-1 text-xs text-blue-600"
                 >
                   {skill}
                 </span>
@@ -464,7 +464,7 @@ export default function MyProfilePage() {
                   href={link.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm shadow-sm transition-all hover:shadow-md ${meta.bg} ${meta.text}`}
+                  className={`inline-flex items-center gap-2 px-4 py-2 text-sm shadow-sm transition-all hover:shadow-md ${meta.bg} ${meta.text}`}
                 >
                   <PlatformIcon k={key} className="h-4 w-4" />
                   <span className="font-medium">{getDisplayLabel(link, key)}</span>
@@ -510,7 +510,7 @@ export default function MyProfilePage() {
             <div
               role="tablist"
               aria-label="포트폴리오 섹션"
-              className="inline-flex flex-wrap gap-1 rounded-2xl bg-gray-100 p-1"
+              className="inline-flex flex-wrap gap-1 bg-gray-100 p-1"
             >
               {SECTION_ORDER.filter((k) => selected.includes(k)).map((k) => {
                 const isActive = activeTab === k;
@@ -521,7 +521,7 @@ export default function MyProfilePage() {
                     role="tab"
                     aria-selected={isActive}
                     onClick={() => setActiveTab(k)}
-                    className={`rounded-xl px-4 py-1.5 text-sm font-medium transition-all ${
+                    className={`px-4 py-1.5 text-sm font-medium transition-all ${
                       isActive
                         ? 'bg-white text-gray-900 shadow-sm'
                         : 'text-gray-500 hover:text-gray-700'
@@ -559,9 +559,9 @@ export default function MyProfilePage() {
                     {experiences.map((exp, i) => (
                       <li
                         key={exp.id}
-                        className="flex items-start gap-3 rounded-xl border border-gray-100 p-4"
+                        className="flex items-start gap-3 border border-gray-100 p-4"
                       >
-                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-50 text-xs font-semibold text-blue-600">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center bg-blue-50 text-xs font-semibold text-blue-600">
                           {i + 1}
                         </span>
                         <div className="flex-1">
@@ -570,8 +570,8 @@ export default function MyProfilePage() {
                               {exp.company} {exp.team}
                             </p>
                             {exp.current && (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                                <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                              <span className="inline-flex items-center gap-1 bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                                <span className="h-1.5 w-1.5 bg-green-500" />
                                 재직중
                               </span>
                             )}
@@ -601,7 +601,7 @@ export default function MyProfilePage() {
                     {sortedCareers.map((c) => (
                       <li key={c.id} className="flex items-start gap-2">
                         <span
-                          className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500"
+                          className="mt-2 h-1.5 w-1.5 shrink-0 bg-blue-500"
                           aria-hidden
                         />
                         <p className="flex-1 text-sm leading-relaxed text-gray-700">
@@ -649,7 +649,7 @@ export default function MyProfilePage() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
+            className="flex max-h-full w-full max-w-md flex-col overflow-hidden bg-white shadow-xl"
           >
             <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
               <h2 className="text-lg font-bold text-gray-900">
@@ -682,7 +682,7 @@ export default function MyProfilePage() {
                   return (
                     <label
                       key={k}
-                      className={`flex items-start gap-3 rounded-xl border p-4 transition-all ${
+                      className={`flex items-start gap-3 border p-4 transition-all ${
                         disabled
                           ? 'cursor-not-allowed border-gray-100 bg-gray-50/60 opacity-60'
                           : checked
@@ -697,7 +697,7 @@ export default function MyProfilePage() {
                         onChange={() => {
                           if (!disabled) toggleDraft(k);
                         }}
-                        className="mt-0.5 h-4 w-4 rounded border-gray-300 disabled:cursor-not-allowed"
+                        className="mt-0.5 h-4 w-4 border-gray-300 disabled:cursor-not-allowed"
                       />
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
@@ -723,14 +723,14 @@ export default function MyProfilePage() {
               <button
                 type="button"
                 onClick={() => setImportOpen(false)}
-                className="rounded-full border border-gray-200 px-4 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+                className="border border-gray-200 px-4 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
               >
                 취소
               </button>
               <button
                 type="button"
                 onClick={saveImport}
-                className="rounded-full bg-blue-600 px-4 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
+                className="bg-blue-600 px-4 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
               >
                 저장
               </button>
@@ -762,18 +762,18 @@ function SectionCardList({
               <Link
                 key={item.id}
                 href="/portfolio"
-                className="block rounded-xl border border-gray-100 p-3 transition-all hover:border-blue-200 hover:shadow-sm"
+                className="block border border-gray-100 p-3 transition-all hover:border-blue-200 hover:shadow-sm"
               >
                 <div className="flex items-start gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="mb-2 flex flex-wrap items-center gap-2">
                       <span
-                        className={`rounded px-2 py-0.5 text-xs ${meta.bg} ${meta.text}`}
+                        className={`px-2 py-0.5 text-xs ${meta.bg} ${meta.text}`}
                       >
                         {meta.label}
                       </span>
                       {item.domain && (
-                        <span className="rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-600">
+                        <span className="bg-blue-50 px-2 py-0.5 text-xs text-blue-600">
                           {item.domain}
                         </span>
                       )}
@@ -789,7 +789,7 @@ function SectionCardList({
                         {item.tags.map((tag) => (
                           <span
                             key={tag}
-                            className="rounded bg-gray-100 px-2 py-0.5 text-3xs text-gray-600"
+                            className="bg-gray-100 px-2 py-0.5 text-3xs text-gray-600"
                           >
                             {tag}
                           </span>
@@ -798,7 +798,7 @@ function SectionCardList({
                     )}
                   </div>
                   <div
-                    className={`shrink-0 overflow-hidden rounded-lg border ${
+                    className={`shrink-0 overflow-hidden border ${
                       item.thumbnail
                         ? 'border-gray-200'
                         : 'border-dashed border-gray-200 bg-gray-50'

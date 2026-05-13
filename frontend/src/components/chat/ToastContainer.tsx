@@ -74,7 +74,7 @@ export function ToastContainer() {
         router.push(`/chat/${latestNotification.roomId}`);
         dismissLatest();
       }}
-      className="fixed right-4 top-20 z-[60] flex max-w-sm flex-col gap-1 rounded-lg border border-gray-200 bg-white p-3 text-left shadow-lg transition-shadow hover:shadow-xl"
+      className="fixed right-4 top-20 z-[60] flex max-w-sm flex-col gap-1 border border-gray-200 bg-white p-3 text-left shadow-lg transition-shadow hover:shadow-xl"
       aria-label={`새 메시지: ${latestNotification.senderName}`}
     >
       <div className="flex items-center justify-between gap-3">
@@ -82,7 +82,7 @@ export function ToastContainer() {
           {displayTitle}
         </span>
         {latestNotification.unreadCount > 0 && (
-          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-600 px-1.5 text-xs text-white">
+          <span className="flex h-5 min-w-5 items-center justify-center bg-primary-600 px-1.5 text-xs text-white">
             {latestNotification.unreadCount}
           </span>
         )}

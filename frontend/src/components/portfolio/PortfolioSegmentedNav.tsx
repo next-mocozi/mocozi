@@ -21,7 +21,7 @@ export default function PortfolioSegmentedNav({
 
   return (
     <div className="mb-6 flex items-center gap-3">
-      <div className="inline-flex rounded-full bg-gray-100 p-1 shadow-sm">
+      <div className="inline-flex bg-gray-100 p-1 shadow-sm">
         <TabLink href="/portfolio" active={current === 'feed'} label="피드" />
         <TabLink
           href={myHref}
@@ -46,7 +46,7 @@ function TabLink({
   return (
     <Link
       href={href}
-      className={`rounded-full px-4 py-1.5 text-sm font-medium transition-all ${
+      className={`px-4 py-1.5 text-sm font-medium transition-all ${
         active
           ? 'bg-white text-gray-900 shadow-sm'
           : 'text-gray-600 hover:text-gray-900'

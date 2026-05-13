@@ -249,7 +249,7 @@ export const AttachmentPicker = forwardRef<
           <button
             type="button"
             onClick={() => setErrorMsg(null)}
-            className="ml-auto shrink-0 rounded p-0.5 text-red-600 hover:bg-red-100"
+            className="ml-auto shrink-0 p-0.5 text-red-600 hover:bg-red-100"
             aria-label="에러 메시지 닫기"
           >
             <XIcon className="h-3 w-3" />
@@ -304,13 +304,13 @@ function AttachmentChip({
 
   return (
     <div
-      className={`relative flex items-center gap-2 rounded-lg border px-2 py-1.5 text-xs ${
+      className={`relative flex items-center gap-2 border px-2 py-1.5 text-xs ${
         isError ? 'border-red-300 bg-red-50' : 'border-stone-300 bg-stone-50'
       }`}
       title={draft.file.name}
     >
       <span
-        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded ${
+        className={`flex h-7 w-7 shrink-0 items-center justify-center ${
           isImage ? 'bg-primary-50 text-primary-600' : 'bg-stone-100 text-stone-600'
         }`}
       >
@@ -335,7 +335,7 @@ function AttachmentChip({
         </span>
         {/* progress bar */}
         {progress !== null && !isDone && !isError && (
-          <span className="mt-0.5 block h-1 w-32 overflow-hidden rounded bg-stone-200">
+          <span className="mt-0.5 block h-1 w-32 overflow-hidden bg-stone-200">
             <span
               className="block h-full bg-primary-500 transition-all duration-100"
               style={{ width: `${Math.round(progress * 100)}%` }}
@@ -346,7 +346,7 @@ function AttachmentChip({
       <button
         type="button"
         onClick={onRemove}
-        className="ml-1 shrink-0 rounded p-0.5 text-stone-400 hover:bg-stone-200 hover:text-stone-700"
+        className="ml-1 shrink-0 p-0.5 text-stone-400 hover:bg-stone-200 hover:text-stone-700"
         aria-label="첨부 제거"
       >
         <XIcon className="h-3 w-3" />
@@ -377,7 +377,7 @@ export function AttachmentClipButton({
         input?.click();
       }}
       disabled={disabled}
-      className="rounded-lg p-2 text-stone-500 hover:bg-stone-100 hover:text-stone-700 disabled:cursor-not-allowed disabled:opacity-40"
+      className="p-2 text-stone-500 hover:bg-stone-100 hover:text-stone-700 disabled:cursor-not-allowed disabled:opacity-40"
       aria-label="파일 첨부"
       title="파일 첨부"
     >

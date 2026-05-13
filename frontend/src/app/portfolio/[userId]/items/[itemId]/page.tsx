@@ -256,7 +256,7 @@ export default function PortfolioItemPage({
           <div className="mt-4 flex justify-end">
             <Link
               href={`/portfolio/edit?id=${item.id}&type=${item.type}`}
-              className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50"
+              className="border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50"
             >
               수정
             </Link>

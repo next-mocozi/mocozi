@@ -133,7 +133,7 @@ function ChatListPageContent() {
       {/* RoomList — xl 이상: 좌측 사이드바 absolute / xl 미만: 중앙 카드 */}
       <div
         className="
-          mx-auto h-full max-w-[40rem] overflow-hidden rounded-xl
+          mx-auto h-full max-w-[40rem] overflow-hidden 
           border border-stone-200 bg-white
           xl:absolute xl:right-[calc(50%+21rem)] xl:top-0 xl:mx-0 xl:w-72 xl:max-w-none
         "
@@ -145,11 +145,11 @@ function ChatListPageContent() {
       <div
         className="
           mx-auto hidden h-full max-w-[40rem] flex-col items-center justify-center
-          gap-4 overflow-hidden rounded-xl border border-stone-200 bg-white p-8 text-center
+          gap-4 overflow-hidden border border-stone-200 bg-white p-8 text-center
           xl:flex
         "
       >
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
+        <div className="flex h-16 w-16 items-center justify-center bg-indigo-100 text-indigo-600">
           <MessageSquareIcon className="h-8 w-8" />
         </div>
         <div>

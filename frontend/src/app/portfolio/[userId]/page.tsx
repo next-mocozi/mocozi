@@ -775,7 +775,7 @@ export default function PortfolioDetailPage({
       {/* 프로필 배너 — 작성자가 /profile 에서 선택한 색상.
           본인·타인 모두 동일하게 노출 (read-only). /profile/[id] 와 동일 디자인. */}
       <div
-        className={`mb-6 h-32 w-full rounded-2xl bg-gradient-to-br ${getBannerGradientClass(displayUser.bannerColor)}`}
+        className={`mb-6 h-32 w-full bg-gradient-to-br ${getBannerGradientClass(displayUser.bannerColor)}`}
         aria-hidden
       />
       {/* ─────── 기본 정보 — /profile 페이지와 동일 (수정 버튼 없음) ─────── */}
@@ -789,7 +789,7 @@ export default function PortfolioDetailPage({
               onClick={() => setSettingsOpen(true)}
               aria-label="포트폴리오 공개 설정"
               title="공개 설정"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition-all hover:bg-gray-100 hover:text-gray-700"
+              className="inline-flex h-8 w-8 items-center justify-center text-gray-400 transition-all hover:bg-gray-100 hover:text-gray-700"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -810,7 +810,7 @@ export default function PortfolioDetailPage({
         )}
 
         <div className="flex items-start gap-6 pr-32">
-          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-primary-100 text-3xl text-primary-600">
+          <div className="flex h-24 w-24 items-center justify-center bg-primary-100 text-3xl text-primary-600">
             👤
           </div>
           <div className="flex-1">
@@ -836,14 +836,14 @@ export default function PortfolioDetailPage({
             {(mainRole || subRoles.length > 0) && (
               <div className="mt-3 flex flex-wrap items-center gap-1">
                 {mainRole && (
-                  <span className="inline-flex items-center justify-center rounded-full bg-blue-600 px-3 py-1 text-xs leading-none text-white">
+                  <span className="inline-flex items-center justify-center bg-blue-600 px-3 py-1 text-xs leading-none text-white">
                     {mainRole}
                   </span>
                 )}
                 {subRoles.map((role) => (
                   <span
                     key={role}
-                    className="inline-flex items-center justify-center rounded-full border border-blue-200 px-3 py-1 text-xs leading-none text-blue-600"
+                    className="inline-flex items-center justify-center border border-blue-200 px-3 py-1 text-xs leading-none text-blue-600"
                   >
                     {role}
                   </span>
@@ -856,7 +856,7 @@ export default function PortfolioDetailPage({
               {(displayUser.skills ?? []).map((skill) => (
                 <span
                   key={skill}
-                  className="rounded bg-blue-50 px-2 py-1 text-xs text-blue-600"
+                  className="bg-blue-50 px-2 py-1 text-xs text-blue-600"
                 >
                   {skill}
                 </span>
@@ -895,7 +895,7 @@ export default function PortfolioDetailPage({
                   href={link.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm shadow-sm transition-all hover:shadow-md ${meta.bg} ${meta.text}`}
+                  className={`inline-flex items-center gap-2 px-4 py-2 text-sm shadow-sm transition-all hover:shadow-md ${meta.bg} ${meta.text}`}
                 >
                   <PlatformIcon k={key} className="h-4 w-4" />
                   <span className="font-medium">
@@ -932,7 +932,7 @@ export default function PortfolioDetailPage({
               type="button"
               onClick={saveIntro}
               disabled={!introDirty}
-              className="rounded-full bg-blue-600 px-4 py-1.5 text-xs font-medium text-white shadow-sm transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+              className="bg-blue-600 px-4 py-1.5 text-xs font-medium text-white shadow-sm transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
             >
               저장
             </button>
@@ -947,7 +947,7 @@ export default function PortfolioDetailPage({
               maxLength={INTRO_MAX}
               rows={2}
               placeholder="포트폴리오 상단에 노출될 자기소개를 작성해주세요. (최대 500자)"
-              className="block w-full resize-none overflow-hidden rounded-lg border border-gray-200 px-4 py-3 text-sm leading-relaxed outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+              className="block w-full resize-none overflow-hidden border border-gray-200 px-4 py-3 text-sm leading-relaxed outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
             />
             <div className="mt-3 flex items-center justify-end gap-2">
               {introJustSaved && !introDirty && (
@@ -961,7 +961,7 @@ export default function PortfolioDetailPage({
             </div>
           </>
         ) : (
-          <p className="whitespace-pre-wrap rounded-lg border border-gray-100 bg-gray-50/40 px-4 py-3 text-sm leading-relaxed text-gray-700">
+          <p className="whitespace-pre-wrap border border-gray-100 bg-gray-50/40 px-4 py-3 text-sm leading-relaxed text-gray-700">
             {introSaved || '등록된 자기소개가 없습니다.'}
           </p>
         )}
@@ -977,7 +977,7 @@ export default function PortfolioDetailPage({
               <button
                 type="button"
                 onClick={openExpModal}
-                className="rounded-full bg-blue-600 px-3 py-1 text-xs font-medium text-white shadow-sm transition-all hover:bg-blue-700"
+                className="bg-blue-600 px-3 py-1 text-xs font-medium text-white shadow-sm transition-all hover:bg-blue-700"
               >
                 + 추가
               </button>
@@ -992,9 +992,9 @@ export default function PortfolioDetailPage({
               {experiences.map((exp, i) => (
                 <li
                   key={exp.id}
-                  className="flex items-start gap-3 rounded-xl border border-gray-100 p-3"
+                  className="flex items-start gap-3 border border-gray-100 p-3"
                 >
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-50 text-xs font-semibold text-blue-600">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center bg-blue-50 text-xs font-semibold text-blue-600">
                     {i + 1}
                   </span>
                   <div className="flex-1">
@@ -1003,8 +1003,8 @@ export default function PortfolioDetailPage({
                         {exp.company} {exp.team}
                       </p>
                       {exp.current && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                          <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                        <span className="inline-flex items-center gap-1 bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                          <span className="h-1.5 w-1.5 bg-green-500" />
                           재직중
                         </span>
                       )}
@@ -1026,7 +1026,7 @@ export default function PortfolioDetailPage({
               <button
                 type="button"
                 onClick={openCareerModal}
-                className="rounded-full bg-blue-600 px-3 py-1 text-xs font-medium text-white shadow-sm transition-all hover:bg-blue-700"
+                className="bg-blue-600 px-3 py-1 text-xs font-medium text-white shadow-sm transition-all hover:bg-blue-700"
               >
                 + 추가
               </button>
@@ -1041,10 +1041,10 @@ export default function PortfolioDetailPage({
               {sortedCareers.map((c) => (
                 <li
                   key={c.id}
-                  className="flex items-start gap-2 rounded-lg px-2 py-1.5"
+                  className="flex items-start gap-2 px-2 py-1.5"
                 >
                   <span
-                    className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500"
+                    className="mt-2 h-1.5 w-1.5 shrink-0 bg-blue-500"
                     aria-hidden
                   />
                   <p className="flex-1 text-sm leading-relaxed text-gray-700">
@@ -1128,19 +1128,19 @@ export default function PortfolioDetailPage({
                     <div className="min-w-0 flex-1">
                       <div className="mb-2 flex flex-wrap items-center gap-2 pr-8">
                         <span
-                          className={`rounded px-2 py-0.5 text-xs ${meta.bg} ${meta.text}`}
+                          className={`px-2 py-0.5 text-xs ${meta.bg} ${meta.text}`}
                         >
                           {meta.label}
                         </span>
                         {item.domain && (
-                          <span className="rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-600">
+                          <span className="bg-blue-50 px-2 py-0.5 text-xs text-blue-600">
                             {item.domain}
                           </span>
                         )}
                         <span className="text-xs text-gray-500">{item.period}</span>
                         {item.current && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                            <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                          <span className="inline-flex items-center gap-1 bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                            <span className="h-1.5 w-1.5 bg-green-500" />
                             진행중
                           </span>
                         )}
@@ -1151,7 +1151,7 @@ export default function PortfolioDetailPage({
                           {item.tags.map((tag) => (
                             <span
                               key={tag}
-                              className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
+                              className="bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
                             >
                               {tag}
                             </span>
@@ -1161,7 +1161,7 @@ export default function PortfolioDetailPage({
                     </div>
                     {/* 우측: 썸네일 (없으면 백지) */}
                     <div
-                      className={`shrink-0 overflow-hidden rounded-lg border ${
+                      className={`shrink-0 overflow-hidden border ${
                         item.thumbnail ? 'border-gray-200' : 'border-dashed border-gray-200 bg-gray-50'
                       }`}
                       style={{ width: '5rem', height: '5rem' }}
@@ -1247,19 +1247,19 @@ export default function PortfolioDetailPage({
                   )}
                   <div className="mb-2 flex flex-wrap items-center gap-2 pr-8">
                     <span
-                      className={`rounded px-2 py-0.5 text-xs ${meta.bg} ${meta.text}`}
+                      className={`px-2 py-0.5 text-xs ${meta.bg} ${meta.text}`}
                     >
                       {meta.label}
                     </span>
                     {item.domain && (
-                      <span className="rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-600">
+                      <span className="bg-blue-50 px-2 py-0.5 text-xs text-blue-600">
                         {item.domain}
                       </span>
                     )}
                     <span className="text-xs text-gray-500">{item.period}</span>
                     {item.current && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                        <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                      <span className="inline-flex items-center gap-1 bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                        <span className="h-1.5 w-1.5 bg-green-500" />
                         진행중
                       </span>
                     )}
@@ -1277,7 +1277,7 @@ export default function PortfolioDetailPage({
                           'noopener,noreferrer',
                         );
                       }}
-                      className="inline-flex items-center gap-1 rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-600 hover:bg-blue-100"
+                      className="inline-flex items-center gap-1 bg-blue-50 px-2 py-0.5 text-xs text-blue-600 hover:bg-blue-100"
                     >
                       📄 논문 →
                     </button>
@@ -1353,19 +1353,19 @@ export default function PortfolioDetailPage({
                   )}
                   <div className="mb-2 flex flex-wrap items-center gap-2 pr-8">
                     <span
-                      className={`rounded px-2 py-0.5 text-xs ${meta.bg} ${meta.text}`}
+                      className={`px-2 py-0.5 text-xs ${meta.bg} ${meta.text}`}
                     >
                       {meta.label}
                     </span>
                     {item.domain && (
-                      <span className="rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-600">
+                      <span className="bg-blue-50 px-2 py-0.5 text-xs text-blue-600">
                         {item.domain}
                       </span>
                     )}
                     <span className="text-xs text-gray-500">{item.period}</span>
                     {item.current && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                        <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                      <span className="inline-flex items-center gap-1 bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                        <span className="h-1.5 w-1.5 bg-green-500" />
                         진행중
                       </span>
                     )}
@@ -1376,7 +1376,7 @@ export default function PortfolioDetailPage({
                       {item.tags.map((tag) => (
                         <span
                           key={tag}
-                          className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
+                          className="bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
                         >
                           {tag}
                         </span>
@@ -1399,7 +1399,7 @@ export default function PortfolioDetailPage({
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
+            className="flex max-h-full w-full max-w-md flex-col overflow-hidden bg-white shadow-xl"
           >
             <div className="flex items-center justify-between border-b border-gray-100 px-4 py-2">
               <h2 className="text-lg font-bold px-1 py-2 text-gray-900">
@@ -1427,7 +1427,7 @@ export default function PortfolioDetailPage({
                       <button
                         type="button"
                         onClick={resetExpForm}
-                        className="rounded-full border border-gray-200 px-5 py-1 text-sm font-medium text-gray-600 hover:bg-gray-50"
+                        className="border border-gray-200 px-5 py-1 text-sm font-medium text-gray-600 hover:bg-gray-50"
                       >
                         편집 취소
                       </button>
@@ -1436,7 +1436,7 @@ export default function PortfolioDetailPage({
                       type="button"
                       onClick={saveExp}
                       disabled={isExpSubmitting}
-                      className="rounded-full bg-blue-600 px-5 py-1 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="bg-blue-600 px-5 py-1 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {isExpSubmitting
                         ? '저장 중…'
@@ -1447,7 +1447,7 @@ export default function PortfolioDetailPage({
                   </div>
                 </div>
                                 
-                  <div className="space-y-2 rounded-xl bg-gray-50/70 p-5">
+                  <div className="space-y-2 bg-gray-50/70 p-5">
                     <div>
                       <label className="mb-2 block text-sm font-medium text-gray-700">
                         회사명
@@ -1460,7 +1460,7 @@ export default function PortfolioDetailPage({
                           if (expError) setExpError('');
                         }}
                         placeholder="예: OpenAI Korea"
-                        className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 ${
+                        className={`w-full border px-3 py-2 text-sm outline-none focus:ring-2 ${
                           expError
                             ? 'border-red-300 focus:border-red-400 focus:ring-red-100'
                             : 'border-gray-200 focus:border-blue-400 focus:ring-blue-100'
@@ -1481,7 +1481,7 @@ export default function PortfolioDetailPage({
                           value={expForm.team}
                           onChange={(e) => setExpForm((f) => ({ ...f, team: e.target.value }))}
                           placeholder="예: 연구팀"
-                          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                          className="w-full border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
                         />
                       </div>
                       <div>
@@ -1491,7 +1491,7 @@ export default function PortfolioDetailPage({
                           value={expForm.role}
                           onChange={(e) => setExpForm((f) => ({ ...f, role: e.target.value }))}
                           placeholder="예: 리서치 인턴"
-                          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                          className="w-full border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
                         />
 </div>
 
@@ -1527,7 +1527,7 @@ export default function PortfolioDetailPage({
                                 endDate: e.target.checked ? '' : f.endDate,
                               }))
                             }
-                            className="h-4 w-4 rounded border-gray-300"
+                            className="h-4 w-4 border-gray-300"
                           />
                           재직중
                         </label>
@@ -1544,7 +1544,7 @@ export default function PortfolioDetailPage({
               {/* 리스트 섹션 */}
               <section className="border-t border-gray-200 pt-2">
                 <h3 className="px-1 py-3 flex items-center gap-2 text-base font-bold text-gray-900">
-                  <span className="h-4 w-1 rounded-full bg-gray-400" />
+                  <span className="h-4 w-1 bg-gray-400" />
                   등록된 항목
                   <span className="text-xs font-normal text-gray-500">
                     ({experiences.length})
@@ -1561,7 +1561,7 @@ export default function PortfolioDetailPage({
                       return (
                         <li
                           key={exp.id}
-                          className={`flex items-start gap-3 rounded-lg border p-4 transition-all ${
+                          className={`flex items-start gap-3 border p-4 transition-all ${
                             editing
                               ? 'border-blue-300 bg-blue-50/40'
                               : 'border-gray-100 hover:bg-gray-50'
@@ -1573,7 +1573,7 @@ export default function PortfolioDetailPage({
                                 {exp.company} {exp.team}
                               </p>
                               {exp.current && (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                                <span className="inline-flex items-center gap-1 bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
                                   재직중
                                 </span>
                               )}
@@ -1589,14 +1589,14 @@ export default function PortfolioDetailPage({
                             <button
                               type="button"
                               onClick={() => loadExpToForm(exp)}
-                              className="rounded-md px-3 py-1 text-xs font-medium text-gray-600 hover:bg-white hover:text-blue-600"
+                              className="px-3 py-1 text-xs font-medium text-gray-600 hover:bg-white hover:text-blue-600"
                             >
                               수정
                             </button>
                             <button
                               type="button"
                               onClick={() => deleteExp(exp.id)}
-                              className="rounded-md px-3 py-1 text-xs font-medium text-gray-600 hover:bg-white hover:text-red-500"
+                              className="px-3 py-1 text-xs font-medium text-gray-600 hover:bg-white hover:text-red-500"
                             >
                               삭제
                             </button>
@@ -1612,7 +1612,7 @@ export default function PortfolioDetailPage({
             <div className="border-t border-gray-100 px-6 py-3">
               <button
                 onClick={() => setExpModalOpen(false)}
-                className="w-full rounded-full bg-gray-100 py-2 text-sm text-gray-700 hover:bg-gray-200"
+                className="w-full bg-gray-100 py-2 text-sm text-gray-700 hover:bg-gray-200"
               >
                 닫기
               </button>
@@ -1629,7 +1629,7 @@ export default function PortfolioDetailPage({
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
+            className="flex max-h-full w-full max-w-md flex-col overflow-hidden bg-white shadow-xl"
           >
             <div className="flex items-center justify-between border-b border-gray-100 px-4 py-2">
               <h2 className="text-lg font-bold px-1 py-2 text-gray-900">
@@ -1656,7 +1656,7 @@ export default function PortfolioDetailPage({
                       <button
                         type="button"
                         onClick={resetCareerForm}
-                        className="rounded-full border border-gray-200 px-5 py-1 text-sm font-medium text-gray-600 hover:bg-gray-50"
+                        className="border border-gray-200 px-5 py-1 text-sm font-medium text-gray-600 hover:bg-gray-50"
                       >
                         편집 취소
                       </button>
@@ -1665,7 +1665,7 @@ export default function PortfolioDetailPage({
                       type="button"
                       onClick={saveCareer}
                       disabled={isCareerSubmitting}
-                      className="rounded-full bg-blue-600 px-5 py-1 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="bg-blue-600 px-5 py-1 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {isCareerSubmitting
                         ? '저장 중…'
@@ -1675,7 +1675,7 @@ export default function PortfolioDetailPage({
                     </button>
                   </div>
                 </div>
-                <p className="mb-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                <p className="mb-2 border border-gray-100 bg-gray-50 px-3 py-2 text-xs text-gray-600">
                   예시:{' '}
                   <span className="font-medium">
                     2024년 xxxx 해커톤 은상 수상
@@ -1684,7 +1684,7 @@ export default function PortfolioDetailPage({
                   <span className="font-medium">2023년 0000 부트캠프 참여</span>
                 </p>
 
-                <div className="space-y-2 rounded-xl bg-gray-50/70 p-5">
+                <div className="space-y-2 bg-gray-50/70 p-5">
                   <div>
                     <label className="mb-2 block text-sm font-medium text-gray-700">
                       연/월
@@ -1741,7 +1741,7 @@ export default function PortfolioDetailPage({
                       }}
                       placeholder="예: xxxx 해커톤 은상 수상"
                       maxLength={CAREER_CONTENT_MAX}
-                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                      className="w-full border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
                     />
                   </div>
 
@@ -1754,7 +1754,7 @@ export default function PortfolioDetailPage({
               {/* 리스트 섹션 */}
               <section className="border-t border-gray-200 pt-2">
                 <h3 className="px-1 py-3 flex items-center gap-2 text-base font-bold text-gray-900">
-                  <span className="h-4 w-1 rounded-full bg-gray-400" />
+                  <span className="h-4 w-1 bg-gray-400" />
                   등록된 항목
                   <span className="text-xs font-normal text-gray-500">
                     ({sortedCareers.length})
@@ -1771,14 +1771,14 @@ export default function PortfolioDetailPage({
                       return (
                         <li
                           key={c.id}
-                          className={`flex items-start gap-3 rounded-lg border p-4 transition-all ${
+                          className={`flex items-start gap-3 border p-4 transition-all ${
                             editing
                               ? 'border-blue-300 bg-blue-50/40'
                               : 'border-gray-100 hover:bg-gray-50'
                           }`}
                         >
                           <span
-                            className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500"
+                            className="mt-2 h-1.5 w-1.5 shrink-0 bg-blue-500"
                             aria-hidden
                           />
                           <p className="flex-1 text-sm leading-relaxed text-gray-700">
@@ -1791,14 +1791,14 @@ export default function PortfolioDetailPage({
                             <button
                               type="button"
                               onClick={() => loadCareerToForm(c)}
-                              className="rounded-md px-3 py-1 text-xs font-medium text-gray-600 hover:bg-white hover:text-blue-600"
+                              className="px-3 py-1 text-xs font-medium text-gray-600 hover:bg-white hover:text-blue-600"
                             >
                               수정
                             </button>
                             <button
                               type="button"
                               onClick={() => deleteCareer(c.id)}
-                              className="rounded-md px-3 py-1 text-xs font-medium text-gray-600 hover:bg-white hover:text-red-500"
+                              className="px-3 py-1 text-xs font-medium text-gray-600 hover:bg-white hover:text-red-500"
                             >
                               삭제
                             </button>
@@ -1814,7 +1814,7 @@ export default function PortfolioDetailPage({
             <div className="border-t border-gray-100 px-6 py-3">
               <button
                 onClick={() => setCareerModalOpen(false)}
-                className="w-full rounded-full bg-gray-100 py-2 text-sm text-gray-700 hover:bg-gray-200"
+                className="w-full bg-gray-100 py-2 text-sm text-gray-700 hover:bg-gray-200"
               >
                 닫기
               </button>
@@ -1867,7 +1867,7 @@ export default function PortfolioDetailPage({
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-xl"
+            className="w-full max-w-sm overflow-hidden bg-white shadow-xl"
           >
             <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
               <h2 className="text-lg font-bold text-gray-900">
@@ -1885,7 +1885,7 @@ export default function PortfolioDetailPage({
               <button
                 type="button"
                 onClick={() => updateVisibility('public')}
-                className={`w-full rounded-xl border p-4 text-left transition-all ${
+                className={`w-full border p-4 text-left transition-all ${
                   visibility === 'public'
                     ? 'border-blue-400 bg-blue-50/60'
                     : 'border-gray-200 hover:bg-gray-50'
@@ -1904,7 +1904,7 @@ export default function PortfolioDetailPage({
               <button
                 type="button"
                 onClick={() => updateVisibility('private')}
-                className={`w-full rounded-xl border p-4 text-left transition-all ${
+                className={`w-full border p-4 text-left transition-all ${
                   visibility === 'private'
                     ? 'border-blue-400 bg-blue-50/60'
                     : 'border-gray-200 hover:bg-gray-50'

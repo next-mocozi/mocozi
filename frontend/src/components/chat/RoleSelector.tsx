@@ -54,7 +54,7 @@ export function RoleSelector({ roles, onSelect }: RoleSelectorProps) {
             key={role}
             type="button"
             onClick={() => onSelect(role)}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 transition-colors hover:border-primary-400 hover:bg-primary-50"
+            className="border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 transition-colors hover:border-primary-400 hover:bg-primary-50"
           >
             {role}
           </button>

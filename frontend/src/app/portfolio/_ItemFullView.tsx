@@ -181,8 +181,8 @@ export default function ItemFullView({
             <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
               {periodText && <span>{periodText}</span>}
               {item.current && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                  <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                <span className="inline-flex items-center gap-1 bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                  <span className="h-1.5 w-1.5 bg-green-500" />
                   진행중
                 </span>
               )}
@@ -205,7 +205,7 @@ export default function ItemFullView({
                     {g.values.map((t) => (
                       <span
                         key={t}
-                        className="rounded-full bg-blue-50 px-3 py-1 text-xs leading-relaxed text-blue-700"
+                        className="bg-blue-50 px-3 py-1 text-xs leading-relaxed text-blue-700"
                       >
                         {t}
                       </span>
@@ -219,7 +219,7 @@ export default function ItemFullView({
         {thumbnail && (
           <div className="shrink-0">
             <div
-              className="overflow-hidden rounded-xl border border-gray-200 bg-gray-50"
+              className="overflow-hidden border border-gray-200 bg-gray-50"
               style={{ width: '11rem', height: '11rem' }}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -258,7 +258,7 @@ export default function ItemFullView({
           })}
 
           {details.hasDomain && (
-            <section className="rounded-xl border border-gray-200 bg-gray-50/40 p-4">
+            <section className="border border-gray-200 bg-gray-50/40 p-4">
               <h2
                 style={{ marginBottom: '0.75rem' }}
                 className="text-base font-bold text-gray-900"

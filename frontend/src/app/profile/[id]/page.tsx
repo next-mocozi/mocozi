@@ -154,13 +154,13 @@ export default function UserProfilePage({
     <div className="mx-auto max-w-4xl px-4 py-8">
       {/* 프로필 배너 — 작성자가 본인 페이지에서 선택한 색상 그대로 노출 (read-only) */}
       <div
-        className={`mb-6 h-32 w-full rounded-2xl bg-gradient-to-br ${bannerClass}`}
+        className={`mb-6 h-32 w-full bg-gradient-to-br ${bannerClass}`}
         aria-hidden
       />
 
       {/* 프로필 요약 */}
       <div className="mb-6 flex items-start gap-6">
-        <div className="flex h-31 w-31 items-center justify-center rounded-full bg-primary-100 text-4xl font-bold text-primary-600">
+        <div className="flex h-31 w-31 items-center justify-center bg-primary-100 text-4xl font-bold text-primary-600">
           {profile.name[0]}
         </div>
         <div className="flex-1">
@@ -180,14 +180,14 @@ export default function UserProfilePage({
           {(mainRole || subRoles.length > 0) && (
             <div className="mt-3 flex flex-wrap items-center gap-1">
               {mainRole && (
-                <span className="inline-flex items-center justify-center rounded-full bg-blue-600 px-3 py-1 text-xs leading-none text-white">
+                <span className="inline-flex items-center justify-center bg-blue-600 px-3 py-1 text-xs leading-none text-white">
                   {mainRole}
                 </span>
               )}
               {subRoles.map((role) => (
                 <span
                   key={role}
-                  className="inline-flex items-center justify-center rounded-full border border-blue-200 px-3 py-1 text-xs leading-none text-blue-600"
+                  className="inline-flex items-center justify-center border border-blue-200 px-3 py-1 text-xs leading-none text-blue-600"
                 >
                   {role}
                 </span>
@@ -201,7 +201,7 @@ export default function UserProfilePage({
               {profile.skills.map((skill) => (
                 <span
                   key={skill}
-                  className="rounded bg-blue-50 px-2 py-1 text-xs text-blue-600"
+                  className="bg-blue-50 px-2 py-1 text-xs text-blue-600"
                 >
                   {skill}
                 </span>
@@ -252,7 +252,7 @@ export default function UserProfilePage({
                   href={link.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm shadow-sm transition-all hover:shadow-md ${meta.bg} ${meta.text}`}
+                  className={`inline-flex items-center gap-2 px-4 py-2 text-sm shadow-sm transition-all hover:shadow-md ${meta.bg} ${meta.text}`}
                 >
                   <PlatformIcon k={key} className="h-4 w-4" />
                   <span className="font-medium">{getDisplayLabel(link, key)}</span>
@@ -277,7 +277,7 @@ export default function UserProfilePage({
           <div
             role="tablist"
             aria-label="포트폴리오 섹션"
-            className="inline-flex flex-wrap gap-1 rounded-2xl bg-gray-100 p-1"
+            className="inline-flex flex-wrap gap-1 bg-gray-100 p-1"
           >
             {SECTION_ORDER.map((k) => {
               const isActive = activeTab === k;
@@ -288,7 +288,7 @@ export default function UserProfilePage({
                   role="tab"
                   aria-selected={isActive}
                   onClick={() => setActiveTab(k)}
-                  className={`rounded-xl px-4 py-1.5 text-sm font-medium transition-all ${
+                  className={`px-4 py-1.5 text-sm font-medium transition-all ${
                     isActive
                       ? 'bg-white text-gray-900 shadow-sm'
                       : 'text-gray-500 hover:text-gray-700'
@@ -379,16 +379,16 @@ function SectionCardList({
               <Link
                 key={item.id}
                 href={`/portfolio/${userId}/items/${item.id}`}
-                className="block rounded-xl border border-gray-100 p-3 transition-all hover:border-blue-200 hover:shadow-sm"
+                className="block border border-gray-100 p-3 transition-all hover:border-blue-200 hover:shadow-sm"
               >
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   <span
-                    className={`rounded px-2 py-0.5 text-xs ${meta.bg} ${meta.text}`}
+                    className={`px-2 py-0.5 text-xs ${meta.bg} ${meta.text}`}
                   >
                     {meta.label}
                   </span>
                   {item.domain && (
-                    <span className="rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-600">
+                    <span className="bg-blue-50 px-2 py-0.5 text-xs text-blue-600">
                       {item.domain}
                     </span>
                   )}
@@ -410,7 +410,7 @@ function SectionCardList({
                     {item.techStack.map((t) => (
                       <span
                         key={t}
-                        className="rounded bg-gray-100 px-2 py-0.5 text-3xs text-gray-600"
+                        className="bg-gray-100 px-2 py-0.5 text-3xs text-gray-600"
                       >
                         {t}
                       </span>

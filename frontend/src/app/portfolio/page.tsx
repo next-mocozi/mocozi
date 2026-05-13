@@ -107,7 +107,7 @@ export default function PortfolioFeedPage() {
           </header>
 
           {myPortfolio !== null && !myPortfolio.isPublic && (
-            <div className="mb-4 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+            <div className="mb-4 flex items-start gap-3 border border-amber-200 bg-amber-50 p-4">
               <span className="mt-0.5 text-lg" aria-hidden>
                 🔒
               </span>
@@ -122,7 +122,7 @@ export default function PortfolioFeedPage() {
               </div>
               <Link
                 href={user ? `/portfolio/${user.id}` : '/portfolio/me'}
-                className="shrink-0 rounded-full bg-amber-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-amber-700"
+                className="shrink-0 bg-amber-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-amber-700"
               >
                 공개로 전환
               </Link>
