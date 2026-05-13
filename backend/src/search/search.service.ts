@@ -49,7 +49,6 @@ export class SearchService {
 
     if (filters.keyword) {
       where.OR = [
-        { lastName: { contains: filters.keyword, mode: 'insensitive' } },
         { firstName: { contains: filters.keyword, mode: 'insensitive' } },
         { bio: { contains: filters.keyword, mode: 'insensitive' } },
         { department: { contains: filters.keyword, mode: 'insensitive' } },
