@@ -63,7 +63,13 @@ export default function RegisterPage() {
       });
       setEmailSent(true);
     } catch (err: any) {
-      alert(err.response?.data?.message || '회원가입에 실패했습니다.');
+      if (err.response?.status === 409) {
+        // 미인증 상태로 남은 계정일 수 있으므로 인증 메일 재발송
+        await api.post('/api/auth/resend-verification', { email: form.email }).catch(() => {});
+        setEmailSent(true);
+      } else {
+        alert(err.response?.data?.message || '회원가입에 실패했습니다.');
+      }
     }
   };
 

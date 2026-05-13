@@ -490,12 +490,12 @@ export default function TeamDetailPage({
                 {applyBtn.label}
               </button>
             ) : (
-              <Link
-                href={`/chat?teamId=${team.id}&context=RECRUIT_TEAM`}
-                className="block w-full bg-gradient-to-r from-indigo-600 to-violet-600 py-3.5 text-center text-sm font-semibold text-white shadow-md shadow-indigo-200 transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-indigo-300"
+              <button
+                onClick={() => setApplyOpen(true)}
+                className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 py-3.5 text-sm font-semibold text-white shadow-md shadow-indigo-200 transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-indigo-300"
               >
                 {applyBtn.label}
-              </Link>
+              </button>
             )}
           </div>
         </div>
@@ -511,12 +511,12 @@ export default function TeamDetailPage({
             {applyBtn.label}
           </button>
         ) : (
-          <Link
-            href={`/chat?teamId=${team.id}&context=RECRUIT_TEAM`}
-            className="block w-full bg-gradient-to-r from-indigo-600 to-violet-600 py-3.5 text-center text-sm font-semibold text-white shadow-md shadow-indigo-200 transition-all hover:shadow-lg hover:shadow-indigo-300 active:scale-[0.99]"
+          <button
+            onClick={() => setApplyOpen(true)}
+            className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 py-3.5 text-sm font-semibold text-white shadow-md shadow-indigo-200 transition-all hover:shadow-lg hover:shadow-indigo-300 active:scale-[0.99]"
           >
             {applyBtn.label}
-          </Link>
+          </button>
         )}
       </div>
 
