@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
+import AlertModal from '@/components/layout/AlertModal';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { SocketProvider } from '@/providers/SocketProvider';
 import { ToastContainer } from '@/components/chat/ToastContainer';
@@ -29,6 +30,7 @@ export default function RootLayout({
               <Footer />
             </div>
             <ToastContainer />
+            <AlertModal />
           </SocketProvider>
         </AuthProvider>
       </body>
