@@ -954,9 +954,7 @@ export default function PortfolioDetailPage({
               maxLength={INTRO_MAX}
               rows={2}
               placeholder="포트폴리오 상단에 노출될 자기소개를 작성해주세요. (최대 500자)"
-              // 모바일에선 scrollHeight 자동 확장이 폭이 좁아 줄바꿈 다수 → 세로로 너무 길어지는 문제.
-              // max-h 로 캡 + overflow-y-auto 로 내부 스크롤. md+ 는 기존대로 본문 길이만큼 확장.
-              className="block w-full resize-none max-h-32 overflow-y-auto border border-gray-200 px-4 py-3 text-sm leading-relaxed outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 md:max-h-none md:overflow-y-hidden"
+              className="block w-full resize-none overflow-hidden border border-gray-200 px-4 py-3 text-sm leading-relaxed outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
             />
             <div className="mt-3 flex items-center justify-end gap-2">
               {introJustSaved && !introDirty && (
@@ -970,7 +968,7 @@ export default function PortfolioDetailPage({
             </div>
           </>
         ) : (
-          <p className="whitespace-pre-wrap max-h-32 overflow-y-auto border border-gray-100 bg-gray-50/40 px-4 py-3 text-sm leading-relaxed text-gray-700 md:max-h-none md:overflow-y-visible">
+          <p className="whitespace-pre-wrap border border-gray-100 bg-gray-50/40 px-4 py-3 text-sm leading-relaxed text-gray-700">
             {introSaved || '등록된 자기소개가 없습니다.'}
           </p>
         )}
