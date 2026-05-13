@@ -140,8 +140,21 @@ export async function syncItemToBackend(
 ): Promise<BackendPortfolioItem | null> {
   try {
     const basePayload = toCreatePayload(item);
-    const payload = details !== undefined
-      ? { ...basePayload, details }
+    // details.data 안에 큰 base64 thumbnail 이 들어있으면 payload 가 사실상 2배 — backend
+    // body limit(20MB) 에 걸려 silent 실패 가능. top-level thumbnail 필드가 이미 그 값을
+    // 갖고 있으므로 detail 쪽에선 잘라낸다. (피드 카드 / 상세 패널 양쪽이 모두
+    // item.thumbnail 을 먼저 보므로 detail.thumbnail 누락은 무해.)
+    const slimDetails = (() => {
+      if (details === undefined) return undefined;
+      const data = details.data as Record<string, unknown> | null | undefined;
+      if (!data || typeof data !== 'object') return details;
+      // 동일 객체 변형 금지 — 새 객체 반환
+      const { thumbnail: _stripped, ...rest } = data as { thumbnail?: unknown };
+      void _stripped;
+      return { ...details, data: rest } as ItemDetailsPayload;
+    })();
+    const payload = slimDetails !== undefined
+      ? { ...basePayload, details: slimDetails }
       : basePayload;
     if (item.serverId) {
       // update 시 clientCreatedAt 제외 — UpdatePortfolioDto 에 그 필드가 없어서
