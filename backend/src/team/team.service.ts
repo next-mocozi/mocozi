@@ -7,10 +7,14 @@ import { UpdateTeamDto } from './dto/update-team.dto';
 import { CreateProposalDto } from './dto/create-proposal.dto';
 import { UpdateProposalDto } from './dto/update-proposal.dto';
 import { UpdateVisibilityDto } from './dto/update-visibility.dto';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class TeamService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notifications: NotificationService,
+  ) {}
 
   async createTeam(userId: string, createTeamDto: CreateTeamDto) {
     const { name, teamType } = createTeamDto;
@@ -219,6 +223,12 @@ export class TeamService {
       where: { teamId, userId: targetUserId },
       data: { status: 'KICKED' },
     });
+    void this.notifications.create({
+      userId: targetUserId,
+      type: 'TEAM_MEMBER_KICKED',
+      title: `${team.name} 팀에서 추방되었습니다.`,
+      linkTo: `/team/${teamId}`,
+    }).catch((e) => console.error('[notification] TEAM_MEMBER_KICKED trigger failed', e));
     return { message: '팀원이 추방되었습니다.' };
   }
 

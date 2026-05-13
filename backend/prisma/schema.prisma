@@ -459,7 +459,8 @@ enum NotificationType {
   APPLICATION_RECEIVED
   /** 본인 지원이 ACCEPTED/REJECTED 처리됨 (applicant 받음) */
   APPLICATION_PROCESSED
-  // 후속 카테고리 자리 — CHAT_REPLY, CHAT_EXPIRED, TEAM_MEMBER_CHANGED 등
+  /** 팀원으로 합류 후 팀장에 의해 추방됨 (해당 팀원 받음) */
+  TEAM_MEMBER_KICKED
 }
 
 model Notification {

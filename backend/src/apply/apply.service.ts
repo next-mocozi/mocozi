@@ -111,6 +111,17 @@ export class ApplyService {
       });
     }
 
+    const title =
+      status === 'ACCEPTED'
+        ? `${team.name} 팀 지원이 수락되었습니다! 🎉`
+        : `${team.name} 팀 지원이 반려되었습니다.`;
+    void this.notifications.create({
+      userId: application.userId,
+      type: 'APPLICATION_PROCESSED',
+      title,
+      linkTo: `/team/${application.teamId}`,
+    }).catch((e) => console.error('[notification] APPLICATION_PROCESSED trigger failed', e));
+
     return updated;
   }
 }
