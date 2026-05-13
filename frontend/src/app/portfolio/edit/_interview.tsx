@@ -454,9 +454,68 @@ type StepCfg = {
   label?: string;
 };
 
-// 필수 응답이 있어야 다음으로 넘어갈 수 있는 단계 (isStepValid 와 동기화)
+// 필수 응답이 있어야 다음으로 넘어갈 수 있는 단계 (isStepKeyValid 와 동기화)
 const isStepRequired = (k: StepKey): boolean =>
   k !== 'deliverables' && k !== 'pitch' && k !== 'summary';
+
+/** 주어진 step 의 입력이 충분한지 검증.
+ *  - 다음 단계 진행 가드 (isStepValid)
+ *  - 최종 저장 시 미작성 필수 항목 점검 (findFirstInvalidRequiredStep)
+ *  양쪽에서 같은 규칙을 공유하기 위해 모듈 레벨 helper 로 추출. */
+const isStepKeyValid = (key: StepKey, draft: Draft): boolean => {
+  switch (key) {
+    case 'name':
+      return draft.name.trim().length > 0;
+    case 'period': {
+      const p = draft.period;
+      if (!p.startYear || !p.startMonth) return false;
+      if (!p.current && (!p.endYear || !p.endMonth)) return false;
+      // 종료가 시작보다 빠르면 무효 (일 무시, YYYYMM 비교)
+      if (!p.current && p.endYear && p.endMonth) {
+        const s = Number(p.startYear) * 100 + Number(p.startMonth);
+        const e = Number(p.endYear) * 100 + Number(p.endMonth);
+        if (e < s) return false;
+      }
+      return true;
+    }
+    case 'activity':
+      return draft.activityTypes.length > 0;
+    case 'field':
+      return draft.fieldTags.length > 0;
+    case 'tools':
+      return draft.toolTags.length > 0;
+    case 'roles':
+      return draft.roles.length > 0;
+    case 'motivation':
+      return draft.motivation.trim().length > 0;
+    case 'techChoice':
+      return draft.techChoice.trim().length > 0;
+    case 'architecture':
+      return draft.architecture.text.trim().length > 0;
+    case 'result':
+      return draft.result.text.trim().length > 0;
+    case 'retro':
+      return draft.retro.text.trim().length > 0;
+    case 'contribution':
+      return draft.contribution.trim().length > 0;
+    case 'domainCheck':
+      return draft.hasDomain !== null;
+    case 'domainTags':
+      return draft.domainTags.length > 0;
+    case 'domainExpertise':
+      return draft.domainExpertise.trim().length > 0;
+    case 'domainComm':
+      return draft.domainComm.trim().length > 0;
+    case 'domainLimits':
+      return draft.domainLimits.trim().length > 0;
+    case 'deliverables':
+    case 'pitch':
+    case 'summary':
+      return true;
+    default:
+      return true;
+  }
+};
 
 const buildSteps = (hasDomain: boolean | null): StepCfg[] => {
   const arr: StepCfg[] = [
@@ -931,6 +990,16 @@ export default function ProjectInterview() {
           // backend 미가동/네트워크 오류 — 임시저장은 localStorage 에만 있을 수
           // 있으므로 계속 진행해서 prefill 시도한다.
         }
+        // ITEMS_STORAGE_KEY 에 draft=true 로 남아있으면 "임시저장 중인 항목" — 멈춘 단계로 복귀.
+        // draft=false (이미 저장 완료된 항목) 면 미리보기 단계로 시작해 바로 수정·재저장 가능하게.
+        let isDraftItem = false;
+        try {
+          const itemsRaw = localStorage.getItem(ITEMS_STORAGE_KEY);
+          const itemList: PortfolioItem[] = itemsRaw ? JSON.parse(itemsRaw) : [];
+          isDraftItem = itemList.some((it) => it.id === editId && it.draft === true);
+        } catch {
+          // 무시 — 기본값 false (미리보기 시작)
+        }
         try {
           // localStorage draft 우선 (mid-edit 상태 보존)
           const detailsRaw = localStorage.getItem(DETAILS_STORAGE_KEY);
@@ -939,6 +1008,14 @@ export default function ProjectInterview() {
           if (saved) {
             initialDetailRef.current = JSON.parse(JSON.stringify(saved)) as Draft;
             const stepsForSaved = buildSteps(saved.hasDomain);
+            // 임시저장 항목: auto-save 가 보존한 stepIdx 로 복귀 (멈춘 질문에서 이어 작성).
+            // 저장 완료된 항목: 미리보기 단계로 시작 (즉시 수정·재저장 가능).
+            const resumeIdx = isDraftItem
+              ? Math.min(
+                  Math.max(saved.stepIdx ?? 0, 0),
+                  stepsForSaved.length - 1,
+                )
+              : stepsForSaved.length - 1;
             setDraft({
               ...EMPTY_DRAFT,
               ...saved,
@@ -947,7 +1024,7 @@ export default function ProjectInterview() {
                 ...a,
                 stepKey: a.stepKey ?? 'architecture',
               })),
-              stepIdx: stepsForSaved.length - 1,
+              stepIdx: resumeIdx,
             });
             setPhase('form');
             return;
@@ -1196,62 +1273,21 @@ export default function ProjectInterview() {
   };
 
   // 현재 step 의 유효성
-  const isStepValid = useMemo(() => {
-    switch (stepCfg.key) {
-      case 'name':
-        return draft.name.trim().length > 0;
-      case 'period': {
-        const p = draft.period;
-        if (!p.startYear || !p.startMonth) return false;
-        if (!p.current && (!p.endYear || !p.endMonth)) return false;
-        // 종료가 시작보다 빠르면 무효 (일 무시, YYYYMM 비교)
-        if (!p.current && p.endYear && p.endMonth) {
-          const s = Number(p.startYear) * 100 + Number(p.startMonth);
-          const e = Number(p.endYear) * 100 + Number(p.endMonth);
-          if (e < s) return false;
-        }
-        return true;
-      }
-      case 'activity':
-        return draft.activityTypes.length > 0;
-      case 'field':
-        return draft.fieldTags.length > 0;
-      case 'tools':
-        return draft.toolTags.length > 0;
-      case 'roles':
-        return draft.roles.length > 0;
-      case 'motivation':
-        return draft.motivation.trim().length > 0;
-      case 'techChoice':
-        return draft.techChoice.trim().length > 0;
-      case 'architecture':
-        return draft.architecture.text.trim().length > 0;
-      case 'result':
-        return draft.result.text.trim().length > 0;
-      case 'retro':
-        return draft.retro.text.trim().length > 0;
-      case 'contribution':
-        return draft.contribution.trim().length > 0;
-      case 'domainCheck':
-        return draft.hasDomain !== null;
-      case 'domainTags':
-        return draft.domainTags.length > 0;
-      case 'domainExpertise':
-        return draft.domainExpertise.trim().length > 0;
-      case 'domainComm':
-        return draft.domainComm.trim().length > 0;
-      case 'domainLimits':
-        return draft.domainLimits.trim().length > 0;
-      case 'deliverables':
-        return true; // 선택
-      case 'pitch':
-        return true; // 선택 — 비워두면 피드 카드에 제목만 노출
-      case 'summary':
-        return true;
-      default:
-        return true;
+  const isStepValid = useMemo(
+    () => isStepKeyValid(stepCfg.key, draft),
+    [stepCfg.key, draft],
+  );
+
+  /** 모든 필수 단계를 순회해 처음으로 invalid 한 step index 를 찾는다.
+   *  최종 저장 (handleSaveProject) 직전에 미작성 필수 항목이 있는지 확인하는 용도. */
+  const findFirstInvalidRequiredStep = (): number => {
+    for (let i = 0; i < steps.length; i++) {
+      const cfg = steps[i];
+      if (!isStepRequired(cfg.key)) continue;
+      if (!isStepKeyValid(cfg.key, draft)) return i;
     }
-  }, [stepCfg.key, draft]);
+    return -1;
+  };
 
   /** 미리보기의 "포트폴리오에 저장" / "수정 완료" — draft 플래그 해제 후 이동 */
   const handleSaveProject = async () => {
@@ -1260,6 +1296,14 @@ export default function ProjectInterview() {
       showToast('종료 날짜는 시작 날짜 이후여야 합니다.');
       const idx = steps.findIndex((s) => s.key === 'period');
       if (idx >= 0) setDraft((d) => ({ ...d, stepIdx: idx }));
+      return;
+    }
+    // 필수 항목 미작성 가드 — 미리보기에서 임시저장된 draft 를 열어 곧장 저장 클릭하면
+    // 비어있는 필수 답변이 그대로 저장되던 문제. 첫 번째 미작성 단계로 이동시켜 입력 유도.
+    const invalidIdx = findFirstInvalidRequiredStep();
+    if (invalidIdx >= 0) {
+      showToast('아직 작성하지 않은 필수 항목이 있어요.');
+      setDraft((d) => ({ ...d, stepIdx: invalidIdx }));
       return;
     }
     setIsSubmitting(true);
