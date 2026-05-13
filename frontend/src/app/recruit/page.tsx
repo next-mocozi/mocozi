@@ -10,6 +10,7 @@ import { AlertTriangleIcon } from '@/components/icons/ChatIcons';
 import { SchoolIcon, SearchIcon } from '@/components/icons/CommonIcons';
 import { getBannerGradientClass } from '@/app/profile/_banner';
 import { getMaskedName } from '@/lib/utils';
+import { UserIcon } from '@/components/icons/ChatIcons';
 
 const PAGE_SIZE = 12;
 
@@ -35,6 +36,7 @@ interface UserProfile {
   firstName: string;
   university: string;
   department: string;
+  grade?: string | null;
   skills: string[];
   roles: string[];
   profileImage: string | null;
@@ -473,7 +475,7 @@ export default function RecruitListPage() {
                           />
                         ) : (
                           <div className="flex h-8 w-8 items-center justify-center bg-stone-100 text-xs font-bold text-stone-500 sm:h-9 sm:w-9 sm:text-sm">
-                            {person.lastName[0]}
+                            <UserIcon className="h-5 w-5" />
                           </div>
                         )}
                         <p className="text-base font-bold tracking-tight text-stone-900 sm:text-lg lg:text-xl">
@@ -484,6 +486,12 @@ export default function RecruitListPage() {
                         <span className="font-semibold text-stone-900">{person.university}</span>
                         <span className="text-stone-400"> · </span>
                         <span>{person.department}</span>
+                        {person.grade && (
+                          <>
+                            <span className="text-stone-400"> · </span>
+                            <span>{person.grade}</span>
+                          </>
+                        )}
                       </p>
                       {person.bio?.trim() && (
                         <p className="mt-2 hidden border-l-2 border-stone-200 pl-2 text-2xs italic leading-snug text-stone-500 line-clamp-2 lg:block lg:line-clamp-3">
