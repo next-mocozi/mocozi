@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect, use, type ReactNode } from 'react';
 import Link from 'next/link';
 import { SearchIcon } from '@/components/icons/CommonIcons';
 import api from '@/lib/api';
@@ -15,11 +15,37 @@ const TEAM_TYPE_LABEL: Record<TeamType, string> = {
   PROJECT: '개발 프로젝트',
 };
 
-const TEAM_TYPE_EMOJI: Record<TeamType, string> = {
-  STUDY: '📚',
-  COMPETITION: '🏆',
-  HACKATHON: '⚡',
-  PROJECT: '🚀',
+/** 카테고리 아이콘 — /team/page.tsx와 동일 Lucide 스타일 line-icon. 부모 색 따라감. */
+const TEAM_TYPE_ICON: Record<TeamType, ReactNode> = {
+  STUDY: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block h-3 w-3 shrink-0" aria-hidden="true">
+      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+    </svg>
+  ),
+  COMPETITION: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block h-3 w-3 shrink-0" aria-hidden="true">
+      <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+      <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+      <path d="M4 22h16" />
+      <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
+      <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
+      <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
+    </svg>
+  ),
+  HACKATHON: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block h-3 w-3 shrink-0" aria-hidden="true">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
+  ),
+  PROJECT: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block h-3 w-3 shrink-0" aria-hidden="true">
+      <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
+      <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
+      <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" />
+      <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
+    </svg>
+  ),
 };
 
 interface Member {
@@ -218,14 +244,14 @@ export default function TeamDetailPage({
         }`}
       >
         {/* 배경 장식 원 */}
-        <div className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 bg-white/5" />
-        <div className="pointer-events-none absolute -bottom-8 right-24 h-32 w-32 bg-white/5" />
-        <div className="pointer-events-none absolute left-1/2 top-4 h-24 w-24 bg-white/5" />
+        <div className="pointer-events-none absolute rounded-full -right-12 -top-12 h-48 w-48 bg-white/5" />
+        <div className="pointer-events-none absolute rounded-full -bottom-8 right-24 h-32 w-32 bg-white/5" />
+        <div className="pointer-events-none absolute rounded-full left-1/2 top-4 h-24 w-24 bg-white/5" />
 
         <div className="relative">
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <span className="flex items-center gap-1.5 border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium backdrop-blur-sm">
-              {TEAM_TYPE_EMOJI[team.teamType]} {TEAM_TYPE_LABEL[team.teamType]}
+              {TEAM_TYPE_ICON[team.teamType]} {TEAM_TYPE_LABEL[team.teamType]}
             </span>
             <span
               className={`px-3 py-1 text-xs font-medium ${
