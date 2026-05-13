@@ -17,6 +17,8 @@ export default function RegisterPage() {
     department: '',
     grade: '',
   });
+  // 개인정보처리방침 동의 — 필수. 회원가입 버튼 활성화 조건.
+  const [privacyAgreed, setPrivacyAgreed] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendDone, setResendDone] = useState(false);
@@ -271,7 +273,36 @@ export default function RegisterPage() {
             </select>
           </div>
 
-          <button type="submit" className="btn-primary w-full py-3">
+          {/* 개인정보처리방침 동의 — 필수 */}
+          <div>
+            <label className="flex items-start gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={privacyAgreed}
+                onChange={(e) => setPrivacyAgreed(e.target.checked)}
+                required
+                className="mt-0.5 h-4 w-4 shrink-0"
+              />
+              <span>
+                <a
+                  href="https://elated-yttrium-040.notion.site/35fb74b939b180acbf68f7ae92b6f8bf?pvs=73"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary-600 underline hover:text-primary-700"
+                >
+                  개인정보처리방침
+                </a>
+                에 동의하시겠습니까?{' '}
+                <span className="text-red-500">*</span>
+              </span>
+            </label>
+          </div>
+
+          <button
+            type="submit"
+            disabled={!privacyAgreed}
+            className="btn-primary w-full py-3 disabled:cursor-not-allowed disabled:opacity-50"
+          >
             회원가입
           </button>
         </form>
