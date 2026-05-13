@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
+import { UserIcon } from '@/components/icons/ChatIcons';
 import { useAuth } from '@/hooks/useAuth';
 import { TYPE_META, type PortfolioItem, type PortfolioItemType } from '@/app/portfolio/_lib';
 import ItemFullView, {
@@ -246,7 +247,7 @@ function PostDetail({ post }: { post: FeedPost }) {
           href={`/portfolio/${post.author.userId}`}
           className="group flex items-center gap-2"
         >
-          <span className="flex h-8 w-8 items-center justify-center bg-primary-100 text-sm text-primary-600">
+          <span className="flex h-8 w-8 items-center justify-center bg-primary-100 text-primary-600">
             {post.author.profileImage ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -255,7 +256,7 @@ function PostDetail({ post }: { post: FeedPost }) {
                 className="h-full w-full object-cover"
               />
             ) : (
-              '👤'
+              <UserIcon className="h-4 w-4" />
             )}
           </span>
           <span>
@@ -423,7 +424,7 @@ function AuthorDetail({ userId }: { userId: string }) {
     <div className="space-y-5">
       {/* 프로필 헤더 — 이름 오른쪽에 [포트폴리오로 →] 버튼 */}
       <div className="flex items-start gap-3">
-        <div className="flex h-14 w-14 shrink-0 items-center justify-center bg-primary-100 text-2xl text-primary-600">
+        <div className="flex h-14 w-14 shrink-0 items-center justify-center bg-primary-100 text-primary-600">
           {data.profileImage ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -432,7 +433,7 @@ function AuthorDetail({ userId }: { userId: string }) {
               className="h-full w-full object-cover"
             />
           ) : (
-            '👤'
+            <UserIcon className="h-7 w-7" />
           )}
         </div>
         <div className="min-w-0 flex-1">

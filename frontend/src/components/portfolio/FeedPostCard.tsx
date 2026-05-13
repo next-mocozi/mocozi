@@ -1,6 +1,7 @@
 'use client';
 
 import { TYPE_META } from '@/app/portfolio/_lib';
+import { UserIcon } from '@/components/icons/ChatIcons';
 import type { FeedPost } from '@/lib/feed/types';
 import { timeAgo } from '@/lib/timeAgo';
 
@@ -67,7 +68,7 @@ export default function FeedPostCard({
             }}
             className="group flex items-center gap-2 text-left"
           >
-            <span className="flex h-7 w-7 items-center justify-center bg-primary-100 text-sm text-primary-600">
+            <span className="flex h-7 w-7 items-center justify-center bg-primary-100 text-primary-600">
               {post.author.profileImage ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -76,7 +77,7 @@ export default function FeedPostCard({
                   className="h-full w-full object-cover"
                 />
               ) : (
-                '👤'
+                <UserIcon className="h-3.5 w-3.5" />
               )}
             </span>
             <span className="min-w-0">

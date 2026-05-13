@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
+import { LightbulbIcon } from '@/components/icons/CommonIcons';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import { updateMyMeta } from '@/lib/portfolio-api';
@@ -470,12 +471,12 @@ function PortfolioOnboardingPageInner() {
             </div>
 
             {/* 유의사항 */}
-            <div className="mx-6 mt-4 border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
-              <span className="mr-1" aria-hidden>
-                💡
+            <div className="mx-6 mt-4 flex items-start gap-2 border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
+              <LightbulbIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span>
+                공개를 선택하면 방금 입력한 자기소개와 기술 스택이{' '}
+                <strong>첫 게시물</strong>로 피드에 올라갑니다.
               </span>
-              공개를 선택하면 방금 입력한 자기소개와 기술 스택이{' '}
-              <strong>첫 게시물</strong>로 피드에 올라갑니다.
             </div>
 
             <div className="px-6 py-5">

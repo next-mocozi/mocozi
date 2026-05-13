@@ -6,6 +6,8 @@ import { usePagination } from '@/hooks/usePagination';
 import { Pagination } from '@/components/ui/Pagination';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
+import { AlertTriangleIcon } from '@/components/icons/ChatIcons';
+import { SchoolIcon, SearchIcon } from '@/components/icons/CommonIcons';
 import { getBannerGradientClass } from '@/app/profile/_banner';
 
 const PAGE_SIZE = 12;
@@ -262,7 +264,10 @@ export default function RecruitListPage() {
               : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-50'
           }`}
         >
-          🏫 같은 학교만 보기
+          <span className="inline-flex items-center gap-1.5">
+            <SchoolIcon className="h-4 w-4" />
+            같은 학교만 보기
+          </span>
         </button>
       )}
 
@@ -382,7 +387,8 @@ export default function RecruitListPage() {
                   )}
                   {appliedSameSchool && (
                     <span className="flex items-center gap-1.5 border border-indigo-200 bg-indigo-50 px-3 py-1 text-indigo-700">
-                      🏫 같은 학교
+                      <SchoolIcon className="h-3.5 w-3.5" />
+                      같은 학교
                       <button onClick={() => setAppliedSameSchool(false)} className="text-indigo-300 hover:text-indigo-600" aria-label="같은 학교 필터 제거">
                         <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -425,12 +431,16 @@ export default function RecruitListPage() {
             </div>
           ) : fetchError ? (
             <div className="card flex h-[320px] flex-col items-center justify-center gap-3 text-center">
-              <div className="flex h-14 w-14 items-center justify-center bg-red-50 text-2xl">⚠️</div>
+              <div className="flex h-14 w-14 items-center justify-center bg-red-50 text-red-500">
+                <AlertTriangleIcon className="h-8 w-8" />
+              </div>
               <p className="text-sm font-semibold text-stone-700">{fetchError}</p>
             </div>
           ) : filteredProfiles.length === 0 ? (
             <div className="card flex h-[320px] flex-col items-center justify-center gap-3 text-center">
-              <div className="flex h-14 w-14 items-center justify-center bg-stone-100 text-2xl">🔍</div>
+              <div className="flex h-14 w-14 items-center justify-center bg-stone-100 text-stone-400">
+                <SearchIcon className="h-8 w-8" />
+              </div>
               <p className="text-base font-semibold text-stone-700">검색 결과가 없습니다</p>
               <p className="text-sm text-stone-400">키워드나 필터를 변경해 보세요.</p>
             </div>

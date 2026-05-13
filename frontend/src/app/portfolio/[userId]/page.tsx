@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getBannerGradientClass } from '@/app/profile/_banner';
 import { use, useEffect, useMemo, useRef, useState } from 'react';
+import { UserIcon } from '@/components/icons/ChatIcons';
 import { useAuth } from '@/hooks/useAuth';
 import { findMockFeedUser, type FeedUser } from '@/lib/mock/portfolioFeed';
 import { notifyPortfolioChanged } from '@/hooks/useMyPortfolioStatus';
@@ -810,8 +811,8 @@ export default function PortfolioDetailPage({
         )}
 
         <div className="flex items-start gap-6 pr-32">
-          <div className="flex h-24 w-24 items-center justify-center bg-primary-100 text-3xl text-primary-600">
-            👤
+          <div className="flex h-24 w-24 items-center justify-center bg-primary-100 text-primary-600">
+            <UserIcon className="h-12 w-12" />
           </div>
           <div className="flex-1">
             <div className="flex flex-wrap items-center gap-2">

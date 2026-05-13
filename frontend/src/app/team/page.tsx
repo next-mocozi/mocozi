@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useMemo, useEffect, useRef, type ReactNode } from 'react';
+import { SearchIcon } from '@/components/icons/CommonIcons';
 import api from '@/lib/api';
 import { usePagination } from '@/hooks/usePagination';
 import { Pagination } from '@/components/ui/Pagination';
@@ -470,8 +471,8 @@ export default function TeamListPage() {
             </div>
           ) : filteredTeams.length === 0 ? (
             <div className="card flex h-[320px] flex-col items-center justify-center gap-3 text-center">
-              <div className="flex h-14 w-14 items-center justify-center bg-stone-100 text-2xl">
-                🔍
+              <div className="flex h-14 w-14 items-center justify-center bg-stone-100 text-stone-400">
+                <SearchIcon className="h-8 w-8" />
               </div>
               <p className="text-base font-semibold text-stone-700">
                 {teams.length === 0 ? '아직 등록된 팀이 없습니다' : '검색 결과가 없습니다'}

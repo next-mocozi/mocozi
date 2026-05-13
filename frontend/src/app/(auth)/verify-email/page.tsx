@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { MailIcon } from '@/components/icons/CommonIcons';
 import api from '@/lib/api';
 
 function VerifyEmailContent() {
@@ -59,7 +60,9 @@ function VerifyEmailContent() {
       )}
       {token && status === 'loading' && (
         <>
-          <div className="mb-4 text-5xl">✉️</div>
+          <div className="mb-4 flex justify-center text-primary-500">
+            <MailIcon className="h-12 w-12" />
+          </div>
           <h1 className="mb-4 text-2xl font-bold">이메일 인증 중...</h1>
           <p className="text-gray-600">잠시만 기다려주세요.</p>
         </>
@@ -110,7 +113,9 @@ export default function VerifyEmailPage() {
     <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center">
       <Suspense fallback={
         <div className="card w-full max-w-md text-center">
-          <div className="mb-4 text-5xl">✉️</div>
+          <div className="mb-4 flex justify-center text-primary-500">
+            <MailIcon className="h-12 w-12" />
+          </div>
           <h1 className="mb-4 text-2xl font-bold">이메일 인증 중...</h1>
           <p className="text-gray-600">잠시만 기다려주세요.</p>
         </div>

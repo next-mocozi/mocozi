@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
+import { SearchIcon } from '@/components/icons/CommonIcons';
 import api from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -167,8 +168,8 @@ export default function TeamDetailPage({
   if (notFound || !team) {
     return (
       <div className="mx-auto flex min-h-[60vh] max-w-4xl flex-col items-center justify-center gap-4 px-4 py-8 text-center sm:px-6 lg:px-8">
-        <div className="flex h-16 w-16 items-center justify-center bg-stone-100 text-3xl">
-          🔍
+        <div className="flex h-16 w-16 items-center justify-center bg-stone-100 text-stone-400">
+          <SearchIcon className="h-9 w-9" />
         </div>
         <p className="text-lg font-semibold text-stone-800">존재하지 않는 팀입니다</p>
         <p className="text-sm text-stone-400">삭제되었거나 잘못된 주소일 수 있어요.</p>

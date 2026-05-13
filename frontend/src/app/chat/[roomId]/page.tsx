@@ -33,6 +33,7 @@ import {
   UserIcon,
   UsersIcon,
 } from '@/components/icons/ChatIcons';
+import { ClockIcon } from '@/components/icons/CommonIcons';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import {
@@ -1155,8 +1156,9 @@ function ChatRoomPageContent({ params }: PageProps) {
       {/* §B-DM-8 응답 만료 banner — 3일 무응답일 때 헤더 아래에 amber 안내.
           답장이 들어오면 다음 mount 때 서버 컴퓨트 결과 변경 → 자연 사라짐. */}
       {room?.responseExpired && (
-        <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800">
-          ⏰ 3일 동안 응답이 없는 상태입니다. 추가 메시지를 보내거나 다른 채널을 시도해보세요.
+        <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800">
+          <ClockIcon className="h-3.5 w-3.5 shrink-0" />
+          <span>3일 동안 응답이 없는 상태입니다. 추가 메시지를 보내거나 다른 채널을 시도해보세요.</span>
         </div>
       )}
 

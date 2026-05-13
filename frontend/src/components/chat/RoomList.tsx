@@ -8,9 +8,11 @@ import { RoomPreviewPanel } from '@/components/chat/RoomPreviewPanel';
 import {
   ArrowLeftIcon,
   BellOffIcon,
+  FileIcon,
   UserIcon,
   UsersIcon,
 } from '@/components/icons/ChatIcons';
+import { ClockIcon } from '@/components/icons/CommonIcons';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import { summarizePreview } from '@/lib/messageTemplate';
@@ -553,14 +555,14 @@ export default function RoomList() {
                           )}
                         </div>
                         {/* §17 진입 컨텍스트 점은 이름 옆으로 이동 (네온 글로우가 모서리에서 잘리던 문제 해소) */}
-                        {/* §B-DM-8 응답 만료 — 아바타 우하단 ⏰ overlay */}
+                        {/* §B-DM-8 응답 만료 — 아바타 우하단 시계 overlay */}
                         {room.responseExpired && (
                           <span
-                            className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center bg-amber-100 text-[10px] leading-none ring-2 ring-white"
+                            className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-100 text-amber-600 ring-2 ring-white"
                             title="3일 동안 응답 없음"
                             aria-label="응답 시간 만료"
                           >
-                            ⏰
+                            <ClockIcon className="h-2.5 w-2.5" />
                           </span>
                         )}
                       </div>
@@ -667,7 +669,7 @@ export default function RoomList() {
                               aria-label="기획서 보기"
                               title="기획서 보기"
                             >
-                              <span aria-hidden>📄</span>
+                              <FileIcon className="h-4 w-4" />
                             </button>
                           )}
                           {showProfile && profileTargetId && (
@@ -684,7 +686,7 @@ export default function RoomList() {
                               aria-label="프로필 보기"
                               title="프로필 보기"
                             >
-                              <span aria-hidden>👤</span>
+                              <UserIcon className="h-4 w-4" />
                             </button>
                           )}
                         </div>
