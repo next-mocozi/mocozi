@@ -1313,25 +1313,32 @@ export default function ProjectInterview() {
     }
     setIsSubmitting(true);
     if (projectId !== null) {
+      // ── 1) localStorage 갱신 (best-effort) ──
+      // localStorage.setItem 은 base64 thumbnail 이 큰 경우 quota 초과로 throw 한다.
+      // 이전 구조에선 이 throw 가 같은 try 안에 있던 백엔드 sync 까지 함께 스킵시켜서
+      // 결과적으로 DB 에 thumbnail 이 영원히 안 들어가 피드 카드에 안 뜨던 버그였다.
+      // localStorage 실패와 sync 를 분리한다.
+      let existing: PortfolioItem | undefined;
       try {
         const itemsRaw = localStorage.getItem(ITEMS_STORAGE_KEY);
         const list: PortfolioItem[] = itemsRaw ? JSON.parse(itemsRaw) : [];
-        const existing = list.find((it) => it.id === projectId);
+        existing = list.find((it) => it.id === projectId);
         const nextList = list.map((it) =>
           it.id === projectId ? { ...it, draft: false } : it,
         );
         localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(nextList));
-        // 최종 저장 시점에만 백엔드 동기화 (auto-save 단계에선 호출 X).
-        // 인터뷰 답변(draft) 도 같이 보내 타인 viewer 가 미리보기 풀세트로 볼 수 있게.
-        //
-        // localStorage 의 ITEMS 는 quota 초과(대표 이미지 base64 가 큰 경우) 시 catch 로
-        // 무시되어 thumbnail 등이 stale 한 채 남을 수 있음. 그 stale item 을 그대로 sync
-        // 하면 피드에 썸네일이 안 뜨던 버그. 항상 현재 draft 기반으로 finalItem 을 재빌드한다.
-        const finalItem: PortfolioItem = {
-          ...buildItem(projectId, draft),
-          draft: false,
-          featured: existing?.featured ?? false,
-        };
+      } catch {
+        // localStorage quota/parse 실패 — sync 는 계속 진행
+      }
+
+      // ── 2) 백엔드 sync — localStorage 결과와 무관하게 항상 실행 ──
+      // 항상 현재 draft 기반으로 finalItem 을 재빌드해 최신 thumbnail 을 보냄.
+      const finalItem: PortfolioItem = {
+        ...buildItem(projectId, draft),
+        draft: false,
+        featured: existing?.featured ?? false,
+      };
+      try {
         const synced = await syncItemToBackend(
           { ...finalItem, serverId: serverIdRef.current ?? undefined },
           { kind: 'interview', data: draft },
