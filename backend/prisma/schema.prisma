@@ -151,6 +151,7 @@ enum ApplicationStatus {
   PENDING
   ACCEPTED
   REJECTED
+  KICKED
 }
 
 // 스카우트 모델 — Phase B-DM-8에서 폐기.

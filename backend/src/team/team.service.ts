@@ -215,6 +215,10 @@ export class TeamService {
     await this.prisma.teamMember.delete({
       where: { teamId_userId: { teamId, userId: targetUserId } },
     });
+    await this.prisma.application.updateMany({
+      where: { teamId, userId: targetUserId },
+      data: { status: 'KICKED' },
+    });
     return { message: '팀원이 추방되었습니다.' };
   }
 

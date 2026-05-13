@@ -21,12 +21,19 @@ export class ApplyService {
     const existing = await this.prisma.application.findUnique({
       where: { teamId_userId: { teamId, userId } },
     });
-    if (existing) {
+    if (existing && existing.status !== 'KICKED') {
       throw new ConflictException('이미 지원한 팀입니다.');
     }
-    const application = await this.prisma.application.create({
-      data: { teamId, userId, message: dto.message },
-    });
+
+    // 추방 후 재지원이면 기존 레코드 업데이트, 신규면 생성
+    const application = existing
+      ? await this.prisma.application.update({
+          where: { teamId_userId: { teamId, userId } },
+          data: { message: dto.message, status: 'PENDING' },
+        })
+      : await this.prisma.application.create({
+          data: { teamId, userId, message: dto.message },
+        });
 
     // §B-DM-9 — 지원 접수 시 팀장에게 알림. fire-and-forget (지원 자체 응답에 latency X).
     void this.notifyApplicationReceived(
