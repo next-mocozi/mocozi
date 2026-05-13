@@ -240,7 +240,8 @@ export default function PortfolioDetailPage({
   // 항상 본인 user 로 fallback 되어, 다른 사람 페이지 가도 본인 정보가 뜨던
   // 핵심 버그를 fix.)
   const [viewerUser, setViewerUser] = useState<{
-    name: string;
+    lastName: string;
+    firstName: string;
     university: string;
     department: string;
     grade: string | null;
@@ -351,7 +352,8 @@ export default function PortfolioDetailPage({
           const userRes = await api.get(`/api/users/${paramUserId}`);
           if (cancelled) return;
           const u = (userRes.data?.data ?? userRes.data) as {
-            name?: string;
+            lastName?: string;
+            firstName?: string;
             university?: string;
             department?: string;
             grade?: string | null;
@@ -362,7 +364,8 @@ export default function PortfolioDetailPage({
           } | null;
           if (u) {
             setViewerUser({
-              name: u.name ?? '',
+              lastName: u.lastName ?? '',
+              firstName: u.firstName ?? '',
               university: u.university ?? '',
               department: u.department ?? '',
               grade: u.grade ?? null,
