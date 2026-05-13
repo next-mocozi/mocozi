@@ -7,6 +7,11 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 export class UserService {
   constructor(private prisma: PrismaService) {}
 
+  /** 전체 가입자 수 — 랜딩 페이지 CTA "전체 N명" 표시용. 공개 endpoint. */
+  async getUserCount(): Promise<number> {
+    return this.prisma.user.count();
+  }
+
   /** 사용자 프로필 조회 */
   async getProfile(userId: string) {
     const user = await this.prisma.user.findUnique({

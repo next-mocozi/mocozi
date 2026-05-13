@@ -1,7 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import api from '@/lib/api';
 
 type Peer = {
   initial: string;
@@ -273,17 +275,55 @@ export default function PeerDirectory() {
           </div>
         )}
 
-        <div className="mt-10 flex flex-col items-center justify-between gap-4 border border-gray-100 bg-stone-50 px-6 py-5 md:flex-row">
-          <p className="text-sm text-gray-600">
-            <span className="font-semibold text-gray-900">전체 1,247명</span>의
-            IT 대학생이 모코지에 있어요
-          </p>
-          <Link href="/register" className="btn-primary px-6 py-2.5 text-sm">
-            가입하고 전체 둘러보기
-          </Link>
-        </div>
+        <PeerCountCta />
       </div>
     </section>
+  );
+}
+
+/**
+ * 랜딩 페이지 하단 CTA — 실제 가입자 수 + 인증 상태별 분기 link.
+ *  - 비로그인: "가입하고 전체 둘러보기" → /register
+ *  - 로그인  : "전체 둘러보기" → /recruit (실 사용자 디렉토리)
+ * 카운트는 `GET /api/users/count` (public). loading 중엔 "—" placeholder.
+ */
+function PeerCountCta() {
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  const [count, setCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get<{ data: { count: number } }>('/api/users/count')
+      .then((res) => {
+        if (cancelled) return;
+        setCount(res.data?.data?.count ?? null);
+      })
+      .catch(() => {
+        // 실패해도 페이지 자체엔 영향 없음 — count 표시만 "—"으로 fallback
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const countLabel = count === null ? '—' : count.toLocaleString('ko-KR');
+  const href = isAuthenticated ? '/recruit' : '/register';
+  const label = isAuthenticated ? '전체 둘러보기' : '가입하고 전체 둘러보기';
+
+  return (
+    <div className="mt-10 flex flex-col items-center justify-between gap-4 border border-gray-100 bg-stone-50 px-6 py-5 md:flex-row">
+      <p className="text-sm text-gray-600">
+        <span className="font-semibold text-gray-900">전체 {countLabel}명</span>의
+        IT 대학생이 모코지에 있어요
+      </p>
+      {/* loading 끝난 후만 link 렌더 — 깜빡임/잘못된 href flash 방지 */}
+      {!authLoading && (
+        <Link href={href} className="btn-primary px-6 py-2.5 text-sm">
+          {label}
+        </Link>
+      )}
+    </div>
   );
 }
 
