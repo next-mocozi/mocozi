@@ -103,6 +103,8 @@ export default function EditTeamPage({
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -154,6 +156,18 @@ export default function EditTeamPage({
     setReferenceLinks((prev) => [...prev, v]);
     setReferenceInput('');
     setError('');
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await api.delete(`/api/teams/${id}`);
+      router.replace('/team');
+    } catch (err: any) {
+      setError(err.response?.data?.message || '팀 삭제에 실패했습니다.');
+      setDeleting(false);
+      setDeleteConfirm(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -592,6 +606,42 @@ export default function EditTeamPage({
           </button>
         </div>
       </form>
+
+      {/* 위험 구역 */}
+      <div className="mt-8 border border-red-100 p-5">
+        <p className="mb-1 text-sm font-semibold text-red-600">팀 삭제</p>
+        <p className="mb-4 text-xs text-stone-400">
+          팀을 삭제하면 기획서·지원 내역이 모두 영구 삭제됩니다. 되돌릴 수 없습니다.
+        </p>
+        {!deleteConfirm ? (
+          <button
+            type="button"
+            onClick={() => setDeleteConfirm(true)}
+            className="border border-red-200 px-5 py-2 text-sm font-medium text-red-500 transition-colors hover:bg-red-50"
+          >
+            팀 삭제
+          </button>
+        ) : (
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-stone-500">정말 삭제하시겠습니까?</span>
+            <button
+              type="button"
+              onClick={() => setDeleteConfirm(false)}
+              className="border border-stone-200 px-4 py-1.5 text-sm text-stone-500 transition-colors hover:bg-stone-50"
+            >
+              취소
+            </button>
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-red-500 px-4 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-red-600 disabled:opacity-60"
+            >
+              {deleting ? '삭제 중...' : '삭제 확인'}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
