@@ -1161,18 +1161,23 @@ export default function ProjectInterview() {
       try {
         const itemsRaw = localStorage.getItem(ITEMS_STORAGE_KEY);
         const list: PortfolioItem[] = itemsRaw ? JSON.parse(itemsRaw) : [];
-        const item = list.find((it) => it.id === projectId);
-        if (item) {
-          const synced = await syncItemToBackend(
-            { ...item, serverId: serverIdRef.current ?? undefined },
-            { kind: 'interview', data: draft },
-          );
-          // 신규 저장 직후 serverIdRef 갱신 — 중복 생성 방지
-          if (synced && !serverIdRef.current) {
-            serverIdRef.current = synced.id;
-          }
-          await invalidateMyPortfolio();
+        const existing = list.find((it) => it.id === projectId);
+        // 최신 draft 기반으로 item 재빌드 — localStorage ITEMS 가 quota 초과(대표 이미지
+        // base64 가 큰 경우) 시 stale 한 채 남아 thumbnail 누락 sync 되던 버그 방지.
+        const item: PortfolioItem = {
+          ...buildItem(projectId, draft),
+          draft: existing?.draft ?? false,
+          featured: existing?.featured ?? false,
+        };
+        const synced = await syncItemToBackend(
+          { ...item, serverId: serverIdRef.current ?? undefined },
+          { kind: 'interview', data: draft },
+        );
+        // 신규 저장 직후 serverIdRef 갱신 — 중복 생성 방지
+        if (synced && !serverIdRef.current) {
+          serverIdRef.current = synced.id;
         }
+        await invalidateMyPortfolio();
       } catch {
         // 저장 실패해도 이동은 진행
       }
@@ -1311,15 +1316,22 @@ export default function ProjectInterview() {
       try {
         const itemsRaw = localStorage.getItem(ITEMS_STORAGE_KEY);
         const list: PortfolioItem[] = itemsRaw ? JSON.parse(itemsRaw) : [];
+        const existing = list.find((it) => it.id === projectId);
         const nextList = list.map((it) =>
           it.id === projectId ? { ...it, draft: false } : it,
         );
         localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(nextList));
         // 최종 저장 시점에만 백엔드 동기화 (auto-save 단계에선 호출 X).
         // 인터뷰 답변(draft) 도 같이 보내 타인 viewer 가 미리보기 풀세트로 볼 수 있게.
-        // ITEMS_STORAGE_KEY 에 없을 때(새 기기 등 auto-save 미완료)는 직접 생성.
-        const finalItem =
-          nextList.find((it) => it.id === projectId) ?? buildItem(projectId, draft);
+        //
+        // localStorage 의 ITEMS 는 quota 초과(대표 이미지 base64 가 큰 경우) 시 catch 로
+        // 무시되어 thumbnail 등이 stale 한 채 남을 수 있음. 그 stale item 을 그대로 sync
+        // 하면 피드에 썸네일이 안 뜨던 버그. 항상 현재 draft 기반으로 finalItem 을 재빌드한다.
+        const finalItem: PortfolioItem = {
+          ...buildItem(projectId, draft),
+          draft: false,
+          featured: existing?.featured ?? false,
+        };
         const synced = await syncItemToBackend(
           { ...finalItem, serverId: serverIdRef.current ?? undefined },
           { kind: 'interview', data: draft },
