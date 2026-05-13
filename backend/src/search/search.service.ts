@@ -37,7 +37,7 @@ export class SearchService {
     return this.prisma.team.findMany({
       where,
       include: {
-        leader: { select: { id: true, name: true, university: true } },
+        leader: { select: { id: true, lastName: true, firstName: true, university: true } },
         proposal: { select: { projectName: true, overview: true, recruitingRoles: true, requiredSkills: true } },
       },
       orderBy: { createdAt: 'desc' },
@@ -49,7 +49,8 @@ export class SearchService {
 
     if (filters.keyword) {
       where.OR = [
-        { name: { contains: filters.keyword, mode: 'insensitive' } },
+        { lastName: { contains: filters.keyword, mode: 'insensitive' } },
+        { firstName: { contains: filters.keyword, mode: 'insensitive' } },
         { bio: { contains: filters.keyword, mode: 'insensitive' } },
         { department: { contains: filters.keyword, mode: 'insensitive' } },
       ];
@@ -73,7 +74,8 @@ export class SearchService {
       where,
       select: {
         id: true,
-        name: true,
+        lastName: true,
+        firstName: true,
         university: true,
         department: true,
         skills: true,

@@ -84,7 +84,8 @@ export class PortfolioService {
         user: {
           select: {
             id: true,
-            name: true,
+            lastName: true,
+            firstName: true,
             university: true,
             department: true,
             grade: true,

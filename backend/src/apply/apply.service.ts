@@ -76,7 +76,7 @@ export class ApplyService {
     return this.prisma.application.findMany({
       where: { teamId },
       include: {
-        user: { select: { id: true, name: true, university: true, department: true, skills: true } },
+        user: { select: { id: true, lastName: true, firstName: true, university: true, department: true, skills: true } },
       },
     });
   }
