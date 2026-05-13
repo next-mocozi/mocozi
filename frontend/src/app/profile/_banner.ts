@@ -17,11 +17,11 @@ export const BANNER_GRADIENTS: {
   class: string;
 }[] = [
   { key: 'indigo',  label: '인디고',   class: 'from-indigo-600 via-indigo-700 to-violet-700' },
-  { key: 'rose',    label: '로즈',     class: 'from-rose-500 via-rose-600 to-pink-700' },
+  { key: 'rose',    label: '시안',     class: 'from-cyan-400 via-cyan-600 to-sky-700' },
   { key: 'emerald', label: '에메랄드', class: 'from-emerald-500 via-emerald-600 to-teal-700' },
-  { key: 'amber',   label: '앰버',     class: 'from-amber-400 via-orange-500 to-rose-600' },
+  { key: 'amber',   label: '라임',     class: 'from-lime-400 via-lime-500 to-emerald-600' },
   { key: 'sky',     label: '스카이',   class: 'from-sky-400 via-sky-600 to-blue-700' },
-  { key: 'fuchsia', label: '푸시아',   class: 'from-fuchsia-500 via-purple-600 to-violet-700' },
+  { key: 'fuchsia', label: '딥틸',     class: 'from-teal-500 via-teal-700 to-emerald-800' },
   { key: 'stone',   label: '스톤',     class: 'from-stone-400 via-stone-500 to-stone-600' },
   { key: 'slate',   label: '슬레이트', class: 'from-slate-700 via-slate-800 to-slate-900' },
 ];

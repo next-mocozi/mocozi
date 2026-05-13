@@ -558,7 +558,7 @@ export default function RecruitListPage() {
       <button
         type="button"
         onClick={() => setMobileFilterOpen(true)}
-        className="fixed bottom-6 right-4 z-30 flex items-center gap-2 bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-md shadow-indigo-200 transition-all hover:bg-indigo-700 hover:shadow-lg active:scale-95 lg:hidden"
+        className="fixed bottom-20 right-4 z-30 flex items-center gap-2 bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-md shadow-indigo-200 transition-all hover:bg-indigo-700 hover:shadow-lg active:scale-95 lg:hidden"
         aria-label="필터 열기"
       >
         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

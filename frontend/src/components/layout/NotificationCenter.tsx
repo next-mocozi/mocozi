@@ -72,7 +72,7 @@ export default function NotificationCenter() {
         aria-haspopup="menu"
         aria-expanded={open}
       >
-        <NotificationIcon className="h-6 w-6 text-gray-700" />
+        <NotificationIcon className="h-6 w-6 text-primary-600" />
         {unreadCount > 0 && (
           <span
             className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white"

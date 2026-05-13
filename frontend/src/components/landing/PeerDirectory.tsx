@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { SearchIcon } from '@/components/icons/CommonIcons';
 import { useAuth } from '@/hooks/useAuth';
+import { UserIcon } from '@/components/icons/ChatIcons';
 import api from '@/lib/api';
 import { UNIVERSITIES } from '@/lib/universities';
 
@@ -25,7 +26,7 @@ const PEERS: Peer[] = [
     department: '컴퓨터학과',
     roles: ['백엔드'],
     skills: ['Node.js', 'Postgres', 'AWS'],
-    accent: 'bg-primary-100 text-primary-700',
+    accent: 'bg-emerald-100 text-emerald-700',
   },
   {
     initial: '이',
@@ -34,7 +35,7 @@ const PEERS: Peer[] = [
     department: '컴퓨터공학부',
     roles: ['풀스택'],
     skills: ['Next.js', 'React', 'Figma'],
-    accent: 'bg-emerald-100 text-emerald-700',
+    accent: 'bg-sky-100 text-sky-700',
   },
   {
     initial: '박',
@@ -43,7 +44,7 @@ const PEERS: Peer[] = [
     department: '컴퓨터공학과',
     roles: ['프론트엔드'],
     skills: ['React', 'TypeScript', 'Tailwind'],
-    accent: 'bg-amber-100 text-amber-700',
+    accent: 'bg-lime-100 text-lime-700',
   },
   {
     initial: '정',
@@ -52,7 +53,7 @@ const PEERS: Peer[] = [
     department: '전산학부',
     roles: ['ML/AI', '데이터'],
     skills: ['PyTorch', 'TensorFlow', 'CUDA'],
-    accent: 'bg-purple-100 text-purple-700',
+    accent: 'bg-teal-100 text-teal-700',
   },
   {
     initial: '최',
@@ -61,7 +62,7 @@ const PEERS: Peer[] = [
     department: '디자인예술학부',
     roles: ['디자인'],
     skills: ['Figma', 'Framer', 'Motion'],
-    accent: 'bg-pink-100 text-pink-700',
+    accent: 'bg-cyan-100 text-cyan-700',
   },
   {
     initial: '강',
@@ -70,7 +71,7 @@ const PEERS: Peer[] = [
     department: '컴퓨터소프트웨어학부',
     roles: ['모바일', 'iOS'],
     skills: ['Swift', 'SwiftUI'],
-    accent: 'bg-sky-100 text-sky-700',
+    accent: 'bg-slate-100 text-slate-700',
   },
   {
     initial: '윤',
@@ -79,7 +80,7 @@ const PEERS: Peer[] = [
     department: '소프트웨어학과',
     roles: ['백엔드', '임베디드'],
     skills: ['Java', 'Spring', 'Kafka'],
-    accent: 'bg-primary-100 text-primary-700',
+    accent: 'bg-indigo-100 text-indigo-700',
   },
   {
     initial: '한',
@@ -88,7 +89,7 @@ const PEERS: Peer[] = [
     department: '컴퓨터공학과',
     roles: ['PM'],
     skills: ['기획', 'Notion'],
-    accent: 'bg-rose-100 text-rose-700',
+    accent: 'bg-stone-100 text-stone-700',
   },
   {
     initial: '임',
@@ -97,7 +98,7 @@ const PEERS: Peer[] = [
     department: '컴퓨터공학과',
     roles: ['안드로이드', 'iOS', '모바일'],
     skills: ['Kotlin', 'Jetpack', 'Compose'],
-    accent: 'bg-teal-100 text-teal-700',
+    accent: 'bg-emerald-100 text-emerald-700',
   },
   {
     initial: '송',
@@ -106,7 +107,7 @@ const PEERS: Peer[] = [
     department: '소프트웨어학부',
     roles: ['프론트엔드'],
     skills: ['Vue', 'Tailwind', 'Vite'],
-    accent: 'bg-amber-100 text-amber-700',
+    accent: 'bg-lime-100 text-lime-700',
   },
   {
     initial: '오',
@@ -115,7 +116,7 @@ const PEERS: Peer[] = [
     department: '컴퓨터공학과',
     roles: ['ML/AI', '게임', 'QA'],
     skills: ['Python', 'Pandas', 'scikit'],
-    accent: 'bg-purple-100 text-purple-700',
+    accent: 'bg-teal-100 text-teal-700',
   },
   {
     initial: '신',
@@ -124,7 +125,7 @@ const PEERS: Peer[] = [
     department: '컴퓨터과학과',
     roles: ['풀스택'],
     skills: ['Django', 'React'],
-    accent: 'bg-emerald-100 text-emerald-700',
+    accent: 'bg-slate-100 text-slate-700',
   },
 ];
 
@@ -132,16 +133,17 @@ const PEERS: Peer[] = [
 // 회원가입의 UNIVERSITIES 검색 dropdown을 복제해 비로그인 방문자도 self-contained 이용.
 
 /** accent의 bg-*-100을 strip용 vivid bg-*-500으로 매핑.
- *  Tailwind v4 JIT이 정적 string만 인식하므로 동적 .replace() 대신 lookup. */
+ *  Tailwind v4 JIT이 정적 string만 인식하므로 동적 .replace() 대신 lookup.
+ *  profile/_banner.ts의 BANNER_GRADIENTS 8 key와 동일 hue (teal·sage 시스템에 어울리는 cool 톤만). */
 const STRIP_BY_ACCENT_BG: Record<string, string> = {
-  'bg-primary-100': 'bg-primary-500',
+  'bg-indigo-100': 'bg-indigo-500',
+  'bg-cyan-100': 'bg-cyan-500',
   'bg-emerald-100': 'bg-emerald-500',
-  'bg-amber-100': 'bg-amber-500',
-  'bg-purple-100': 'bg-purple-500',
-  'bg-pink-100': 'bg-pink-500',
+  'bg-lime-100': 'bg-lime-500',
   'bg-sky-100': 'bg-sky-500',
-  'bg-rose-100': 'bg-rose-500',
   'bg-teal-100': 'bg-teal-500',
+  'bg-stone-100': 'bg-stone-500',
+  'bg-slate-100': 'bg-slate-500',
 };
 
 const ROLE_FILTERS = [
@@ -346,9 +348,9 @@ export default function PeerDirectory() {
                     />
                     <div className="mt-1 flex items-center gap-2 sm:gap-2.5">
                       <div
-                        className={`flex h-8 w-8 items-center justify-center text-xs font-bold sm:h-9 sm:w-9 sm:text-sm ${p.accent}`}
+                        className={`flex h-8 w-8 items-center justify-center text-xs font-bold sm:h-9 sm:w-9 sm:text-sm bg-primary-100 text-primary-600`}
                       >
-                        {p.initial}
+                        <UserIcon className="h-5 w-5" />
                       </div>
                       <p className="text-base font-bold tracking-tight text-stone-900 sm:text-lg lg:text-xl">
                         {p.name}
