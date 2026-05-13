@@ -141,7 +141,7 @@ export default function NotificationCenter() {
             onClick={() => setOpen(false)}
             className="block border-t border-gray-100 px-4 py-2 text-center text-xs text-gray-500 transition-colors hover:bg-gray-50"
           >
-            전체 보기
+            자세히 보기
           </Link>
         </div>
       )}
