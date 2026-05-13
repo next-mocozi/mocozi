@@ -59,6 +59,9 @@ export default function Header() {
   }, [isProfileMenuOpen]);
 
   const initial = user?.lastName?.trim().charAt(0).toUpperCase() ?? '?';
+  const hasStoredToken =
+    typeof window !== 'undefined' &&
+    !!(localStorage.getItem('accessToken') || localStorage.getItem('refreshToken'));
 
   return (
     <header className="sticky top-0 z-50 border-b border-gray-200 bg-white">
@@ -120,6 +123,12 @@ export default function Header() {
           {!loading && isAuthenticated && (
             <div className="hidden md:flex">
               <NotificationCenter />
+            </div>
+          )}
+          {/* 토큰 있음 + 로딩 중: 스켈레톤 원 표시 (레이아웃 shift 방지) */}
+          {loading && hasStoredToken && (
+            <div className="hidden md:flex">
+              <div className="h-10 w-10 animate-pulse bg-stone-200" />
             </div>
           )}
           {!loading && isAuthenticated && (
@@ -186,8 +195,8 @@ export default function Header() {
               )}
             </div>
           )}
-          {!loading && !isAuthenticated && (
-            // 비로그인 상태: 로그인/회원가입은 데스크톱에만 (모바일은 사이드바에 있음)
+          {/* 토큰 없음: 즉시 표시 (비로그인 확정이므로 auth 응답 불필요) */}
+          {!hasStoredToken && !isAuthenticated && (
             <div className="hidden items-center gap-3 md:flex">
               <Link href="/login" className="btn-secondary text-sm">
                 로그인
@@ -322,7 +331,7 @@ export default function Header() {
           )}
 
           {/* 인증 영역 — 로그인/비로그인 상태에 따라 다른 항목 표시 */}
-          {!loading && (
+          {(!loading || !hasStoredToken) && (
             <>
               <div className="my-2 border-t border-gray-200" />
               {isAuthenticated ? (
