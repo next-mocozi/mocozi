@@ -26,7 +26,7 @@ interface Member {
   id: string;
   userId: string;
   role: string;
-  user: { id: string; name: string };
+  user: { id: string; lastName: string; firstName: string };
 }
 
 interface Proposal {
@@ -49,7 +49,7 @@ interface TeamDetail {
   description?: string;
   maxMembers?: number;
   isRecruiting: boolean;
-  leader: { name: string };
+  leader: { lastName: string; firstName: string };
   proposal: Proposal | null;
   members: Member[];
 }

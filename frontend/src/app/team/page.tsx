@@ -82,7 +82,7 @@ interface Team {
   description: string | null;
   maxMembers: number | null;
   isRecruiting: boolean;
-  leader: { id: string; name: string };
+  leader: { id: string; lastName: string; firstName: string };
   proposal: {
     projectName: string;
     overview: string;
