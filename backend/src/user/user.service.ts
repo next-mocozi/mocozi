@@ -32,7 +32,14 @@ export class UserService {
         careerSummary: true,
         bannerColor: true,
         createdAt: true,
-        portfolio: { include: { items: true } },
+        portfolio: {
+          include: {
+            items: true,
+            workExperiences: true,
+            activities: true,
+            links: true,
+          },
+        },
       },
     });
 
