@@ -33,7 +33,7 @@ export default function HowItWorks() {
           <Step
             n={3}
             title="채팅으로 바로 만남"
-            caption="앱 안에서 바로 대화. 커피 기프티콘으로 첫 미팅까지 자연스럽게."
+            caption="앱 안에서 바로 대화. 첫 대면 만남까지 자연스럽게."
           >
             <Step3Preview />
           </Step>
@@ -63,7 +63,7 @@ function Step({
         <p className="text-lg font-bold text-stone-900">{title}</p>
       </div>
       <p className="mb-4 text-sm leading-relaxed text-stone-600">{caption}</p>
-      <div className="border border-gray-100 bg-white p-4 shadow-[0_2px_12px_-2px_rgba(0,0,0,0.07)]">
+      <div className="flex-1 border border-gray-100 bg-white p-4 shadow-[0_2px_12px_-2px_rgba(0,0,0,0.07)]">
         {children}
       </div>
     </div>
@@ -77,8 +77,7 @@ function Step1Preview() {
     <div className="border border-gray-100 bg-white p-4">
       <p className="text-xs font-medium text-stone-500">학교 이메일</p>
       <div className="mt-1.5 flex items-center gap-2 border border-stone-200 bg-white px-3 py-2">
-        <span className="text-sm text-stone-400">student@</span>
-        <span className="text-sm font-medium text-stone-700">yourschool.ac.kr</span>
+        <span className="text-sm text-stone-400">student@school.ac.kr</span>
       </div>
       <div
         aria-hidden="true"
@@ -88,7 +87,7 @@ function Step1Preview() {
       </div>
       <p className="mt-3 flex items-center gap-1.5 text-2xs text-stone-500">
         <span className="text-emerald-600">✓</span>
-        학교 메일로 본인 인증
+        본인 인증
       </p>
     </div>
   );
@@ -157,7 +156,7 @@ function Step3Preview() {
           김
         </span>
         <div>
-          <p className="text-xs font-semibold text-stone-900">김태윤</p>
+          <p className="text-xs font-semibold text-stone-900">김OO</p>
           <p className="text-3xs text-stone-400">고려대 · 백엔드</p>
         </div>
         <span className="ml-auto h-1.5 w-1.5 bg-emerald-500" />
