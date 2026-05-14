@@ -187,12 +187,16 @@ export async function deleteItemFromBackend(serverId: string): Promise<void> {
  *  편집 폼 저장 시 호출. 편집 페이지는 백엔드(serverId 포함)를 source of truth 로
  *  읽으므로, 신규 링크는 한 번만 create 되고 재저장 시엔 update 로 처리된다.
  *  (예전 구현은 localStorage 캐시를 읽어 serverId 가 항상 없었던 탓에 저장할 때마다
- *   백엔드에 중복 링크가 쌓였다.) */
+ *   백엔드에 중복 링크가 쌓였다.)
+ *
+ *  하나라도 실패하면 throw — 호출부(handleSave)가 "저장 실패" 를 사용자에게
+ *  보여줄 수 있게 한다. (예전엔 allSettled 로 모든 에러를 삼켜서, 링크가 실제로
+ *  안 올라갔는데도 저장 성공처럼 보였다.) */
 export async function syncLinksToBackend(
   links: ProfileLink[],
   removedServerIds: string[] = [],
 ): Promise<void> {
-  await Promise.allSettled([
+  const results = await Promise.allSettled([
     ...links.map(async (link) => {
       const payload = { url: link.url, label: link.label ?? undefined };
       if (link.serverId) {
@@ -203,4 +207,9 @@ export async function syncLinksToBackend(
     }),
     ...removedServerIds.map((id) => apiDeleteLink(id)),
   ]);
+  const failed = results.filter((r) => r.status === 'rejected');
+  if (failed.length > 0) {
+    console.error('[portfolio-sync] 링크 동기화 일부 실패:', failed);
+    throw new Error(`링크 ${failed.length}건 동기화 실패`);
+  }
 }

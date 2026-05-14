@@ -234,6 +234,19 @@ export default function ProfileEditPage() {
   const handleSave = async () => {
     setSaving(true);
     setSaveError('');
+
+    // 링크 동기화 — 신규 create / 기존 update / 삭제 delete.
+    // 프로필 필드 저장(PUT /users/me)과 분리해 먼저 처리한다. 프로필 필드 저장이
+    // 실패해도 링크는 그대로 반영되도록 (그리고 그 반대도) 독립적으로 동작시킨다.
+    let linkError = false;
+    try {
+      await syncLinksToBackend(links, removedLinkServerIds);
+    } catch {
+      linkError = true;
+    }
+
+    // 프로필 필드(이름/학교/소개/스킬/직군) 저장.
+    let profileError = false;
     try {
       // 직군 — backend는 단일 배열로 저장: roles[0] = mainRole, roles[1..] = subRoles.
       // mainRole 미설정이면 빈 배열로 보내 backend도 초기화.
@@ -249,16 +262,28 @@ export default function ProfileEditPage() {
         roles,
       });
       localStorage.setItem(ROLES_STORAGE_KEY, JSON.stringify({ mainRole, subRoles }));
-      // 백엔드 링크 동기화 — 신규 create / 기존 update / 삭제 delete.
-      // 완료를 기다린 뒤 캐시를 무효화해야 다음 진입 시 serverId 가 반영된다.
-      await syncLinksToBackend(links, removedLinkServerIds);
+    } catch {
+      profileError = true;
+    }
+
+    // 캐시 무효화 — 다음 진입 시 링크의 serverId 가 반영되도록.
+    try {
       await invalidateMyPortfolio();
       await refreshUser();
-      router.push('/profile');
     } catch {
+      /* 캐시 갱신 실패는 치명적이지 않음 — 다음 방문 때 재요청됨 */
+    }
+
+    setSaving(false);
+
+    if (linkError && profileError) {
       setSaveError('저장에 실패했습니다. 다시 시도해주세요.');
-    } finally {
-      setSaving(false);
+    } else if (linkError) {
+      setSaveError('링크 저장에 실패했습니다. 다시 시도해주세요.');
+    } else if (profileError) {
+      setSaveError('프로필 정보 저장에 실패했습니다. (링크는 저장됨)');
+    } else {
+      router.push('/profile');
     }
   };
 
