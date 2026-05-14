@@ -124,16 +124,6 @@ export default function PortfolioDetailPage({
     viewerInitial?.links ?? [],
   );
 
-  // current(재직중) 먼저, 나머지는 period 시작일 역순 ("2024.06 - ..." → "202406")
-  const sortedExperiences = useMemo(() => {
-    const parseStart = (period: string) =>
-      period.split(' - ')[0].replace(/\./g, '');
-    return [...experiences].sort((a, b) => {
-      if (a.current !== b.current) return a.current ? -1 : 1;
-      return parseStart(b.period).localeCompare(parseStart(a.period));
-    });
-  }, [experiences]);
-
   // 인증 + 본인 onboarding 게이트
   useEffect(() => {
     if (loading) return;
@@ -161,6 +151,15 @@ export default function PortfolioDetailPage({
   const [experiences, setExperiences] = useState<Experience[]>(
     viewerInitial?.experiences ?? [],
   );
+  // current(재직중) 먼저, 나머지는 period 시작일 역순 ("2024.06 - ..." → "202406")
+  const sortedExperiences = useMemo(() => {
+    const parseStart = (period: string) =>
+      period.split(' - ')[0].replace(/\./g, '');
+    return [...experiences].sort((a, b) => {
+      if (a.current !== b.current) return a.current ? -1 : 1;
+      return parseStart(b.period).localeCompare(parseStart(a.period));
+    });
+  }, [experiences]);
   const [careers, setCareers] = useState<CareerItem[]>(
     viewerInitial?.careers ?? [],
   );
