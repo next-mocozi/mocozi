@@ -121,13 +121,13 @@ export function ScoutModal({ targetUser, onClose }: ScoutModalProps) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-[440px] rounded-3xl bg-white p-7 shadow-2xl"
+        className="w-full max-w-[440px] bg-white p-7 shadow-2xl"
       >
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-lg font-bold text-stone-900">스카우트 채팅 시작</h2>
           <button
             onClick={onClose}
-            className="rounded-full p-1 text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-600"
+            className="p-1 text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-600"
             aria-label="닫기"
           >
             <svg
@@ -158,7 +158,7 @@ export function ScoutModal({ targetUser, onClose }: ScoutModalProps) {
           </p>
         ) : (
           <>
-            <div className="mb-4">
+            <div className="mb-3">
               <label className="mb-1.5 block text-sm font-semibold text-stone-700">
                 팀 선택
               </label>
@@ -175,7 +175,7 @@ export function ScoutModal({ targetUser, onClose }: ScoutModalProps) {
               </select>
             </div>
             {/* Phase B-DM-8 Scout C — 메시지 작성은 인사양식 패널에서 */}
-            <p className="mb-4 rounded-lg bg-indigo-50 px-3 py-2 text-xs text-indigo-700">
+            <p className="mb-4 bg-indigo-50 px-3 py-2 text-xs text-indigo-700">
               팀 선택 후 채팅방으로 이동하면 인사양식 패널이 자동으로 열려요.
               거기서 메시지를 편집해 보내세요.
             </p>
@@ -188,7 +188,7 @@ export function ScoutModal({ targetUser, onClose }: ScoutModalProps) {
               <button
                 onClick={submit}
                 disabled={loading}
-                className="w-full rounded-xl bg-gradient-to-r from-primary-600 to-primary-700 py-3 text-sm font-semibold text-white shadow-md shadow-primary-200 transition-all hover:shadow-lg disabled:opacity-60"
+                className="w-full bg-gradient-to-r from-primary-600 to-primary-700 py-3 text-sm font-semibold text-white shadow-md shadow-primary-200 transition-all hover:shadow-lg disabled:opacity-60"
               >
                 {loading ? '채팅방 생성 중...' : '채팅방 시작'}
               </button>
