@@ -158,6 +158,38 @@
   margin-right: 0.25rem;
 }
 
+/* KaTeX display math (\[...\] / $$...$$) — 한 줄 수식이 채팅 풍선(max-w-[70%])
+   보다 길어지면 페이지 가로 스크롤바까지 만들어버리는 문제. <table> 와 동일
+   패턴으로 풍선 안에서 가로 스크롤되도록 가둠.
+   -mx-4 px-4 — 풍선 좌우 padding 끝까지 스크롤 영역 확장 (시각 정렬). */
+.markdown-content .katex-display {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin: 0.5rem -1rem;
+  padding: 0 1rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(156 163 175) transparent;
+}
+.markdown-content .katex-display::-webkit-scrollbar {
+  height: 8px;
+}
+.markdown-content .katex-display::-webkit-scrollbar-track {
+  background: transparent;
+}
+.markdown-content .katex-display::-webkit-scrollbar-thumb {
+  background: rgb(156 163 175);
+  border-radius: 4px;
+}
+.markdown-content .katex-display::-webkit-scrollbar-thumb:hover {
+  background: rgb(107 114 128);
+}
+/* 인라인 수식($...$, \(...\)) 도 안전망 — 매우 긴 인라인은 거의 없지만
+   word-break 대신 그냥 풍선 안에 들어오도록 max-width 캡. */
+.markdown-content .katex {
+  max-width: 100%;
+}
+
 @theme {
   /* Breakpoints — px로 강제. Tailwind v4 기본은 rem이지만 미디어 쿼리 내 rem은 브라우저
      기본 font-size에 의존(html font-size 무관)해서, 사용자가 접근성 폰트 키우면 xl(80rem)이
