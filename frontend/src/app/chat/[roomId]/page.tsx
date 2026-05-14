@@ -1398,7 +1398,7 @@ function ChatRoomPageContent({ params }: PageProps) {
             replyTo
               ? `${replyTo.sender.id === user?.id ? replyTo.sender.lastName + replyTo.sender.firstName : getMaskedName(replyTo.sender)}님에게 답글 작성…`
               : isConnected
-                ? '메시지를 입력하세요... (Shift+Enter로 줄바꿈)'
+                ? '메시지를 입력하세요...'
                 : '연결 대기 중…'
           }
           disabled={!isConnected}
