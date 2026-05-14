@@ -26,7 +26,7 @@ export default function HowItWorks() {
           <Step
             n={2}
             title="기획서 보고 지원 / 팀 만들기"
-            caption="필요한 직군·스킬이 정리된 기획서를 보고 지원하거나, 직접 팀을 만들어요."
+            caption="직군·스킬이 정리된 기획서를 보고 지원하거나, 직접 팀을 만들어요."
           >
             <Step2Preview />
           </Step>
