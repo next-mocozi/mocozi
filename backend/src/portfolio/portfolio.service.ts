@@ -356,10 +356,14 @@ export class PortfolioService {
   }
 
   // ──── 외부 링크 ────
+  /** Idempotent — 같은 (portfolioId, url) 이 이미 있으면 새로 만들지 않고 label 만 갱신.
+   *  편집 페이지 재저장 시 동일 링크가 중복 INSERT 되어 누적되던 버그를 차단한다. */
   async createLink(userId: string, dto: CreatePortfolioLinkDto) {
     const portfolioId = await this.ensureOwnedPortfolioId(userId);
-    return this.prisma.portfolioLink.create({
-      data: { portfolioId, ...dto },
+    return this.prisma.portfolioLink.upsert({
+      where: { portfolioId_url: { portfolioId, url: dto.url } },
+      create: { portfolioId, ...dto },
+      update: { label: dto.label ?? null },
     });
   }
 
