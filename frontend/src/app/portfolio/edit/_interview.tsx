@@ -954,7 +954,10 @@ export default function ProjectInterview() {
         ...d.roles,
       ]),
     ).filter(Boolean),
-    thumbnail: d.thumbnail || undefined,
+    // 빈 문자열을 그대로 보낸다. `|| undefined` 로 바꾸면 "제거" 후 저장 시
+    // payload 에서 thumbnail 키가 빠져(axios 가 undefined 를 직렬화에서 제외)
+    // 백엔드 update 가 기존 썸네일을 그대로 유지 → 대표 이미지가 삭제되지 않던 버그.
+    thumbnail: d.thumbnail,
   });
 
   // 초기 로드 — 수정 모드면 백엔드에서 답변 로드, 신규면 새 ID 발급
