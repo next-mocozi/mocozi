@@ -1,8 +1,13 @@
-import { Controller, Post, Get, Patch, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, Param, UseGuards, ParseEnumPipe } from '@nestjs/common';
 import { ApplyService } from './apply.service';
 import { ApplyDto } from './dto/apply.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+
+enum ReviewableStatus {
+  ACCEPTED = 'ACCEPTED',
+  REJECTED = 'REJECTED',
+}
 
 @Controller('apply')
 @UseGuards(JwtAuthGuard)
@@ -29,7 +34,7 @@ export class ApplyController {
   @Patch('applications/:applicationId/:status')
   updateStatus(
     @Param('applicationId') applicationId: string,
-    @Param('status') status: 'ACCEPTED' | 'REJECTED',
+    @Param('status', new ParseEnumPipe(ReviewableStatus)) status: ReviewableStatus,
     @CurrentUser() user: { id: string },
   ) {
     return this.applyService.updateApplicationStatus(applicationId, user.id, status);
