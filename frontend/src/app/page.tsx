@@ -19,7 +19,7 @@ type SamplePeer = {
 const SAMPLE_PEERS: SamplePeer[] = [
   {
     initial: '김',
-    nameMasked: '김태윤',
+    nameMasked: '김OO',
     school: '고려대학교 컴퓨터학과',
     role: '백엔드',
     skills: ['Node.js', 'Postgres', 'AWS'],
@@ -28,7 +28,7 @@ const SAMPLE_PEERS: SamplePeer[] = [
   },
   {
     initial: '이',
-    nameMasked: '이지민',
+    nameMasked: '이OO',
     school: '서울대학교 컴퓨터공학과',
     role: '풀스택',
     skills: ['Next.js', 'React', 'Figma'],
@@ -37,7 +37,7 @@ const SAMPLE_PEERS: SamplePeer[] = [
   },
   {
     initial: '박',
-    nameMasked: '박우진',
+    nameMasked: '박OO',
     school: '서강대학교 컴퓨터공학과',
     role: '프론트엔드',
     skills: ['React', 'TypeScript', 'Tailwind'],
@@ -76,7 +76,7 @@ function HeroSection() {
         <div className="text-center md:text-left">
           <span className="inline-flex items-center gap-2 border border-primary-200 bg-white px-3 py-1 text-xs font-medium text-primary-700">
             <span className="h-1.5 w-1.5 bg-primary-500" />
-            .ac.kr 인증된 IT 대학생만
+            인증된 IT 대학생만
           </span>
           <h1 className="mt-5 text-3xl font-bold leading-tight text-gray-900 sm:text-4xl md:text-5xl">
             간편하게 팀을 찾으세요
@@ -84,11 +84,7 @@ function HeroSection() {
             <span className="text-primary-600">검증된 동료들과</span>
           </h1>
           <p className="mt-5 text-base text-gray-600 sm:text-lg">
-            프로젝트, 해커톤, 스터디 — 학교 이메일로 인증된 IT 대학생들이
-            기다리고 있어요.
-          </p>
-          <p className="mt-3 text-sm text-gray-500">
-            지난 7일간 <span className="font-semibold text-gray-700">24개</span> 팀이 매칭됐어요
+            프로젝트, 해커톤, 스터디 — 어떤 팀이든 쉽게 찾아보고, 지원할 수 있습니다.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center md:justify-start">
             <Link href="/register" className="btn-primary px-7 py-3 text-base text-center">
