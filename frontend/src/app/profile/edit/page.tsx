@@ -202,7 +202,7 @@ export default function ProfileEditPage() {
     setIsAddOpen(false);
   };
 
-  const handleRemoveLink = (id: number) => setLinks((prev) => prev.filter((l) => l.id !== id));
+  const handleRemoveLink = (id: string | number) => setLinks((prev) => prev.filter((l) => l.id !== id));
 
   const handleSave = async () => {
     setSaving(true);
