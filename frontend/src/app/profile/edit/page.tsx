@@ -4,8 +4,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useMyPortfolio, invalidateMyPortfolio } from '@/hooks/useMyPortfolio';
 import api from '@/lib/api';
-import { syncLinksAllToBackend } from '@/lib/portfolio-mapper';
+import { syncLinksToBackend } from '@/lib/portfolio-mapper';
 import {
   PlatformIcon,
   PLATFORM_META,
@@ -37,7 +38,6 @@ const ROLE_OPTIONS = [
 /** 메인 직군 선택지 — 일반 옵션 + "탐색 중" */
 const MAIN_ROLE_OPTIONS = [...ROLE_OPTIONS, EXPLORING_ROLE];
 
-const LINKS_STORAGE_KEY = 'mock_profile_links';
 const ROLES_STORAGE_KEY = 'mock_profile_roles';
 
 /** 구인 페이지와 동일한 기술 스택 카테고리 — 사용자가 클릭으로 추가/제거 */
@@ -72,6 +72,7 @@ const OTHER_PLATFORMS: { key: PlatformKey; prefix: string }[] = [
 export default function ProfileEditPage() {
   const router = useRouter();
   const { user, loading, refreshUser } = useAuth();
+  const { portfolio } = useMyPortfolio();
 
   const [lastName, setLastName] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -86,6 +87,8 @@ export default function ProfileEditPage() {
   const [skillSearch, setSkillSearch] = useState('');
 
   const [links, setLinks] = useState<ProfileLink[]>([]);
+  /** 저장 시 백엔드에서 삭제할 기존 링크들의 serverId */
+  const [removedLinkServerIds, setRemovedLinkServerIds] = useState<string[]>([]);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [newUrl, setNewUrl] = useState('');
   const [newLabel, setNewLabel] = useState('');
@@ -107,7 +110,23 @@ export default function ProfileEditPage() {
     setSkills(user.skills ?? []);
   }, [user]);
 
-  // localStorage에서 roles, links 로드
+  // 링크는 백엔드(portfolio.links)가 source of truth — serverId 를 함께 보관해야
+  // 저장 시 신규는 create, 기존은 update 로 처리돼 중복이 쌓이지 않는다.
+  useEffect(() => {
+    if (!portfolio) return;
+    setLinks(
+      (portfolio.links ?? []).map((b, i) => ({
+        // id 는 React key + 로컬 식별용 — 신규 링크(Date.now())와 겹치지 않게 index 사용
+        id: i,
+        serverId: b.id,
+        url: b.url,
+        label: b.label ?? undefined,
+      })),
+    );
+    setRemovedLinkServerIds([]);
+  }, [portfolio]);
+
+  // localStorage에서 roles 로드
   useEffect(() => {
     const loadJson = <T,>(key: string, fallback: T): T => {
       try {
@@ -133,7 +152,6 @@ export default function ProfileEditPage() {
         setSubRoles(cached.subRoles);
       }
     }
-    setLinks(loadJson(LINKS_STORAGE_KEY, [] as ProfileLink[]));
   }, [user]);
 
   const toggleSubRole = (role: string) => {
@@ -202,7 +220,16 @@ export default function ProfileEditPage() {
     setIsAddOpen(false);
   };
 
-  const handleRemoveLink = (id: number) => setLinks((prev) => prev.filter((l) => l.id !== id));
+  const handleRemoveLink = (id: number) => {
+    setLinks((prev) => {
+      const target = prev.find((l) => l.id === id);
+      // 기존(백엔드에 존재하는) 링크면 저장 시 삭제하도록 기록
+      if (target?.serverId) {
+        setRemovedLinkServerIds((ids) => [...ids, target.serverId!]);
+      }
+      return prev.filter((l) => l.id !== id);
+    });
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -221,11 +248,11 @@ export default function ProfileEditPage() {
         skills,
         roles,
       });
-      localStorage.setItem(LINKS_STORAGE_KEY, JSON.stringify(links));
       localStorage.setItem(ROLES_STORAGE_KEY, JSON.stringify({ mainRole, subRoles }));
-      // 백엔드 링크 동기화 — 실패해도 localStorage 기준으로 동작 유지.
-      // 편집 페이지는 add/remove 가 모두 일어나므로 bulk 동기화로 처리.
-      void syncLinksAllToBackend(links);
+      // 백엔드 링크 동기화 — 신규 create / 기존 update / 삭제 delete.
+      // 완료를 기다린 뒤 캐시를 무효화해야 다음 진입 시 serverId 가 반영된다.
+      await syncLinksToBackend(links, removedLinkServerIds);
+      await invalidateMyPortfolio();
       await refreshUser();
       router.push('/profile');
     } catch {

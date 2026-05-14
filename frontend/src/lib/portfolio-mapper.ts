@@ -14,6 +14,7 @@ import {
   deleteItem as apiDeleteItem,
   createPortfolioLink as apiCreateLink,
   updatePortfolioLink as apiUpdateLink,
+  deletePortfolioLink as apiDeleteLink,
 } from './portfolio-api';
 import type {
   BackendPortfolioItem,
@@ -181,11 +182,18 @@ export async function deleteItemFromBackend(serverId: string): Promise<void> {
   }
 }
 
-/** 링크 목록 전체 동기화 — serverId 있으면 update, 없으면 create.
- *  삭제는 별도로 처리해야 함 (여기서는 add/update 만 처리). */
-export async function syncLinksAllToBackend(links: ProfileLink[]): Promise<void> {
-  await Promise.allSettled(
-    links.map(async (link) => {
+/** 링크 목록 동기화 — serverId 있으면 update, 없으면 create, removedServerIds 는 delete.
+ *
+ *  편집 폼 저장 시 호출. 편집 페이지는 백엔드(serverId 포함)를 source of truth 로
+ *  읽으므로, 신규 링크는 한 번만 create 되고 재저장 시엔 update 로 처리된다.
+ *  (예전 구현은 localStorage 캐시를 읽어 serverId 가 항상 없었던 탓에 저장할 때마다
+ *   백엔드에 중복 링크가 쌓였다.) */
+export async function syncLinksToBackend(
+  links: ProfileLink[],
+  removedServerIds: string[] = [],
+): Promise<void> {
+  await Promise.allSettled([
+    ...links.map(async (link) => {
       const payload = { url: link.url, label: link.label ?? undefined };
       if (link.serverId) {
         await apiUpdateLink(link.serverId, payload);
@@ -193,5 +201,6 @@ export async function syncLinksAllToBackend(links: ProfileLink[]): Promise<void>
         await apiCreateLink(payload);
       }
     }),
-  );
+    ...removedServerIds.map((id) => apiDeleteLink(id)),
+  ]);
 }

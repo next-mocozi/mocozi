@@ -1,7 +1,13 @@
 // 프로필 외부 링크용 표시 유틸 — 순수 프론트 (백엔드 무관, 교체 대상 아님).
 // 데이터/mock은 각 페이지에 인라인 유지.
 
-export type ProfileLink = { id: number; url: string; label?: string };
+export type ProfileLink = {
+  id: number;
+  /** 백엔드 PortfolioLink.id — 있으면 update/delete 대상, 없으면 신규 */
+  serverId?: string;
+  url: string;
+  label?: string;
+};
 
 export type PlatformKey =
   | 'youtube'
