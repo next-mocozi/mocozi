@@ -81,23 +81,15 @@ export default function PortfolioFeedPage() {
 
   return (
     <div className="relative mx-auto w-full max-w-7xl px-4 py-8">
-      {/* Segmented controls — 좌측 슬라이드된 피드가 z-index 로 덮어 가림 */}
-      <div className="relative z-0">
-        <PortfolioSegmentedNav current="feed" isPublic={myPortfolio?.isPublic} />
-      </div>
+      <PortfolioSegmentedNav current="feed" isPublic={myPortfolio?.isPublic} />
 
-      {/* overflow-x-clip — 닫혀있을 때 우측 패널이 translate-x-full 로 viewport 바깥에
-          painting 되어 가로 스크롤이 생기던 문제를 잘라낸다. clip 은 sticky/fixed
-          stacking context 를 만들지 않아 우측 패널 sticky 동작에 영향이 없다. */}
-      <div className="relative overflow-x-clip">
-        {/* 좌측: 피드 컬럼 — 크기 유지한 채 좌측으로 슬라이드만 한다. */}
-        <div
-          className={`relative z-20 mx-auto max-w-2xl transition-transform duration-300 ease-out ${
-            detailOpen
-              ? 'lg:-translate-x-56 xl:-translate-x-64'
-              : 'translate-x-0'
-          }`}
-        >
+      {/* 진짜 2단 레이아웃 — 패널이 열리면 피드와 한 행을 나눠 갖는다.
+          overflow-x-clip — 닫혀있을 때 패널이 자기 폭만큼 우측으로 빠져 있어 생기는
+          가로 스크롤을 잘라낸다. clip 은 scroll container/stacking context 를 만들지
+          않아 내부 패널의 sticky 동작에 영향이 없다. */}
+      <div className="relative flex justify-center overflow-x-clip">
+        {/* 좌측: 피드 컬럼 — 패널이 열리면 flex-shrink 로 줄어든다. */}
+        <div className="w-full min-w-0 max-w-2xl">
           <header className="mb-4">
             <h1 className="text-2xl font-bold text-gray-900">피드</h1>
             <p className="mt-1 text-sm text-gray-500">
@@ -171,17 +163,19 @@ export default function PortfolioFeedPage() {
           )}
         </div>
 
-        {/* 데스크톱 — 우측 fixed 패널. viewport 에 고정되어 페이지 스크롤과 독립.
-            - 페이지 sticky 헤더(h-16) 아래(top-20)에서 시작 → 스크롤해도 X 버튼이 헤더에 가리지 않음.
-            - 폭은 단일 rem 고정값(w-[28rem]) — 브라우저 zoom 으로 breakpoint 가 흔들려도 깨지지 않음.
-            - fixed + max-w-7xl mx-auto px-4 + 내부 absolute right-4 로 페이지 컨테이너 우측 가장자리에 정렬.
-            target 이 null 이 된 뒤에도 renderedTarget 으로 잠깐 남아 슬라이드 아웃 표시. */}
+        {/* 데스크톱 — in-flow 패널 컬럼. 열림/닫힘 시 폭이 0↔28rem 으로 애니메이션.
+            - 컬럼은 flex 기본 stretch 로 피드 높이만큼 늘어나고, 그 안에서 내부 패널이
+              sticky top-20 으로 뷰포트에 고정된다 (스크롤해도 X 버튼이 헤더에 안 가림).
+            - 내부 패널의 translate 와 컬럼 width 애니메이션이 동기되어 우→좌 슬라이드.
+            - target 이 null 이 된 뒤에도 renderedTarget 으로 잠깐 남아 슬라이드 아웃 표시. */}
         <div
           aria-hidden={!detailOpen}
-          className="pointer-events-none fixed inset-x-0 top-20 z-30 mx-auto hidden h-[calc(100vh-6rem)] max-w-7xl px-4 lg:block"
+          className={`hidden shrink-0 transition-[width,opacity,margin] duration-300 ease-out lg:block ${
+            detailOpen ? 'ml-6 w-[28rem] opacity-100' : 'w-0 opacity-0'
+          }`}
         >
           <div
-            className={`pointer-events-auto absolute right-4 top-0 h-full w-[28rem] transition-transform duration-300 ease-out ${
+            className={`sticky top-20 h-[calc(100vh-6rem)] w-[28rem] transition-transform duration-300 ease-out ${
               detailOpen ? 'translate-x-0' : 'translate-x-full'
             }`}
           >
