@@ -124,6 +124,16 @@ export default function PortfolioDetailPage({
     viewerInitial?.links ?? [],
   );
 
+  // current(재직중) 먼저, 나머지는 period 시작일 역순 ("2024.06 - ..." → "202406")
+  const sortedExperiences = useMemo(() => {
+    const parseStart = (period: string) =>
+      period.split(' - ')[0].replace(/\./g, '');
+    return [...experiences].sort((a, b) => {
+      if (a.current !== b.current) return a.current ? -1 : 1;
+      return parseStart(b.period).localeCompare(parseStart(a.period));
+    });
+  }, [experiences]);
+
   // 인증 + 본인 onboarding 게이트
   useEffect(() => {
     if (loading) return;
@@ -998,7 +1008,7 @@ export default function PortfolioDetailPage({
             </p>
           ) : (
             <ol className="space-y-3">
-              {experiences.map((exp, i) => (
+              {sortedExperiences.map((exp, i) => (
                 <li
                   key={exp.id}
                   className="flex items-start gap-3 border border-gray-100 p-3"
@@ -1565,7 +1575,7 @@ export default function PortfolioDetailPage({
                   </p>
                 ) : (
                   <ol className="space-y-3">
-                    {experiences.map((exp) => {
+                    {sortedExperiences.map((exp) => {
                       const editing = expEditId === exp.id;
                       return (
                         <li
