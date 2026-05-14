@@ -167,7 +167,9 @@ model Portfolio {
   // 첫 게시 시각 — 메인/내 피드 정렬 기준
   firstPostAt DateTime?
   // 포트폴리오 자기소개 섹션
-  intro       String?
+  intro           String?
+  // 내 프로필에서 선택한 표시 섹션 — 타인이 볼 때도 동일하게 적용
+  profileSections String[]  @default([])
   user        User            @relation(fields: [userId], references: [id])
   items       PortfolioItem[]
 

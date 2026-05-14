@@ -130,7 +130,7 @@ export class PortfolioService {
     };
   }
 
-  /** 내 포트폴리오 메타 부분 수정 (isPublic, firstPostAt, intro) */
+  /** 내 포트폴리오 메타 부분 수정 (isPublic, firstPostAt, intro, profileSections) */
   async updateMyMeta(userId: string, dto: UpdatePortfolioMetaDto) {
     const portfolio = await this.getMyPortfolio(userId);
     return this.prisma.portfolio.update({
@@ -141,6 +141,9 @@ export class PortfolioService {
           ? { firstPostAt: new Date(dto.firstPostAt) }
           : {}),
         ...(dto.intro !== undefined ? { intro: dto.intro } : {}),
+        ...(dto.profileSections !== undefined
+          ? { profileSections: dto.profileSections }
+          : {}),
       },
     });
   }

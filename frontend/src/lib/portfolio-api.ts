@@ -70,6 +70,7 @@ export type BackendPortfolio = {
   isPublic?: boolean;
   firstPostAt?: string | null;
   intro?: string | null;
+  profileSections?: string[];
   items: BackendPortfolioItem[];
   // Phase 3 — 부속 메타. 옛 백엔드 응답 호환을 위해 옵셔널.
   workExperiences?: BackendWorkExperience[];
@@ -164,11 +165,12 @@ export async function deleteItem(id: string): Promise<void> {
   await api.delete(`/api/portfolios/items/${id}`);
 }
 
-/** 메타 부분 수정 — isPublic, firstPostAt */
+/** 메타 부분 수정 — isPublic, firstPostAt, intro, profileSections */
 export async function updateMyMeta(payload: {
   isPublic?: boolean;
-  firstPostAt?: string; // ISO string
+  firstPostAt?: string;
   intro?: string;
+  profileSections?: string[];
 }): Promise<BackendPortfolio> {
   const res = await api.patch('/api/portfolios/me', payload);
   return unwrap<BackendPortfolio>(res);

@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useMyPortfolio } from '@/hooks/useMyPortfolio';
 import { UserIcon } from '@/components/icons/ChatIcons';
 import api from '@/lib/api';
+import { updateMyMeta } from '@/lib/portfolio-api';
 import {
   PlatformIcon,
   PLATFORM_META,
@@ -14,7 +15,6 @@ import {
   type ProfileLink,
 } from './_platforms';
 
-const PROFILE_SECTIONS_KEY = 'mock_profile_portfolio_sections';
 
 const DEFAULT_LINKS: ProfileLink[] = [];
 
@@ -184,6 +184,12 @@ export default function MyProfilePage() {
   useEffect(() => {
     if (!portfolio) return;
 
+    if (portfolio.profileSections && portfolio.profileSections.length > 0) {
+      const saved = portfolio.profileSections as SectionKey[];
+      setSelected(saved);
+      setDraftSelected(saved);
+    }
+
     setIntro(portfolio.intro ?? '');
     setExperiences(
       (portfolio.workExperiences ?? []).map((b) => ({
@@ -227,22 +233,12 @@ export default function MyProfilePage() {
     );
   }, [portfolio]);
 
-  // 직군·섹션 선택은 user/localStorage에서
+  // 직군은 user에서
   useEffect(() => {
     if (!user) return;
     if (user.roles && user.roles.length > 0) {
       setMainRole(user.roles[0]);
       setSubRoles(user.roles.slice(1));
-    }
-    try {
-      const raw = localStorage.getItem(PROFILE_SECTIONS_KEY);
-      if (raw) {
-        const saved = JSON.parse(raw) as SectionKey[];
-        setSelected(saved);
-        setDraftSelected(saved);
-      }
-    } catch {
-      // 무시
     }
   }, [user]);
 
@@ -277,17 +273,17 @@ export default function MyProfilePage() {
     );
   };
 
-  const saveImport = () => {
+  const saveImport = async () => {
     const ordered = SECTION_ORDER.filter(
       (k) => draftSelected.includes(k) && sectionCount(k) > 0,
     );
     setSelected(ordered);
-    try {
-      localStorage.setItem(PROFILE_SECTIONS_KEY, JSON.stringify(ordered));
-    } catch {
-      // 저장 실패 시 무시
-    }
     setImportOpen(false);
+    try {
+      await updateMyMeta({ profileSections: ordered });
+    } catch {
+      // 저장 실패 시 무시 — 로컬 상태는 반영됨
+    }
   };
 
   const sectionCount = (k: SectionKey) => {
