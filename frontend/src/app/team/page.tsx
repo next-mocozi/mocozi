@@ -1,7 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState, useMemo, useEffect, useRef, type ReactNode } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import { SearchIcon } from '@/components/icons/CommonIcons';
 import api from '@/lib/api';
 import { usePagination } from '@/hooks/usePagination';
@@ -97,6 +99,8 @@ const toggleItem = (item: string, list: string[], setList: (v: string[]) => void
 };
 
 export default function TeamListPage() {
+  const router = useRouter();
+  const { user, loading } = useAuth();
   const [teams, setTeams] = useState<Team[]>([]);
   const [loadingTeams, setLoadingTeams] = useState(true);
 
@@ -109,6 +113,11 @@ export default function TeamListPage() {
   const [typeFilter, setTypeFilter] = useState<TeamType | null>(null);
 
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+
+  useEffect(() => {
+    if (loading) return;
+    if (!user) router.replace('/login');
+  }, [loading, user, router]);
 
   // 바텀시트 열린 동안 body 스크롤 잠금
   useEffect(() => {
@@ -487,6 +496,7 @@ export default function TeamListPage() {
             <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-3">
               {pageItems.map((team) => {
                 const recruitingRoles = team.proposal?.recruitingRoles ?? [];
+                const requiredSkills = team.proposal?.requiredSkills ?? [];
                 return (
                   <Link
                     key={team.id}
@@ -521,26 +531,52 @@ export default function TeamListPage() {
                         {intro(team) || '소개가 없습니다.'}
                       </p>
 
-                      {recruitingRoles.length > 0 && (
+                      {(recruitingRoles.length > 0 || requiredSkills.length > 0) && (
                         <div className="mt-auto pt-2 sm:pt-2.5">
-                          <p className="text-3xs font-bold uppercase tracking-[0.16em] text-stone-400">
-                            모집 직군
-                          </p>
-                          <div className="mt-1 flex flex-wrap gap-1">
-                            {recruitingRoles.slice(0, 3).map((role) => (
-                              <span
-                                key={role}
-                                className="border border-stone-200 bg-stone-100 px-1.5 py-0.5 text-3xs font-semibold text-stone-700 sm:px-2 sm:text-2xs"
-                              >
-                                {role}
-                              </span>
-                            ))}
-                            {recruitingRoles.length > 3 && (
-                              <span className="border border-stone-200 bg-stone-50 px-1.5 py-0.5 text-3xs text-stone-500 sm:px-2 sm:text-2xs">
-                                +{recruitingRoles.length - 3}
-                              </span>
-                            )}
-                          </div>
+                          {recruitingRoles.length > 0 && (
+                            <>
+                              <p className="text-3xs font-bold uppercase tracking-[0.16em] text-stone-400">
+                                모집 직군
+                              </p>
+                              <div className="mt-1 flex flex-wrap gap-1">
+                                {recruitingRoles.slice(0, 3).map((role) => (
+                                  <span
+                                    key={role}
+                                    className="border border-stone-200 bg-stone-100 px-1.5 py-0.5 text-3xs font-semibold text-stone-700 sm:px-2 sm:text-2xs"
+                                  >
+                                    {role}
+                                  </span>
+                                ))}
+                                {recruitingRoles.length > 3 && (
+                                  <span className="border border-stone-200 bg-stone-50 px-1.5 py-0.5 text-3xs text-stone-500 sm:px-2 sm:text-2xs">
+                                    +{recruitingRoles.length - 3}
+                                  </span>
+                                )}
+                              </div>
+                            </>
+                          )}
+                          {requiredSkills.length > 0 && (
+                            <div className={recruitingRoles.length > 0 ? 'mt-1.5' : ''}>
+                              <p className="text-3xs font-bold uppercase tracking-[0.16em] text-stone-400">
+                                기술 스택
+                              </p>
+                              <div className="mt-1 flex flex-wrap gap-1">
+                                {requiredSkills.slice(0, 3).map((skill) => (
+                                  <span
+                                    key={skill}
+                                    className="border border-teal-200 bg-teal-50 px-1.5 py-0.5 text-3xs font-semibold text-teal-700 sm:px-2 sm:text-2xs"
+                                  >
+                                    {skill}
+                                  </span>
+                                ))}
+                                {requiredSkills.length > 3 && (
+                                  <span className="border border-teal-100 bg-teal-50 px-1.5 py-0.5 text-3xs text-teal-500 sm:px-2 sm:text-2xs">
+                                    +{requiredSkills.length - 3}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
 

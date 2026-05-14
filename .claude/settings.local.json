@@ -80,7 +80,13 @@
       "Bash(docker exec mocozi-temp-frontend-1 *)",
       "Bash(python -m json.tool)",
       "Bash(docker exec mocozi-temp-backend-1 *)",
-      "Bash(git *)"
+      "Bash(git *)",
+      "Bash(pnpm dev *)",
+      "Bash(powershell *)",
+      "PowerShell(Get-Process *)",
+      "Bash(pnpm exec *)",
+      "Bash(xargs grep -l \"recruit\\\\|application\" -i)",
+      "Bash(grep -E \"\\\\.env$|\\\\.env\\\\.local$|\\\\.env\\\\.production\")"
     ]
   },
   "enabledPlugins": {

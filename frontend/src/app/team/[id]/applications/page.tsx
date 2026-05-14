@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 
-type ApplicationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED';
+type ApplicationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'KICKED';
 
 interface Application {
   id: string;
@@ -26,12 +26,14 @@ const STATUS_LABEL: Record<ApplicationStatus, string> = {
   PENDING: '검토 중',
   ACCEPTED: '수락',
   REJECTED: '거절',
+  KICKED: '추방',
 };
 
 const STATUS_CLASS: Record<ApplicationStatus, string> = {
   PENDING: 'bg-amber-50 text-amber-600 border-amber-200',
   ACCEPTED: 'bg-emerald-50 text-emerald-600 border-emerald-200',
   REJECTED: 'bg-red-50 text-red-400 border-red-200',
+  KICKED: 'bg-stone-100 text-stone-400 border-stone-200',
 };
 
 export default function ApplicationsPage({

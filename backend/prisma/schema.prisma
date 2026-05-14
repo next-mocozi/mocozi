@@ -151,6 +151,7 @@ enum ApplicationStatus {
   PENDING
   ACCEPTED
   REJECTED
+  KICKED
 }
 
 // 스카우트 모델 — Phase B-DM-8에서 폐기.
@@ -166,7 +167,11 @@ model Portfolio {
   // 첫 게시 시각 — 메인/내 피드 정렬 기준
   firstPostAt DateTime?
   // 포트폴리오 자기소개 섹션
-  intro       String?
+  intro           String?
+  // 내 프로필에서 선택한 표시 섹션 — 타인이 볼 때도 동일하게 적용
+  profileSections String[]  @default([])
+  // /p/[slug] 공개 공유 URL용 — null 이면 공유 링크 미설정
+  slug        String?         @unique
   user        User            @relation(fields: [userId], references: [id])
   items       PortfolioItem[]
 
@@ -458,7 +463,8 @@ enum NotificationType {
   APPLICATION_RECEIVED
   /** 본인 지원이 ACCEPTED/REJECTED 처리됨 (applicant 받음) */
   APPLICATION_PROCESSED
-  // 후속 카테고리 자리 — CHAT_REPLY, CHAT_EXPIRED, TEAM_MEMBER_CHANGED 등
+  /** 팀원으로 합류 후 팀장에 의해 추방됨 (해당 팀원 받음) */
+  TEAM_MEMBER_KICKED
 }
 
 model Notification {

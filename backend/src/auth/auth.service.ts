@@ -167,8 +167,10 @@ export class AuthService {
     if (!passwordValid) {
       throw new UnauthorizedException('이메일 또는 비밀번호가 올바르지 않습니다.');
     }
-    // production만 이메일 인증 강제. dev에선 Resend 미설정·메일 미수신 상황이 있으므로 우회.
-    if (!user.emailVerified && process.env.NODE_ENV === 'production') {
+    const skipEmailVerification =
+      process.env.NODE_ENV === 'development' &&
+      process.env.SKIP_EMAIL_VERIFICATION === 'true';
+    if (!user.emailVerified && !skipEmailVerification) {
       throw new UnauthorizedException('이메일 인증이 필요합니다.');
     }
 

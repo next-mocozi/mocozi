@@ -64,6 +64,28 @@ interface PortfolioItem {
   tags: string[];
 }
 
+interface WorkExperience {
+  id: string;
+  company: string;
+  team: string | null;
+  role: string;
+  period: string;
+  current: boolean;
+}
+
+interface Activity {
+  id: string;
+  year: string;
+  month: string | null;
+  content: string;
+}
+
+interface PortfolioLink {
+  id: string;
+  url: string;
+  label: string | null;
+}
+
 interface UserProfile {
   id: string;
   lastName: string;
@@ -77,7 +99,14 @@ interface UserProfile {
   careerSummary: string | null;
   /** 작성자가 본인 프로필에서 선택한 배너 색상. 타인 viewer 도 동일하게 보여야. */
   bannerColor?: string | null;
-  portfolio: { items: PortfolioItem[] } | null;
+  portfolio: {
+    intro: string | null;
+    profileSections: string[];
+    items: PortfolioItem[];
+    workExperiences: WorkExperience[];
+    activities: Activity[];
+    links: PortfolioLink[];
+  } | null;
 }
 
 export default function UserProfilePage({
@@ -93,7 +122,7 @@ export default function UserProfilePage({
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<SectionKey>('intro');
+  const [activeTab, setActiveTab] = useState<SectionKey | null>(null);
 
   /** §B-DM-8 — 스카우트 모달 열림 상태. 버튼 클릭 시 셋, 모달 onClose에서 null. */
   const [scoutOpen, setScoutOpen] = useState(false);
@@ -142,13 +171,33 @@ export default function UserProfilePage({
   const mainRole = profile.roles?.[0];
   const subRoles = profile.roles?.slice(1) ?? [];
 
-  // TODO: 백엔드 응답에 links 필드 추가되면 profile.links ?? [] 로 교체
-  const links: ProfileLink[] = [];
+  const rawLinks = profile.portfolio?.links ?? [];
+  const links: ProfileLink[] = rawLinks.map((l) => ({ id: l.id, url: l.url, label: l.label ?? undefined }));
+
+  const intro = profile.portfolio?.intro ?? '';
+  const workExperiences = profile.portfolio?.workExperiences ?? [];
+  const sortedActivities = [...(profile.portfolio?.activities ?? [])].sort((a, b) => {
+    const ya = Number(a.year);
+    const yb = Number(b.year);
+    if (yb !== ya) return yb - ya;
+    return (b.month ?? '').localeCompare(a.month ?? '');
+  });
 
   const items = profile.portfolio?.items ?? [];
   const projects = items.filter((it) => it.type === 'PROJECT');
   const research = items.filter((it) => it.type === 'RESEARCH');
   const studies = items.filter((it) => it.type === 'STUDY');
+
+  // 프로필 소유자가 선택한 섹션만 표시. 미설정이면 전체 표시.
+  const savedSections = profile.portfolio?.profileSections ?? [];
+  const visibleSections: SectionKey[] =
+    savedSections.length > 0
+      ? SECTION_ORDER.filter((k) => savedSections.includes(k))
+      : SECTION_ORDER;
+
+  const currentTab = activeTab && visibleSections.includes(activeTab)
+    ? activeTab
+    : (visibleSections[0] ?? 'intro');
 
   const bannerClass = getBannerGradientClass(profile.bannerColor);
 
@@ -281,8 +330,8 @@ export default function UserProfilePage({
             aria-label="포트폴리오 섹션"
             className="inline-flex flex-wrap gap-1 bg-gray-100 p-1"
           >
-            {SECTION_ORDER.map((k) => {
-              const isActive = activeTab === k;
+            {visibleSections.map((k) => {
+              const isActive = currentTab === k;
               return (
                 <button
                   key={k}
@@ -303,35 +352,70 @@ export default function UserProfilePage({
           </div>
 
           {/* 활성 탭 컨텐츠 */}
-          {activeTab === 'intro' && (
+          {currentTab === 'intro' && (
             <div className="card">
-              <p className="text-sm text-gray-400">
-                아직 등록된 자기소개가 없습니다.
-              </p>
-            </div>
-          )}
-
-          {activeTab === 'experiences' && (
-            <div className="card">
-              <p className="text-sm text-gray-400">
-                등록된 실무 경험이 없습니다.
-              </p>
-            </div>
-          )}
-
-          {activeTab === 'careers' && (
-            <div className="card">
-              {profile.careerSummary?.trim() ? (
-                <p className="whitespace-pre-wrap break-words text-sm text-gray-700">
-                  {profile.careerSummary}
-                </p>
+              {intro.trim() ? (
+                <p className="font-medium whitespace-pre-wrap break-words">{intro}</p>
               ) : (
-                <p className="text-sm text-gray-400">등록된 경력 요약이 없습니다.</p>
+                <p className="text-sm text-gray-400">아직 등록된 자기소개가 없습니다.</p>
               )}
             </div>
           )}
 
-          {activeTab === 'projects' && (
+          {currentTab === 'experiences' && (
+            <div className="card">
+              {workExperiences.length === 0 ? (
+                <p className="text-sm text-gray-400">등록된 실무 경험이 없습니다.</p>
+              ) : (
+                <ol className="space-y-3">
+                  {workExperiences.map((exp, i) => (
+                    <li key={exp.id} className="flex items-start gap-3 border border-gray-100 p-4">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center bg-blue-50 text-xs font-semibold text-blue-600">
+                        {i + 1}
+                      </span>
+                      <div className="flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-semibold text-gray-800">
+                            {exp.company} {exp.team}
+                          </p>
+                          {exp.current && (
+                            <span className="inline-flex items-center gap-1 bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                              <span className="h-1.5 w-1.5 bg-green-500" />
+                              재직중
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-0.5 text-sm text-gray-600">{exp.role}</p>
+                        <p className="mt-1 text-xs text-gray-400">{exp.period}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
+          )}
+
+          {currentTab === 'careers' && (
+            <div className="card">
+              {sortedActivities.length === 0 ? (
+                <p className="text-sm text-gray-400">등록된 경력이 없습니다.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {sortedActivities.map((c) => (
+                    <li key={c.id} className="flex items-start gap-2">
+                      <span className="mt-2 h-1.5 w-1.5 shrink-0 bg-blue-500" aria-hidden />
+                      <p className="flex-1 text-sm leading-relaxed text-gray-700">
+                        <span className="font-semibold text-gray-900">{c.year}년</span>{' '}
+                        {c.content}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {currentTab === 'projects' && (
             <SectionCardList
               userId={profile.id}
               items={projects}
@@ -339,7 +423,7 @@ export default function UserProfilePage({
             />
           )}
 
-          {activeTab === 'research' && (
+          {currentTab === 'research' && (
             <SectionCardList
               userId={profile.id}
               items={research}
@@ -347,7 +431,7 @@ export default function UserProfilePage({
             />
           )}
 
-          {activeTab === 'studies' && (
+          {currentTab === 'studies' && (
             <SectionCardList
               userId={profile.id}
               items={studies}

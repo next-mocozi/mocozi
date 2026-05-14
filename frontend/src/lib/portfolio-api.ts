@@ -2,7 +2,10 @@
 // localStorage가 진실의 원천에서 백엔드로 옮겨가는 과도기에 사용.
 // 모든 호출은 try/catch로 감싸 실패 시 caller가 localStorage fallback을 쓰도록 한다.
 
+import axios from 'axios';
 import api from './api';
+
+const PUBLIC_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 export type BackendPortfolioItemType =
   | 'PROJECT'
@@ -70,11 +73,29 @@ export type BackendPortfolio = {
   isPublic?: boolean;
   firstPostAt?: string | null;
   intro?: string | null;
+  profileSections?: string[];
+  slug?: string | null;
   items: BackendPortfolioItem[];
   // Phase 3 — 부속 메타. 옛 백엔드 응답 호환을 위해 옵셔널.
   workExperiences?: BackendWorkExperience[];
   activities?: BackendExternalActivity[];
   links?: BackendPortfolioLink[];
+};
+
+/** 공개 포트폴리오 — getPublicBySlug 응답에 user 정보가 포함된 버전 */
+export type PublicPortfolio = BackendPortfolio & {
+  user: {
+    id: string;
+    lastName: string;
+    firstName: string;
+    university: string;
+    department: string;
+    grade: string | null;
+    bio: string | null;
+    profileImage: string | null;
+    roles: string[];
+    skills: string[];
+  };
 };
 
 export type CreateItemPayload = {
@@ -164,14 +185,34 @@ export async function deleteItem(id: string): Promise<void> {
   await api.delete(`/api/portfolios/items/${id}`);
 }
 
-/** 메타 부분 수정 — isPublic, firstPostAt */
+/** 메타 부분 수정 — isPublic, firstPostAt, intro, profileSections, slug */
 export async function updateMyMeta(payload: {
   isPublic?: boolean;
-  firstPostAt?: string; // ISO string
+  firstPostAt?: string;
   intro?: string;
+  profileSections?: string[];
+  slug?: string | null;
 }): Promise<BackendPortfolio> {
   const res = await api.patch('/api/portfolios/me', payload);
   return unwrap<BackendPortfolio>(res);
+}
+
+/** slug로 공개 포트폴리오 조회 — 인증 불필요 */
+export async function getPublicPortfolioBySlug(
+  slug: string,
+): Promise<PublicPortfolio | null> {
+  try {
+    const res = await axios.get(
+      `${PUBLIC_BASE}/api/portfolios/public/slug/${encodeURIComponent(slug)}`,
+    );
+    const d = res.data as { data?: PublicPortfolio } | PublicPortfolio;
+    if (d && typeof d === 'object' && 'data' in (d as object)) {
+      return (d as { data: PublicPortfolio }).data;
+    }
+    return d as PublicPortfolio;
+  } catch {
+    return null;
+  }
 }
 
 // =====================================================

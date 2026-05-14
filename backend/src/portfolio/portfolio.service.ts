@@ -130,7 +130,7 @@ export class PortfolioService {
     };
   }
 
-  /** 내 포트폴리오 메타 부분 수정 (isPublic, firstPostAt, intro) */
+  /** 내 포트폴리오 메타 부분 수정 (isPublic, firstPostAt, intro, profileSections, slug) */
   async updateMyMeta(userId: string, dto: UpdatePortfolioMetaDto) {
     const portfolio = await this.getMyPortfolio(userId);
     return this.prisma.portfolio.update({
@@ -141,8 +141,40 @@ export class PortfolioService {
           ? { firstPostAt: new Date(dto.firstPostAt) }
           : {}),
         ...(dto.intro !== undefined ? { intro: dto.intro } : {}),
+        ...(dto.profileSections !== undefined
+          ? { profileSections: dto.profileSections }
+          : {}),
+        // slug: null 이면 공유 링크 해제, 문자열이면 설정
+        ...(dto.slug !== undefined ? { slug: dto.slug || null } : {}),
       },
     });
+  }
+
+  /** slug로 공개 포트폴리오 조회 — 인증 불필요 (public endpoint 전용).
+   *  비공개이거나 slug 없으면 null 반환. */
+  async getPublicBySlug(slug: string) {
+    const portfolio = await this.prisma.portfolio.findUnique({
+      where: { slug },
+      include: {
+        ...PORTFOLIO_INCLUDE,
+        user: {
+          select: {
+            id: true,
+            lastName: true,
+            firstName: true,
+            university: true,
+            department: true,
+            grade: true,
+            bio: true,
+            profileImage: true,
+            roles: true,
+            skills: true,
+          },
+        },
+      },
+    });
+    if (!portfolio || !portfolio.isPublic) return null;
+    return portfolio;
   }
 
   /** 포트폴리오 아이템 추가.

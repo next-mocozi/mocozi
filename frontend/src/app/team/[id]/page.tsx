@@ -134,6 +134,10 @@ export default function TeamDetailPage({
   const [applyDone, setApplyDone] = useState(false);
   const [applyError, setApplyError] = useState('');
 
+  const [memberRoleEditing, setMemberRoleEditing] = useState<string | null>(null);
+  const [kickConfirm, setKickConfirm] = useState<string | null>(null);
+  const [memberActionLoading, setMemberActionLoading] = useState<string | null>(null);
+
   const [publicFields, setPublicFields] = useState<string[]>([]);
   const [visibilityLoading, setVisibilityLoading] = useState<string | null>(null);
 
@@ -161,6 +165,47 @@ export default function TeamDetailPage({
       setPublicFields(next);
     } finally {
       setVisibilityLoading(null);
+    }
+  };
+
+  const MEMBER_ROLE_OPTIONS = [
+    '팀원', '부팀장', '프론트엔드', '백엔드', '풀스택', '모바일',
+    'AI/ML', 'UI/UX', 'PM', 'QA', '기타',
+  ];
+
+  const roleLabel = (role: string) => (role === 'LEADER' ? '팀장' : role);
+
+  const handleUpdateRole = async (userId: string, role: string) => {
+    setMemberActionLoading(userId);
+    try {
+      await api.patch(`/api/teams/${id}/members/${userId}/role`, { role });
+      setTeam((prev) =>
+        prev
+          ? { ...prev, members: prev.members.map((m) => (m.userId === userId ? { ...m, role } : m)) }
+          : prev,
+      );
+      setMemberRoleEditing(null);
+    } catch (err: any) {
+      alert(err.response?.data?.message || '역할 변경에 실패했습니다.');
+    } finally {
+      setMemberActionLoading(null);
+    }
+  };
+
+  const handleKickMember = async (userId: string) => {
+    setMemberActionLoading(userId);
+    try {
+      await api.delete(`/api/teams/${id}/members/${userId}`);
+      setTeam((prev) =>
+        prev
+          ? { ...prev, members: prev.members.filter((m) => m.userId !== userId) }
+          : prev,
+      );
+      setKickConfirm(null);
+    } catch (err: any) {
+      alert(err.response?.data?.message || '추방에 실패했습니다.');
+    } finally {
+      setMemberActionLoading(null);
     }
   };
 
@@ -420,29 +465,96 @@ export default function TeamDetailPage({
             </div>
 
             <div className="space-y-1">
-              {team.members.map((m) => (
-                <Link
-                  key={m.id}
-                  href={`/profile/${m.userId}`}
-                  className="flex items-center gap-3 px-2 py-2 transition-colors hover:bg-indigo-50/60"
-                >
-                  <div
-                    className={`flex h-10 w-10 flex-shrink-0 items-center justify-center text-sm font-semibold ${
-                      m.role === 'LEADER'
-                        ? 'bg-gradient-to-br from-indigo-500 to-violet-500 text-white'
-                        : 'bg-stone-100 text-stone-600'
-                    }`}
-                  >
-                    {m.user.lastName[0]}
+              {team.members.map((m) => {
+                const isTargetLeader = m.role === 'LEADER';
+                const isEditingRole = memberRoleEditing === m.userId;
+                const isKickConfirming = kickConfirm === m.userId;
+                const isProcessing = memberActionLoading === m.userId;
+                const canManage = isLeader && !isTargetLeader;
+
+                return (
+                  <div key={m.id}>
+                    <div className="flex items-center gap-3 px-2 py-2 transition-colors hover:bg-indigo-50/60">
+                      <Link href={`/profile/${m.userId}`} className="flex flex-1 min-w-0 items-center gap-3">
+                        <div
+                          className={`flex h-10 w-10 flex-shrink-0 items-center justify-center text-sm font-semibold ${
+                            isTargetLeader
+                              ? 'bg-gradient-to-br from-indigo-500 to-violet-500 text-white'
+                              : 'bg-stone-100 text-stone-600'
+                          }`}
+                        >
+                          {m.user.lastName[0]}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-stone-800">{m.user.lastName + m.user.firstName}</p>
+                          <p className={`text-xs ${isTargetLeader ? 'text-indigo-500' : 'text-stone-400'}`}>
+                            {roleLabel(m.role)}
+                          </p>
+                        </div>
+                      </Link>
+                      {canManage && !isKickConfirming && (
+                        <button
+                          onClick={() => setKickConfirm(m.userId)}
+                          className="flex-shrink-0 text-xs text-stone-300 transition-colors hover:text-red-400"
+                        >
+                          추방
+                        </button>
+                      )}
+                    </div>
+
+                    {canManage && (
+                      <div className="px-2 pb-2">
+                        {isKickConfirming ? (
+                          <div className="flex items-center gap-2 bg-red-50 px-3 py-2 text-xs">
+                            <span className="flex-1 text-stone-500">정말 추방하시겠습니까?</span>
+                            <button
+                              onClick={() => setKickConfirm(null)}
+                              className="text-stone-400 hover:text-stone-600"
+                            >
+                              취소
+                            </button>
+                            <button
+                              onClick={() => handleKickMember(m.userId)}
+                              disabled={isProcessing}
+                              className="font-medium text-red-500 hover:text-red-700 disabled:opacity-50"
+                            >
+                              {isProcessing ? '처리 중...' : '확인'}
+                            </button>
+                          </div>
+                        ) : isEditingRole ? (
+                          <div className="flex items-center gap-1.5">
+                            <select
+                              autoFocus
+                              defaultValue={m.role === 'LEADER' ? '팀원' : m.role}
+                              onBlur={() => setMemberRoleEditing(null)}
+                              onChange={(e) => handleUpdateRole(m.userId, e.target.value)}
+                              disabled={isProcessing}
+                              className="flex-1 border border-indigo-200 bg-white px-2 py-1 text-xs text-stone-700 outline-none focus:border-indigo-400 disabled:opacity-50"
+                            >
+                              {MEMBER_ROLE_OPTIONS.map((r) => (
+                                <option key={r} value={r}>{r}</option>
+                              ))}
+                            </select>
+                            <button
+                              onClick={() => setMemberRoleEditing(null)}
+                              className="text-xs text-stone-400 hover:text-stone-600"
+                            >
+                              취소
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setMemberRoleEditing(m.userId)}
+                            className="text-xs text-stone-400 underline-offset-2 hover:text-indigo-500 hover:underline"
+                          >
+                            역할 변경
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-stone-800">{m.user.lastName + m.user.firstName}</p>
-                    <p className={`text-xs ${m.role === 'LEADER' ? 'text-indigo-500' : 'text-stone-400'}`}>
-                      {m.role === 'LEADER' ? '팀장' : '팀원'}
-                    </p>
-                  </div>
-                </Link>
-              ))}
+                );
+              })}
 
               {maxMembers &&
                 Array.from({ length: maxMembers - memberCount }).map((_, i) => (
@@ -490,12 +602,12 @@ export default function TeamDetailPage({
                 {applyBtn.label}
               </button>
             ) : (
-              <Link
-                href={`/chat?teamId=${team.id}&context=RECRUIT_TEAM`}
-                className="block w-full bg-gradient-to-r from-indigo-600 to-violet-600 py-3.5 text-center text-sm font-semibold text-white shadow-md shadow-indigo-200 transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-indigo-300"
+              <button
+                onClick={() => setApplyOpen(true)}
+                className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 py-3.5 text-sm font-semibold text-white shadow-md shadow-indigo-200 transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-indigo-300"
               >
                 {applyBtn.label}
-              </Link>
+              </button>
             )}
           </div>
         </div>
@@ -511,12 +623,12 @@ export default function TeamDetailPage({
             {applyBtn.label}
           </button>
         ) : (
-          <Link
-            href={`/chat?teamId=${team.id}&context=RECRUIT_TEAM`}
-            className="block w-full bg-gradient-to-r from-indigo-600 to-violet-600 py-3.5 text-center text-sm font-semibold text-white shadow-md shadow-indigo-200 transition-all hover:shadow-lg hover:shadow-indigo-300 active:scale-[0.99]"
+          <button
+            onClick={() => setApplyOpen(true)}
+            className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 py-3.5 text-sm font-semibold text-white shadow-md shadow-indigo-200 transition-all hover:shadow-lg hover:shadow-indigo-300 active:scale-[0.99]"
           >
             {applyBtn.label}
-          </Link>
+          </button>
         )}
       </div>
 

@@ -50,9 +50,32 @@ function VerifyEmailContent() {
         <>
           <div className="mb-4 text-5xl">📬</div>
           <h1 className="mb-4 text-2xl font-bold">이메일을 확인해주세요</h1>
-          <p className="text-gray-600">
+          <p className="mb-6 text-gray-600">
             가입하신 대학교 메일로 인증 링크를 보내드렸습니다.
           </p>
+          {resendDone ? (
+            <p className="text-sm text-green-600">인증 메일을 재발송했습니다. 메일함을 확인해주세요.</p>
+          ) : (
+            <div className="mt-2 text-left">
+              <p className="mb-2 text-sm text-gray-500">메일이 오지 않았나요? 재발송할 수 있습니다.</p>
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  value={resendEmail}
+                  onChange={(e) => setResendEmail(e.target.value)}
+                  placeholder="가입한 이메일 주소"
+                  className="input-field flex-1"
+                />
+                <button
+                  onClick={handleResend}
+                  disabled={resendLoading || !resendEmail}
+                  className="btn-primary px-4 disabled:opacity-50"
+                >
+                  {resendLoading ? '발송 중...' : '재발송'}
+                </button>
+              </div>
+            </div>
+          )}
           <Link href="/login" className="btn-primary mt-6 inline-block">
             로그인으로 이동
           </Link>

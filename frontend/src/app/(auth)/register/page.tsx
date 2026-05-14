@@ -19,6 +19,7 @@ export default function RegisterPage() {
   });
   // 개인정보처리방침 동의 — 필수. 회원가입 버튼 활성화 조건.
   const [privacyAgreed, setPrivacyAgreed] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendDone, setResendDone] = useState(false);
@@ -47,10 +48,12 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
+    if (isSubmitting) return;
     if (form.password !== form.passwordConfirm) {
       alert('비밀번호가 일치하지 않습니다.');
       return;
     }
+    setIsSubmitting(true);
     try {
       await api.post('/api/auth/register', {
         email: form.email,
@@ -63,7 +66,14 @@ export default function RegisterPage() {
       });
       setEmailSent(true);
     } catch (err: any) {
-      alert(err.response?.data?.message || '회원가입에 실패했습니다.');
+      if (err.response?.status === 409) {
+        // 미인증 상태로 남은 계정일 수 있으므로 인증 메일 재발송
+        await api.post('/api/auth/resend-verification', { email: form.email }).catch(() => {});
+        setEmailSent(true);
+      } else {
+        alert(err.response?.data?.message || '회원가입에 실패했습니다.');
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -300,10 +310,10 @@ export default function RegisterPage() {
 
           <button
             type="submit"
-            disabled={!privacyAgreed}
+            disabled={!privacyAgreed || isSubmitting}
             className="btn-primary w-full py-3 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            회원가입
+            {isSubmitting ? '처리 중...' : '회원가입'}
           </button>
         </form>
 

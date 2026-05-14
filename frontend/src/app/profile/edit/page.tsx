@@ -220,7 +220,7 @@ export default function ProfileEditPage() {
     setIsAddOpen(false);
   };
 
-  const handleRemoveLink = (id: number) => {
+  const handleRemoveLink = (id: string | number) => {
     setLinks((prev) => {
       const target = prev.find((l) => l.id === id);
       // 기존(백엔드에 존재하는) 링크면 저장 시 삭제하도록 기록

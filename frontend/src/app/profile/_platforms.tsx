@@ -2,7 +2,7 @@
 // 데이터/mock은 각 페이지에 인라인 유지.
 
 export type ProfileLink = {
-  id: number;
+  id: string | number;
   /** 백엔드 PortfolioLink.id — 있으면 update/delete 대상, 없으면 신규 */
   serverId?: string;
   url: string;

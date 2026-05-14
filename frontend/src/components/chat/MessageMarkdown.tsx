@@ -19,7 +19,11 @@ import { Highlight, themes } from 'prism-react-renderer';
  *  - GFM (표, 체크리스트, 취소선, autolink-literal)
  *  - 코드 블록 (```언어) — prism-react-renderer로 syntax highlighting
  *  - 인라인 코드 (`code`)
- *  - LaTeX 수식 ($...$ / $$...$$) — KaTeX 렌더
+ *  - LaTeX 수식 — KaTeX 렌더. 두 문법 모두 지원:
+ *    · markdown 표준: `$...$` (inline) / `$$...$$` (display)
+ *    · LaTeX 표준:    `\(...\)` (inline) / `\[...\]` (display)
+ *    LaTeX 표준은 preprocessTexDelimiters 가 raw string 단계에서 $/$$ 로 치환.
+ *    (마크다운 파서가 `\[` 를 escape로 먹어버려 AST 단계에선 늦음.)
  *
  * 금지 (rehype-sanitize):
  *  - raw HTML / SVG / iframe / script / style
@@ -28,6 +32,7 @@ import { Highlight, themes } from 'prism-react-renderer';
  * 외부 링크: target="_blank" + rel="noopener noreferrer" 강제.
  */
 export function MessageMarkdown({ content }: { content: string }) {
+  const normalized = preprocessTexDelimiters(content);
   return (
     <div className="markdown-content max-w-none break-words">
       <ReactMarkdown
@@ -119,10 +124,63 @@ export function MessageMarkdown({ content }: { content: string }) {
           },
         }}
       >
-        {content}
+        {normalized}
       </ReactMarkdown>
     </div>
   );
+}
+
+// Placeholder 문자 — Unicode Private Use Area (U+E000~U+E001).
+// 일반 키보드 입력으로 산출 불가 + 정상 콘텐츠와 충돌 가능성 사실상 0.
+// fromCharCode 로 명시해 소스에서 가독성 확보 (literal PUA 문자는 invisible).
+const PH_FENCE = String.fromCharCode(0xe000);
+const PH_INLINE = String.fromCharCode(0xe001);
+
+/**
+ * LaTeX 표준 표기 `\(...\)`(inline) / `\[...\]`(display) 를
+ * remark-math 가 인식하는 `$...$` / `$$...$$` 로 치환.
+ *
+ * 왜 raw string 단계인가:
+ *   CommonMark 의 escape 규칙상 `\[`, `\]`, `\(`, `\)` 는 punctuation escape 로
+ *   처리돼 백슬래시가 먹힘 → AST 단계엔 이미 `[` `]` `(` `)` 만 남아 늦음.
+ *
+ * 코드 영역 보호:
+ *   fenced code block(```...```) 과 inline code(`...`) 안의 `\(...\)` 등은
+ *   사용자가 의도적으로 보여주려는 텍스트 → placeholder 격리 후 복원.
+ */
+function preprocessTexDelimiters(content: string): string {
+  const fences: string[] = [];
+  const inlines: string[] = [];
+
+  // 1) fenced code block 격리 (multi-line, non-greedy)
+  let s = content.replace(/```[\s\S]*?```/g, (m) => {
+    fences.push(m);
+    return `${PH_FENCE}${fences.length - 1}${PH_FENCE}`;
+  });
+
+  // 2) inline code 격리 (한 줄 한정 — 코드에 newline 거의 없음)
+  s = s.replace(/`[^`\n]+`/g, (m) => {
+    inlines.push(m);
+    return `${PH_INLINE}${inlines.length - 1}${PH_INLINE}`;
+  });
+
+  // 3) display math: \[...\] → 양옆 빈 줄과 함께 $$...$$
+  //    빈 줄을 넣어주는 이유 — remark-math 가 paragraph 중간의 $$...$$ 를
+  //    block math 로 인식 못 할 수 있어서 무조건 standalone block 으로 만듦.
+  s = s.replace(/\\\[([\s\S]+?)\\\]/g, (_m, body) => `\n\n$$${body}$$\n\n`);
+
+  // 4) inline math: \(...\) → $...$
+  s = s.replace(/\\\(([\s\S]+?)\\\)/g, (_m, body) => `$${body}$`);
+
+  // 5) 코드 영역 복원 (inline → fence 순서)
+  s = s.replace(new RegExp(`${PH_INLINE}(\\d+)${PH_INLINE}`, 'g'), (_m, i) =>
+    inlines[Number(i)],
+  );
+  s = s.replace(new RegExp(`${PH_FENCE}(\\d+)${PH_FENCE}`, 'g'), (_m, i) =>
+    fences[Number(i)],
+  );
+
+  return s;
 }
 
 // rehype-sanitize 스키마 — defaultSchema 기반 + KaTeX 출력 허용 + URL 프로토콜 화이트리스트
