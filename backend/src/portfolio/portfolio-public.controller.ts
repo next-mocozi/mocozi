@@ -13,6 +13,6 @@ export class PortfolioPublicController {
     if (!portfolio) {
       throw new NotFoundException('포트폴리오를 찾을 수 없거나 비공개 상태입니다.');
     }
-    return { data: portfolio };
+    return portfolio;
   }
 }
