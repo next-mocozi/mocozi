@@ -41,6 +41,22 @@ export default function PortfolioFeedPage() {
     return () => clearTimeout(t);
   }, [target, renderedTarget]);
 
+  // 모바일 풀스크린 오버레이가 열려 있는 동안 배경 스크롤 잠금.
+  // 데스크톱(lg+) 사이드 패널은 in-flow 라 페이지 스크롤이 살아 있어야 하므로 제외.
+  useEffect(() => {
+    if (target === null) return;
+    const mql = window.matchMedia('(max-width: 1023px)');
+    const apply = () => {
+      document.body.style.overflow = mql.matches ? 'hidden' : '';
+    };
+    apply();
+    mql.addEventListener('change', apply);
+    return () => {
+      mql.removeEventListener('change', apply);
+      document.body.style.overflow = '';
+    };
+  }, [target]);
+
   // 게이트
   useEffect(() => {
     if (loading || status === 'loading') return;
