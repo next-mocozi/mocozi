@@ -191,19 +191,19 @@ function WelcomeDashboard({ user }: { user: AuthUser }) {
           <QuickAction
             href="/recruit"
             title="구인 둘러보기"
-            caption="조건에 맞는 팀을 찾아요"
+            caption="조건에 맞는 팀원을 찾아요"
             accent="bg-primary-100 text-primary-700"
           />
           <QuickAction
             href="/team/create"
             title="팀 만들기"
-            caption="기획서로 동료를 모아요"
+            caption="기획서로 팀원을 모아요"
             accent="bg-emerald-100 text-emerald-700"
           />
           <QuickAction
             href="/chat"
             title="채팅 열기"
-            caption="대화 중인 팀과 이어가요"
+            caption="대화 중인 팀원과 이어가요"
             accent="bg-amber-100 text-amber-700"
           />
           <QuickAction

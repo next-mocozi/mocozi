@@ -1,7 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState, useMemo, useEffect, useRef, type ReactNode } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import { SearchIcon } from '@/components/icons/CommonIcons';
 import api from '@/lib/api';
 import { usePagination } from '@/hooks/usePagination';
@@ -97,6 +99,8 @@ const toggleItem = (item: string, list: string[], setList: (v: string[]) => void
 };
 
 export default function TeamListPage() {
+  const router = useRouter();
+  const { user, loading } = useAuth();
   const [teams, setTeams] = useState<Team[]>([]);
   const [loadingTeams, setLoadingTeams] = useState(true);
 
@@ -109,6 +113,11 @@ export default function TeamListPage() {
   const [typeFilter, setTypeFilter] = useState<TeamType | null>(null);
 
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+
+  useEffect(() => {
+    if (loading) return;
+    if (!user) router.replace('/login');
+  }, [loading, user, router]);
 
   // 바텀시트 열린 동안 body 스크롤 잠금
   useEffect(() => {
