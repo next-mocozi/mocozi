@@ -342,11 +342,21 @@ export default function UserProfilePage({
 
       {/* 포트폴리오 */}
       <section className="mb-6">
-        <div className="mb-4">
-          <h2 className="text-2xl font-bold text-gray-900">포트폴리오</h2>
-          <p className="mt-1 text-sm text-gray-500">
-            {profile.lastName + profile.firstName}님이 등록한 포트폴리오 항목입니다.
-          </p>
+        {/* 본인 프로필의 "가져오기" 버튼 위치 — 타인 프로필에서는 그 사람의
+            포트폴리오 페이지로 이동하는 버튼을 둔다. */}
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">포트폴리오</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              {profile.lastName + profile.firstName}님이 등록한 포트폴리오 항목입니다.
+            </p>
+          </div>
+          <Link
+            href={`/portfolio/${profile.id}`}
+            className="btn-secondary bg-blue-600 px-4 py-1.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-blue-700"
+          >
+            포트폴리오로 이동하기
+          </Link>
         </div>
 
         <div className="space-y-4">
