@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ScoutModal } from '@/components/chat/ScoutModal';
 import { UserIcon } from '@/components/icons/ChatIcons';
 import api from '@/lib/api';
+import { startDirectChat } from '@/lib/chat/startDirectChat';
 import { useAuth } from '@/hooks/useAuth';
 import {
   PlatformIcon,
@@ -126,6 +127,21 @@ export default function UserProfilePage({
 
   /** §B-DM-8 — 스카우트 모달 열림 상태. 버튼 클릭 시 셋, 모달 onClose에서 null. */
   const [scoutOpen, setScoutOpen] = useState(false);
+
+  /** "채팅하기" — 일반 DIRECT 대화. context 없이 생성하므로 RoomList 색 점은 안 뜬다. */
+  const [chatStarting, setChatStarting] = useState(false);
+
+  const handleStartChat = async () => {
+    if (!profile || chatStarting) return;
+    setChatStarting(true);
+    try {
+      const roomId = await startDirectChat(profile.id);
+      router.push(`/chat/${roomId}`);
+    } catch {
+      setChatStarting(false);
+      window.alert('채팅방을 여는 데 실패했습니다. 잠시 후 다시 시도해주세요.');
+    }
+  };
 
   useEffect(() => {
     if (me?.id === id) {
@@ -260,15 +276,25 @@ export default function UserProfilePage({
             </div>
           )}
         </div>
-        {/* §B-DM-8 — 기존 "채팅하기"(RECRUIT_INDIVIDUAL)는 sender 프로필만 양식에 첨부되어
-            scout 의도와 맞지 않음. 스카우트 모달(팀 선택 → SCOUT_FROM_TEAM)로 통일. */}
-        <button
-          type="button"
-          onClick={() => setScoutOpen(true)}
-          className="btn-primary text-sm"
-        >
-          스카우트
-        </button>
+        {/* 채팅하기: context 없는 일반 대화 (RoomList 색 점 없음).
+            스카우트: 팀 선택 → SCOUT_FROM_TEAM 컨텍스트 방. */}
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={handleStartChat}
+            disabled={chatStarting}
+            className="btn-secondary text-sm disabled:opacity-60"
+          >
+            {chatStarting ? '여는 중...' : '채팅하기'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setScoutOpen(true)}
+            className="btn-primary text-sm"
+          >
+            스카우트
+          </button>
+        </div>
       </div>
       <ScoutModal
         targetUser={

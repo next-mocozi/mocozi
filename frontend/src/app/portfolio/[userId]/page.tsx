@@ -10,6 +10,7 @@ import { findMockFeedUser, type FeedUser } from '@/lib/mock/portfolioFeed';
 import { notifyPortfolioChanged } from '@/hooks/useMyPortfolioStatus';
 import { useMyPortfolio, invalidateMyPortfolio } from '@/hooks/useMyPortfolio';
 import api from '@/lib/api';
+import { startDirectChat } from '@/lib/chat/startDirectChat';
 import {
   updateMyMeta,
   getPortfolioByUserId,
@@ -235,6 +236,22 @@ export default function PortfolioDetailPage({
     return 'private';
   });
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  /** 타인 포트폴리오에서 "채팅하기" — PORTFOLIO_INQUIRY 컨텍스트로 생성해
+   *  RoomList 에 포트폴리오(초록) 색 점이 뜨게 한다. */
+  const [chatStarting, setChatStarting] = useState(false);
+  const handleStartChat = async () => {
+    if (chatStarting) return;
+    setChatStarting(true);
+    try {
+      const roomId = await startDirectChat(paramUserId, 'PORTFOLIO_INQUIRY');
+      router.push(`/chat/${roomId}`);
+    } catch {
+      setChatStarting(false);
+      window.alert('채팅방을 여는 데 실패했습니다. 잠시 후 다시 시도해주세요.');
+    }
+  };
+
   const [slugInput, setSlugInput] = useState('');
   const [slugSaving, setSlugSaving] = useState(false);
   const [slugError, setSlugError] = useState<string | null>(null);
@@ -857,9 +874,34 @@ export default function PortfolioDetailPage({
           </div>
         )}
 
-        {/* 모바일: 세로 스택(아이콘 위, 텍스트 아래) + 우측 패딩 축소 (설정 버튼만 피하면 됨).
+        {/* 타인 포트폴리오 — 이름/학교 컨테이너 우측에 "프로필로 이동" + "채팅하기".
+            owner 의 설정 기어와 같은 absolute top-right 위치. */}
+        {!isOwner && user && (
+          <div className="absolute right-4 top-4 z-10 flex flex-col gap-1.5 md:flex-row md:gap-2">
+            <Link
+              href={`/profile/${paramUserId}`}
+              className="inline-flex items-center justify-center border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-all hover:bg-gray-50"
+            >
+              프로필로 이동
+            </Link>
+            <button
+              type="button"
+              onClick={handleStartChat}
+              disabled={chatStarting}
+              className="inline-flex items-center justify-center border border-transparent bg-primary-600 px-3 py-1.5 text-xs font-medium text-white transition-all hover:bg-primary-700 disabled:opacity-60"
+            >
+              {chatStarting ? '여는 중...' : '채팅하기'}
+            </button>
+          </div>
+        )}
+
+        {/* 모바일: 세로 스택(아이콘 위, 텍스트 아래) + 우측 패딩 축소 (설정/액션 버튼만 피하면 됨).
             md+: 기존 가로 레이아웃 유지. */}
-        <div className="flex flex-col items-start gap-4 pr-10 md:flex-row md:items-start md:gap-6 md:pr-32">
+        <div
+          className={`flex flex-col items-start gap-4 md:flex-row md:items-start md:gap-6 ${
+            isOwner ? 'pr-10 md:pr-32' : 'pr-28 md:pr-52'
+          }`}
+        >
           <div className="flex h-20 w-20 shrink-0 items-center justify-center bg-primary-100 text-primary-600 md:h-24 md:w-24">
             <UserIcon className="h-10 w-10 md:h-12 md:w-12" />
           </div>
