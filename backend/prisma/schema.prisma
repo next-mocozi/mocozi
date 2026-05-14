@@ -170,6 +170,8 @@ model Portfolio {
   intro           String?
   // 내 프로필에서 선택한 표시 섹션 — 타인이 볼 때도 동일하게 적용
   profileSections String[]  @default([])
+  // /p/[slug] 공개 공유 URL용 — null 이면 공유 링크 미설정
+  slug        String?         @unique
   user        User            @relation(fields: [userId], references: [id])
   items       PortfolioItem[]
 

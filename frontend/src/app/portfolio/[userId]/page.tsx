@@ -235,6 +235,10 @@ export default function PortfolioDetailPage({
     return 'private';
   });
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [slugInput, setSlugInput] = useState('');
+  const [slugSaving, setSlugSaving] = useState(false);
+  const [slugError, setSlugError] = useState<string | null>(null);
+  const [slugSaved, setSlugSaved] = useState(false);
   // 타인 portfolio 조회 결과. backend 호출 결과에 따라 비공개/없음을 정확히
   // 분기하기 위해 별도 state 로 관리. (mock 시대엔 findMockFeedUser 결과로
   // 분기했지만 mock 제거 후 항상 undefined 가 되어 누구를 보든 "비공개" 안내가
@@ -276,6 +280,7 @@ export default function PortfolioDetailPage({
     setLinks((myPortfolioData.links ?? []).map(fromBackendLink));
     const vis: PortfolioVisibility = myPortfolioData.isPublic ? 'public' : 'private';
     setVisibility(vis);
+    setSlugInput(myPortfolioData.slug ?? '');
     const introVal = myPortfolioData.intro ?? user?.bio ?? '';
     setIntroSaved(introVal);
     setIntroDraft(introVal);
@@ -472,6 +477,33 @@ export default function PortfolioDetailPage({
       persistNavState(VISIBILITY_STORAGE_KEY, prev);
       notifyPortfolioChanged();
       alert('공개 설정이 서버에 저장되지 못했어요. 잠시 후 다시 시도해주세요.');
+    }
+  };
+
+  // ───────── 공유 링크 슬러그 ─────────
+  const saveSlug = async () => {
+    const trimmed = slugInput.trim().toLowerCase();
+    if (!/^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$|^[a-z0-9]{1,2}$/.test(trimmed) && trimmed !== '') {
+      setSlugError('3~30자, 소문자·숫자·하이픈만 가능하며 하이픈으로 시작/끝날 수 없습니다');
+      return;
+    }
+    setSlugSaving(true);
+    setSlugError(null);
+    setSlugSaved(false);
+    try {
+      await updateMyMeta({ slug: trimmed || null });
+      setSlugInput(trimmed);
+      setSlugSaved(true);
+      setTimeout(() => setSlugSaved(false), 2500);
+    } catch (e: unknown) {
+      const status = (e as { response?: { status?: number } })?.response?.status;
+      if (status === 409) {
+        setSlugError('이미 사용 중인 슬러그입니다');
+      } else {
+        setSlugError('저장 실패. 잠시 후 다시 시도해주세요');
+      }
+    } finally {
+      setSlugSaving(false);
     }
   };
 
@@ -1938,6 +1970,62 @@ export default function PortfolioDetailPage({
                   본인만 볼 수 있어요. 다른 사용자는 접근할 수 없습니다.
                 </p>
               </button>
+            </div>
+
+            {/* 공유 링크 슬러그 */}
+            <div className="border-t border-gray-100 px-6 py-5">
+              <p className="mb-1 text-sm font-semibold text-gray-900">공유 링크</p>
+              <p className="mb-3 text-xs leading-relaxed text-gray-500">
+                로그인 없이 접근 가능한 고유 URL입니다. 공개 상태일 때만 동작합니다.
+              </p>
+              <div className="flex items-center gap-0">
+                <span className="shrink-0 border border-r-0 border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-400">
+                  /p/
+                </span>
+                <input
+                  type="text"
+                  value={slugInput}
+                  onChange={(e) => {
+                    setSlugInput(e.target.value);
+                    setSlugError(null);
+                    setSlugSaved(false);
+                  }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') void saveSlug(); }}
+                  placeholder="my-slug"
+                  className="min-w-0 flex-1 border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100"
+                />
+                <button
+                  type="button"
+                  onClick={() => void saveSlug()}
+                  disabled={slugSaving}
+                  className="shrink-0 border border-l-0 border-indigo-600 bg-indigo-600 px-3 py-2 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {slugSaving ? '저장 중' : '저장'}
+                </button>
+              </div>
+              {slugError && (
+                <p className="mt-1.5 text-xs text-red-500">{slugError}</p>
+              )}
+              {slugSaved && slugInput && (
+                <div className="mt-2 flex items-center gap-2">
+                  <p className="text-xs text-green-600">✓ 저장됨</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const url = `${window.location.origin}/p/${slugInput}`;
+                      void navigator.clipboard.writeText(url);
+                    }}
+                    className="text-xs text-indigo-600 underline hover:text-indigo-800"
+                  >
+                    링크 복사
+                  </button>
+                </div>
+              )}
+              {!slugSaved && slugInput && !slugError && (
+                <p className="mt-1.5 text-xs text-gray-400">
+                  {window?.location?.origin ?? 'https://mocozi.kr'}/p/{slugInput}
+                </p>
+              )}
             </div>
           </div>
         </div>
