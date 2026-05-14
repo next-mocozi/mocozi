@@ -357,12 +357,8 @@ export class PortfolioService {
 
   // ──── 외부 링크 ────
   /** Idempotent — 같은 (portfolioId, url) 이 이미 있으면 새로 만들지 않고 label 만 갱신.
-   *  편집 페이지 재저장 시 동일 링크가 중복 INSERT 되어 누적되던 버그를 차단한다.
-   *
-   *  Prisma upsert 대신 수동 find-or-update 를 쓰는 이유: upsert 의 compound where
-   *  (portfolioId_url) 는 DB 에 unique 인덱스가 실제로 존재해야 동작한다. 인덱스는
-   *  manual_dedup_portfolio_links.sql 로 별도 적용되므로, 인덱스 적용 전에도 링크
-   *  등록이 깨지지 않도록 application 레벨에서 idempotent 를 보장한다. */
+   *  편집 페이지 재저장 시 동일 링크가 중복 INSERT 되어 누적되던 버그를 application
+   *  레벨에서 차단한다. (DB 인덱스/스키마는 건드리지 않음.) */
   async createLink(userId: string, dto: CreatePortfolioLinkDto) {
     const portfolioId = await this.ensureOwnedPortfolioId(userId);
     const existing = await this.prisma.portfolioLink.findFirst({

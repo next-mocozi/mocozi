@@ -271,9 +271,6 @@ model PortfolioLink {
 
   portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
 
-  // 같은 포트폴리오에 동일 URL 중복 저장 방지 (편집 페이지 재저장 시 누적되던 버그 차단).
-  // 적용: prisma/migrations/manual_dedup_portfolio_links.sql 을 먼저 실행해야 함.
-  @@unique([portfolioId, url])
   @@index([portfolioId])
   @@map("portfolio_links")
 }
