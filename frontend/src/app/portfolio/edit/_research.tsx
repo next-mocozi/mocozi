@@ -10,6 +10,7 @@ import {
 } from '@/lib/portfolio-mapper';
 import { getMyPortfolio as apiGetMyPortfolio } from '@/lib/portfolio-api';
 import { invalidateMyPortfolio } from '@/hooks/useMyPortfolio';
+import { confirmDialog } from '@/components/layout/ConfirmModal';
 
 // ─────── Storage keys ───────
 const RESEARCH_DETAILS_STORAGE_KEY = 'mock_research_details';
@@ -253,7 +254,7 @@ export default function ResearchForm() {
   const handleDelete = async () => {
     if (isSubmitting) return;
     if (!isEdit || editId === null) return;
-    if (!confirm('이 연구 항목을 삭제하시겠어요?')) return;
+    if (!(await confirmDialog('이 연구 항목을 삭제하시겠어요?'))) return;
     setIsSubmitting(true);
     // details 캐시 정리
     try {

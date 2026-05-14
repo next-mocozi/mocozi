@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import api from '@/lib/api';
+import { confirmDialog } from '@/components/layout/ConfirmModal';
 import type { MessageContext, MessageTemplate } from '@/types/chat';
 
 /**
@@ -77,7 +78,11 @@ export default function TemplatesPage() {
 
   const handleReset = async () => {
     if (saving) return;
-    if (!confirm('이 양식을 삭제하면 다음 사용 시 자동 합성된 default로 돌아갑니다. 계속할까요?')) {
+    if (
+      !(await confirmDialog(
+        '이 양식을 삭제하면 다음 사용 시 자동 합성된 default로 돌아갑니다. 계속할까요?',
+      ))
+    ) {
       return;
     }
     setSaving(true);

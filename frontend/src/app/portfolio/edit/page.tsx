@@ -16,6 +16,7 @@ import {
   deleteItem as apiDeleteItem,
 } from '@/lib/portfolio-api';
 import { invalidateMyPortfolio } from '@/hooks/useMyPortfolio';
+import { confirmDialog } from '@/components/layout/ConfirmModal';
 import { toCreatePayload, fromBackendItem } from '@/lib/portfolio-mapper';
 import ProjectInterview from './_interview';
 import ResearchForm from './_research';
@@ -175,7 +176,7 @@ function SimpleForm() {
   const handleDelete = async () => {
     if (isSubmitting) return;
     if (!isEdit || editId === null) return;
-    if (!confirm('이 포트폴리오 항목을 삭제하시겠어요?')) return;
+    if (!(await confirmDialog('이 포트폴리오 항목을 삭제하시겠어요?'))) return;
     setIsSubmitting(true);
     if (serverIdRef.current) {
       try {

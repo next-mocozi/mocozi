@@ -7,6 +7,7 @@ import { DownSelect, getMyPortfolioPath, type PortfolioItem } from '../_lib';
 import { syncItemToBackend } from '@/lib/portfolio-mapper';
 import { getMyPortfolio as apiGetMyPortfolio } from '@/lib/portfolio-api';
 import { invalidateMyPortfolio } from '@/hooks/useMyPortfolio';
+import { confirmDialog } from '@/components/layout/ConfirmModal';
 
 // ─────── Storage keys ───────
 const ITEMS_STORAGE_KEY = 'mock_portfolio_items';
@@ -1188,11 +1189,11 @@ export default function ProjectInterview() {
 
   /** 저장하지 않고 나가기 — 자동 저장으로 덮어써진 내용을 진입 시점 스냅샷으로
    *  복원(편집)하거나 통째로 제거(신규)한 뒤 목록으로 이동. */
-  const handleDiscardAndExit = () => {
+  const handleDiscardAndExit = async () => {
     const msg = isEdit
       ? '수정 내용을 저장하지 않고 나갑니다. 변경사항은 사라져요.\n계속할까요?'
       : '작성한 내용을 저장하지 않고 나갑니다. 작성 중인 항목은 사라져요.\n계속할까요?';
-    if (!confirm(msg)) return;
+    if (!(await confirmDialog(msg))) return;
 
     discardingRef.current = true;
     try {
@@ -1243,8 +1244,8 @@ export default function ProjectInterview() {
     setDraftsModalOpen(true);
   };
 
-  const deleteDraftItem = (id: number) => {
-    if (!confirm('이 임시저장을 삭제하시겠어요?')) return;
+  const deleteDraftItem = async (id: number) => {
+    if (!(await confirmDialog('이 임시저장을 삭제하시겠어요?'))) return;
     try {
       const raw = localStorage.getItem(ITEMS_STORAGE_KEY);
       const list: PortfolioItem[] = raw ? JSON.parse(raw) : [];

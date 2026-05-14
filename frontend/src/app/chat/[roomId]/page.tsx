@@ -36,6 +36,7 @@ import {
 import { ClockIcon } from '@/components/icons/CommonIcons';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
+import { confirmDialog } from '@/components/layout/ConfirmModal';
 import {
   clearEmptyRoomGuard,
   EMPTY_ROOM_LEAVE_MESSAGE,
@@ -279,11 +280,16 @@ function ChatRoomPageContent({ params }: PageProps) {
       }
       // 현재 채팅방 자체 클릭은 통과 (idempotent)
       if (href === window.location.pathname) return;
-      // confirm 거부 시 navigation 차단
-      if (!window.confirm(EMPTY_ROOM_LEAVE_MESSAGE)) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-      }
+      // 자체 confirm 팝업은 비동기 — native confirm 처럼 즉시 차단할 수 없으므로
+      // 일단 navigation 을 막고, 사용자가 확인하면 직접 이동시킨다.
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      void confirmDialog(EMPTY_ROOM_LEAVE_MESSAGE).then((ok) => {
+        if (ok) {
+          clearEmptyRoomGuard();
+          router.push(href);
+        }
+      });
     };
     document.addEventListener('click', onClickCapture, true);
 
@@ -291,7 +297,7 @@ function ChatRoomPageContent({ params }: PageProps) {
       window.removeEventListener('beforeunload', onBeforeUnload);
       document.removeEventListener('click', onClickCapture, true);
     };
-  }, [roomId, loading, error, messages.length, draft, replyTo]);
+  }, [roomId, loading, error, messages.length, draft, replyTo, router]);
 
   // 페이지 unmount 시 항상 guard 해제
   useEffect(() => {
@@ -1055,7 +1061,7 @@ function ChatRoomPageContent({ params }: PageProps) {
     if (m.senderId !== user?.id) return;
     if (m.deletedAt) return;
     if (m.__pending || m.__failed) return;
-    if (!window.confirm('이 메시지를 삭제하시겠습니까?')) return;
+    if (!(await confirmDialog('이 메시지를 삭제하시겠습니까?'))) return;
     try {
       await deleteMessage(m.id);
       // 결과는 broadcast(message:deleted)로 처리됨

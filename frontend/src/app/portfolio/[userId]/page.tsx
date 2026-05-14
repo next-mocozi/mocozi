@@ -10,6 +10,7 @@ import { findMockFeedUser, type FeedUser } from '@/lib/mock/portfolioFeed';
 import { notifyPortfolioChanged } from '@/hooks/useMyPortfolioStatus';
 import { useMyPortfolio, invalidateMyPortfolio } from '@/hooks/useMyPortfolio';
 import api from '@/lib/api';
+import { confirmDialog } from '@/components/layout/ConfirmModal';
 import { startDirectChat } from '@/lib/chat/startDirectChat';
 import {
   updateMyMeta,
@@ -608,7 +609,7 @@ export default function PortfolioDetailPage({
   };
 
   const deleteExp = async (id: number) => {
-    if (!confirm('이 항목을 삭제하시겠어요?')) return;
+    if (!(await confirmDialog('이 항목을 삭제하시겠어요?'))) return;
     const target = experiences.find((e) => e.id === id);
     setExperiences((prev) => prev.filter((e) => e.id !== id));
     if (expEditId === id) resetExpForm();
@@ -674,7 +675,7 @@ export default function PortfolioDetailPage({
   };
 
   const deleteCareer = async (id: number) => {
-    if (!confirm('이 항목을 삭제하시겠어요?')) return;
+    if (!(await confirmDialog('이 항목을 삭제하시겠어요?'))) return;
     const target = careers.find((c) => c.id === id);
     setCareers((prev) => prev.filter((c) => c.id !== id));
     if (careerEditId === id) resetCareerForm();
@@ -693,7 +694,7 @@ export default function PortfolioDetailPage({
   // 있을 경우, localId 만으로 filter 하면 모든 중복이 한 번에 사라져 UX 가 혼란스러움.
   // → serverId 가 있으면 그것을 1차 키로 사용해 "정확히 한 개" 만 제거.
   const deleteItem = async (id: number) => {
-    if (!confirm('이 항목을 삭제하시겠어요?')) return;
+    if (!(await confirmDialog('이 항목을 삭제하시겠어요?'))) return;
     const target = items.find((it) => it.id === id);
     if (!target) return;
     if (target.serverId) {
