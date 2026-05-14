@@ -59,9 +59,12 @@ export default function Header() {
   }, [isProfileMenuOpen]);
 
   const initial = user?.lastName?.trim().charAt(0).toUpperCase() ?? '?';
-  const hasStoredToken =
-    typeof window !== 'undefined' &&
-    !!(localStorage.getItem('accessToken') || localStorage.getItem('refreshToken'));
+  const [hasStoredToken, setHasStoredToken] = useState(false);
+  useEffect(() => {
+    setHasStoredToken(
+      !!(localStorage.getItem('accessToken') || localStorage.getItem('refreshToken')),
+    );
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 border-b border-gray-200 bg-white">
