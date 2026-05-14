@@ -191,7 +191,7 @@ export default function PortfolioFeedPage() {
           }`}
         >
           <div
-            className={`sticky top-20 h-[calc(100vh-6rem)] w-[28rem] transition-transform duration-300 ease-out ${
+            className={`sticky top-16 h-[calc(100vh-4rem)] w-[28rem] transition-transform duration-300 ease-out ${
               detailOpen ? 'translate-x-0' : 'translate-x-full'
             }`}
           >
